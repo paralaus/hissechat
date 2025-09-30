@@ -1,12 +1,12 @@
 import {FiHome, FiSettings, FiUsers} from 'react-icons/fi';
-import {LuUsers2} from 'react-icons/lu';
+//import {LuUsers2} from 'react-icons/lu';
 import {
   AiOutlineUserAdd,
   AiOutlineProduct,
   AiOutlineNotification,
 } from 'react-icons/ai';
 import {BiMoney} from 'react-icons/bi';
-import {LuLineChart} from 'react-icons/lu';
+//import {LuLineChart} from 'react-icons/lu';
 import {HiOutlineDocumentPlus} from 'react-icons/hi2';
 import {FaRegFileAlt, FaRegFile} from 'react-icons/fa';
 import {RiVipLine, RiChatPollLine} from 'react-icons/ri';
@@ -31,7 +31,7 @@ export const sidebarRoutes = [
       {
         name: 'Tüm Kullanıcılar',
         path: routes.users.path,
-        icon: LuUsers2,
+        icon: AiOutlineUserAdd,
         exact: true,
       },
       {
@@ -50,7 +50,7 @@ export const sidebarRoutes = [
   },
   {
     name: 'Piyasalar',
-    icon: LuLineChart,
+    icon: AiOutlineUserAdd,
     children: [
       {
         name: 'Tümü',
