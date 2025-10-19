@@ -42,6 +42,7 @@ const object = {
   admins: yup.array().required('Bu alan zorunludur.'),
   marketCode: yup.string().notRequired(),
   isActive: yup.boolean().notRequired(),
+  isFixed: yup.boolean().notRequired(),
   rank: yup.number('Bu alana bir sayı girin.').notRequired(),
   onlyAdminCanPost: yup.boolean().notRequired(),
   subscribeText: yup.string().notRequired(),
@@ -352,6 +353,28 @@ const EditVipChannel = ({id}) => {
                 Aktif olmayan kanallar listelenmez.
               </FormHelperText>
               <FormErrorMessage>{errors.isActive?.message}</FormErrorMessage>
+            </FormControl>
+            <FormControl
+              display="flex"
+              alignItems="start"
+              flexDirection={'column'}
+              isInvalid={!!errors.isFixed}
+              mb="4">
+              <Box display={'flex'} alignItems={'center'}>
+                <FormLabel htmlFor="isFixed" mb={0}>
+                  Sabitlenmiş Kanal
+                </FormLabel>
+                <Switch
+                  key={data?.isFixed}
+                  id="isFixed"
+                  defaultChecked={data?.isFixed}
+                  {...register('isFixed')}
+                />
+              </Box>
+              <FormHelperText>
+                Sabitlenmiş kanallar her zaman en üstte görünür.
+              </FormHelperText>
+              <FormErrorMessage>{errors.isFixed?.message}</FormErrorMessage>
             </FormControl>
             <FormControl
               display="flex"
