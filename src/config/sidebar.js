@@ -127,6 +127,24 @@ export const sidebarRoutes = [
     ],
   },
   {
+    name: 'Öneriler',
+    icon: FaRegFileAlt,
+    children: [
+      {
+        name: 'Tüm Öneriler',
+        path: routes.suggestions.path,
+        icon: FaRegFile,
+        exact: true,
+      },
+      {
+        name: 'Öneri Ekle',
+        path: routes.editSuggestion.getPath('new'),
+        icon: IoMdAdd,
+        exact: true,
+      },
+    ],
+  },
+  {
     name: 'Kara Liste',
     icon: MdBlock,
     children: [

@@ -52,6 +52,16 @@ export const PolicyTypeLabel = {
 
 export const policyTypes = Object.values(PolicyType);
 
+export const SuggestionType = {
+  Suggestion: 'suggestion',
+};
+
+export const SuggestionTypeLabel = {
+  [SuggestionType.Suggestion]: 'Öneri',
+};
+
+export const suggestionTypes = Object.values(SuggestionType);
+
 export const ReportType = {
   User: 'user',
   General: 'general',

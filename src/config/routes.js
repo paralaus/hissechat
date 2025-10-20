@@ -47,6 +47,12 @@ export const routes = {
   editPolicy: {
     getPath: id => `/dashboard/policies/${id}`,
   },
+  suggestions: {
+    path: '/dashboard/suggestions',
+  },
+  editSuggestion: {
+    getPath: id => `/dashboard/suggestions/${id}`,
+  },
   sendPushNotification: {
     path: '/dashboard/send-push-notification',
   },

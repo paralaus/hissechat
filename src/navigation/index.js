@@ -31,6 +31,8 @@ import Products from '../pages/dashboard/products/Products';
 import EditProduct from '../pages/dashboard/products/EditProduct';
 import EditPolicy from '../pages/dashboard/policies/EditPolicy';
 import Policies from '../pages/dashboard/policies/Policies';
+import EditSuggestion from '../pages/dashboard/suggestions/EditSuggestion';
+import Suggestions from '../pages/dashboard/suggestions/Suggestions';
 import SendPushNotification from '../pages/dashboard/push-notification/SendPushNotification';
 import Reports from '../pages/dashboard/reports/Reports';
 import Blacklist from '../pages/dashboard/blacklist/Blacklist';
@@ -198,6 +200,29 @@ const router = createBrowserRouter(
             }}
           />
           <Route index element={<Policies />} />
+        </Route>
+        <Route
+          path="suggestions"
+          handle={{
+            crumb: () => (
+              <NavLink to="/dashboard/suggestions">Haftalık Öneriler</NavLink>
+            ),
+          }}>
+          <Route
+            path="new"
+            element={<EditSuggestion />}
+            handle={{
+              crumb: () => <Text>Öneri Ekle</Text>,
+            }}
+          />
+          <Route
+            path=":id"
+            element={<EditSuggestion />}
+            handle={{
+              crumb: () => <Text>Öneri Düzenle</Text>,
+            }}
+          />
+          <Route index element={<Suggestions />} />
         </Route>
         <Route
           path="settings"

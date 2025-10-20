@@ -144,6 +144,26 @@ export const updatePolicy = async (id, body) => {
   return apiClient.patch(`/policies/${id}`, body);
 };
 
+export const createSuggestion = async body => {
+  return apiClient.post('/suggestions', body);
+};
+
+export const getSuggestions = async params => {
+  return apiClient.get('/suggestions', {params});
+};
+
+export const getSuggestion = async id => {
+  return apiClient.get(`/suggestions/${id}`);
+};
+
+export const deleteSuggestion = async id => {
+  return apiClient.delete(`/suggestions/${id}`);
+};
+
+export const updateSuggestion = async (id, body) => {
+  return apiClient.patch(`/suggestions/${id}`, body);
+};
+
 export const sendPushNotification = async body => {
   return apiClient.post(`/notifications/push`, body);
 };
