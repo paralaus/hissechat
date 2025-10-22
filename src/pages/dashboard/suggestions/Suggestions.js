@@ -14,7 +14,7 @@ const Suggestions = () => {
   const navigate = useNavigate();
 
   const onRow = async item => {
-    navigate(routes.editSuggestion.getPath(item.type));
+    navigate(routes.editSuggestion.getPath(item.id));
   };
 
   return (

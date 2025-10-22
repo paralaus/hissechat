@@ -153,15 +153,15 @@ export const getSuggestions = async params => {
 };
 
 export const getSuggestion = async id => {
-  return apiClient.get(`/suggestions/${id}`);
+  return apiClient.get(`/suggestions/suggestions/${id}`);
 };
 
 export const deleteSuggestion = async id => {
-  return apiClient.delete(`/suggestions/${id}`);
+  return apiClient.delete(`/suggestions/suggestions/${id}`);
 };
 
 export const updateSuggestion = async (id, body) => {
-  return apiClient.patch(`/suggestions/${id}`, body);
+  return apiClient.patch(`/suggestions/suggestions/${id}`, body);
 };
 
 export const sendPushNotification = async body => {

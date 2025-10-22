@@ -23,6 +23,7 @@ import {yupResolver} from '@hookform/resolvers/yup';
 import {useMutation, useQuery} from '@tanstack/react-query';
 import * as yup from 'yup';
 import {getErrorMessage} from '../../../utils/string';
+import {applyGoogleTranslateFix} from '../../../utils/GoogleTranslateFix';
 import {formatDate} from '../../../utils/date';
 import useDisclosure from '../../../hooks/useDisclosure';
 import {routes} from '../../../config/routes';
@@ -35,6 +36,8 @@ import {
 import {api} from '../../../api';
 import {pick} from '../../../utils/object';
 import { SuggestionTypeLabel, suggestionTypes } from '../../../config';
+
+applyGoogleTranslateFix();
 
 const object = {
   title: yup.string().required('Bu alan zorunludur.'),
@@ -139,7 +142,7 @@ const EditSuggestion = ({id}) => {
             background="transparent"
             borderRadius="md"
             me="auto">
-            <FormControl isInvalid={!!errors.title} mb="4">
+            <FormControl isInvalid={!!errors.title} mb="4" key={0}>
               <FormLabel
                 display="flex"
                 ms="4px"
@@ -158,7 +161,7 @@ const EditSuggestion = ({id}) => {
               />
               <FormErrorMessage>{errors.title?.message}</FormErrorMessage>
             </FormControl>
-            <FormControl isInvalid={!!errors.content} mb="4">
+            <FormControl isInvalid={!!errors.content} mb="4" key={1}>
               <FormLabel
                 display="flex"
                 ms="4px"
@@ -181,7 +184,7 @@ const EditSuggestion = ({id}) => {
               />
               <FormErrorMessage>{errors.content?.message}</FormErrorMessage>
             </FormControl>
-            <FormControl isInvalid={!!errors.type} mb="4">
+            <FormControl isInvalid={!!errors.type} mb="4" key={2}>
               <FormLabel
                 display="flex"
                 ms="4px"
