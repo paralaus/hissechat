@@ -67,7 +67,7 @@ const EditProduct = ({id}) => {
     mutationFn: () => api.deleteProduct(id),
   });
 
-  const {data, isLoading} = useQuery({
+  const {data} = useQuery({
     enabled: !isNew,
     queryKey: ['product', id],
     queryFn: () =>
@@ -104,7 +104,7 @@ const EditProduct = ({id}) => {
 
   const onDelete = async () => {
     try {
-      const {data} = await deleteItem();
+      await deleteItem();
       toast({
         title: 'Başarıyla silindi.',
         status: 'success',

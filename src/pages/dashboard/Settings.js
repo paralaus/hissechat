@@ -60,7 +60,7 @@ const Settings = () => {
     mutationFn: values => api.updateUser(id, values),
   });
 
-  const {data, isLoading} = useQuery({
+  const {data} = useQuery({
     queryKey: ['users', id],
     queryFn: () =>
       api

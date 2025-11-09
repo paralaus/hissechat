@@ -58,7 +58,7 @@ const items = [
 ];
 
 const Home = () => {
-  const {data, isLoading} = useQuery({
+  const {data} = useQuery({
     queryKey: ['statistics'],
     queryFn: () => api.getStatistics().then(res => res.data),
   });

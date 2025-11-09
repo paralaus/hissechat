@@ -43,7 +43,7 @@ const UserChannels = ({userId}) => {
 
   const onKickOut = async channelId => {
     try {
-      const {data} = await kickOut(channelId);
+      await kickOut(channelId);
       toast({
         title: 'Başarıyla çıkarıldı.',
         status: 'success',
@@ -76,7 +76,7 @@ const UserChannels = ({userId}) => {
           {
             header: 'Logo',
             accessorKey: 'thumbnail',
-            cell: ({getValue, row}) => (
+            cell: ({row}) => (
               <Avatar
                 name={row?.original?.name}
                 src={getChannelThumbnail(row.original)}

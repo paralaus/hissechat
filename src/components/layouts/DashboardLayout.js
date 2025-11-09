@@ -1,7 +1,7 @@
 import { Outlet } from "react-router-dom";
 import SidebarWithHeader from "../common/Sidebar";
 
-const DashboardLayout = ({}) => {
+const DashboardLayout = () => {
   return (
     <>
       <SidebarWithHeader>

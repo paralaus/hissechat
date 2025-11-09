@@ -2,18 +2,11 @@ import React from 'react';
 import {NavLink, useParams} from 'react-router-dom';
 import {
   Box,
-  Button,
-  Flex,
-  FormControl,
-  FormErrorMessage,
-  FormLabel,
-  Input,
-  Avatar,
   Text,
 } from '@chakra-ui/react';
 import {useQuery} from '@tanstack/react-query';
 import {api} from '../../../api';
-import {ReportType, ReportTypeLabel, roles} from '../../../config';
+import {ReportTypeLabel} from '../../../config';
 import {formatDate} from '../../../utils/date';
 import {ReadOnlyInfo, Page, Condition} from '../../../components';
 import {routes} from '../../../config/routes';
@@ -22,7 +15,7 @@ import {RxExternalLink} from 'react-icons/rx';
 const ReportDetail = () => {
   const {id} = useParams();
 
-  const {data, isLoading} = useQuery({
+  const {data} = useQuery({
     queryKey: ['report', id],
     queryFn: () => api.getReport(id).then(res => res.data),
   });

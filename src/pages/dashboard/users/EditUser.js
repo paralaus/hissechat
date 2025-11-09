@@ -73,7 +73,7 @@ const EditUser = () => {
     mutationFn: () => api.deleteUser(id),
   });
 
-  const {data, isLoading} = useQuery({
+  const {data} = useQuery({
     queryKey: ['user', id],
     queryFn: () =>
       api
@@ -106,7 +106,7 @@ const EditUser = () => {
 
   const onDelete = async () => {
     try {
-      const {data} = await deleteUser();
+      await deleteUser();
       toast({
         title: 'Kullanıcı silindi.',
         status: 'success',

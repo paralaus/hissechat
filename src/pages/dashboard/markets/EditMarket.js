@@ -30,7 +30,7 @@ import {marketTypes} from '../../../config';
 import {formatDate} from '../../../utils/date';
 import useDisclosure from '../../../hooks/useDisclosure';
 import {routes} from '../../../config/routes';
-import {ReadOnlyInfo, Page as Layout, Condition} from '../../../components';
+import {ReadOnlyInfo, Page as Layout} from '../../../components';
 import {api} from '../../../api';
 import {getCombinedLogoUrl} from '../../../utils/image';
 import {pick} from '../../../utils/object';
@@ -93,7 +93,7 @@ const EditMarket = ({id}) => {
     mutationFn: () => api.deleteMarketDetail(id),
   });
 
-  const {data, isLoading} = useQuery({
+  const {data} = useQuery({
     enabled: !isNew,
     queryKey: ['market-details', id],
     queryFn: () =>
@@ -133,7 +133,7 @@ const EditMarket = ({id}) => {
 
   const onDelete = async () => {
     try {
-      const {data} = await deleteMarketDetail();
+      await deleteMarketDetail();
       toast({
         title: 'Başarıyla silindi.',
         status: 'success',

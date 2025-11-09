@@ -1,4 +1,4 @@
-import {Box, Text, useToast} from '@chakra-ui/react';
+import {Text} from '@chakra-ui/react';
 import {DataTable, Page} from '../../../components';
 import {useNavigate} from 'react-router-dom';
 import {api} from '../../../api';

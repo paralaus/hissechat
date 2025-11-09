@@ -41,9 +41,9 @@ const schema = yup
   .required();
 
 const SendPushNotification = () => {
-  const navigate = useNavigate();
+  useNavigate();
   const toast = useToast();
-  const show = useDisclosure();
+  useDisclosure();
 
   const {
     register,

@@ -1,5 +1,4 @@
-import React, {useState} from 'react';
-import {useNavigate, useParams} from 'react-router-dom';
+import {useNavigate} from 'react-router-dom';
 import {
   Box,
   Button,
@@ -9,16 +8,14 @@ import {
   FormLabel,
   Input,
   useToast,
-  Avatar,
   Select,
-  Text,
   InputGroup,
   InputRightElement,
   Icon,
 } from '@chakra-ui/react';
 import {useForm} from 'react-hook-form';
 import {yupResolver} from '@hookform/resolvers/yup';
-import {useMutation, useQuery} from '@tanstack/react-query';
+import {useMutation} from '@tanstack/react-query';
 import * as yup from 'yup';
 import {api} from '../../../api';
 import {getErrorMessage} from '../../../utils/string';

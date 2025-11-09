@@ -16,7 +16,6 @@ import {
   AlertDialogFooter,
   AlertDialog,
   Select,
-  FormHelperText,
 } from '@chakra-ui/react';
 import {useForm} from 'react-hook-form';
 import {yupResolver} from '@hookform/resolvers/yup';
@@ -72,7 +71,7 @@ const EditSuggestion = ({id}) => {
     mutationFn: () => api.deleteSuggestion(id),
   });
 
-  const {data, isLoading} = useQuery({
+  const {data} = useQuery({
     enabled: !isNew,
     queryKey: ['suggestion', id],
     queryFn: () =>
@@ -108,7 +107,7 @@ const EditSuggestion = ({id}) => {
 
   const onDelete = async () => {
     try {
-      const {data} = await deleteItem();
+      await deleteItem();
       toast({
         title: 'Başarıyla silindi.',
         status: 'success',

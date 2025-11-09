@@ -69,7 +69,7 @@ const EditPolicy = ({id}) => {
     mutationFn: () => api.deletePolicy(id),
   });
 
-  const {data, isLoading} = useQuery({
+  const {data} = useQuery({
     enabled: !isNew,
     queryKey: ['policy', id],
     queryFn: () =>
@@ -105,7 +105,7 @@ const EditPolicy = ({id}) => {
 
   const onDelete = async () => {
     try {
-      const {data} = await deleteItem();
+      await deleteItem();
       toast({
         title: 'Başarıyla silindi.',
         status: 'success',

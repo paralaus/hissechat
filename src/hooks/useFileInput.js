@@ -2,7 +2,7 @@ import {useMemo, useRef, useState} from 'react';
 import {useMutation} from '@tanstack/react-query';
 import {uploadFile} from '../api/api';
 
-const useFileInput = ({accept} = {}) => {
+const useFileInput = () => {
   const ref = useRef();
   const [selected, setSelected] = useState(null);
 
@@ -28,7 +28,6 @@ const useFileInput = ({accept} = {}) => {
         ref={ref}
         type="file"
         name="file"
-        accept={accept}
         hidden
         onChange={event => {
           setSelected(event.target.files);

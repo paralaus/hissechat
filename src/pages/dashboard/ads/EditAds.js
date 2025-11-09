@@ -82,7 +82,7 @@ const EditAds = ({id}) => {
     mutationFn: () => api.deleteAdDetail(id),
   });
 
-  const {data, isLoading} = useQuery({
+  const {data} = useQuery({
     enabled: !isNew,
     queryKey: ['ads-details', id],
     queryFn: () =>

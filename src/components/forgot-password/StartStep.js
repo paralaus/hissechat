@@ -41,7 +41,7 @@ const StartStep = ({onComplete, isActive}) => {
 
   const onSubmit = async values => {
     try {
-      const {data} = await mutateAsync(values);
+      await mutateAsync(values);
       toast({
         title: 'E-posta adresinizi kontrol ediniz.',
         status: 'success',

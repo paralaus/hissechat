@@ -1,4 +1,4 @@
-import React, {useMemo} from 'react';
+import React from 'react';
 import {
   IconButton,
   Box,
@@ -110,7 +110,7 @@ const SidebarContent = ({onClose, ...rest}) => {
   );
 };
 
-const Links = ({routes}) => {
+const Links = () => {
   const location = useLocation();
   const [collapsed, setCollapsed] = React.useState({});
 
@@ -247,9 +247,9 @@ const MobileNav = ({onOpen, ...rest}) => {
   const navigate = useNavigate();
   const toast = useToast();
 
-  const location = useLocation();
+  //const location = useLocation();
 
-  const breadcrumb = useMemo(() => {
+  /*const breadcrumb = useMemo(() => {
     const routes = [];
 
     for (let i = 0; i < sidebarRoutes.length; i++) {
@@ -271,7 +271,7 @@ const MobileNav = ({onOpen, ...rest}) => {
       }
     }
     return routes;
-  }, [location]);
+  }, [location]);*/
 
   const onLogout = () => {
     setUser(null);

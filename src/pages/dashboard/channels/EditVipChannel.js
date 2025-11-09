@@ -85,7 +85,7 @@ const EditVipChannel = ({id}) => {
     mutationFn: () => api.deleteChannel(id),
   });
 
-  const {data, isLoading} = useQuery({
+  const {data} = useQuery({
     enabled: !isNew,
     queryKey: ['channel', id],
     queryFn: () =>
@@ -127,7 +127,7 @@ const EditVipChannel = ({id}) => {
 
   const onDelete = async () => {
     try {
-      const {data} = await deleteItem();
+      await deleteItem();
       toast({
         title: 'Başarıyla silindi.',
         status: 'success',
