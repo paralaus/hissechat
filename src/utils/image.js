@@ -24,3 +24,11 @@ export const getChannelThumbnail = (channel, currentUserId) => {
 
   return getCombinedLogoUrl(channel?.thumbnail);
 };
+
+export const getAdImageUrl = adImage => {
+  if (!adImage) return '';
+
+  if (adImage.startsWith('http')) return adImage;
+
+  return `${apiStorageUrl}/${adImage}`;
+};

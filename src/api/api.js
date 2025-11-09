@@ -60,6 +60,26 @@ export const createMarketDetail = async body => {
   return apiClient.post('/market-details', body);
 };
 
+export const getAdsDetails = async params => {
+  return apiClient.get('/ads-details', {params});
+};
+
+export const getAdDetail = async adDetailId => {
+  return apiClient.get(`/ads-details/${adDetailId}`);
+};
+
+export const deleteAdDetail = async adDetailId => {
+  return apiClient.delete(`/ads-details/${adDetailId}`);
+};
+
+export const updateAdDetail = async (adDetailId, body) => {
+  return apiClient.patch(`/ads-details/${adDetailId}`, body);
+};
+
+export const createAdDetail = async body => {
+  return apiClient.post('/ads-details', body);
+};
+
 export const uploadFile = async file => {
   const formData = new FormData();
   formData.append('file', file);

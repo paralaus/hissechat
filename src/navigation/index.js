@@ -40,6 +40,8 @@ import EditBlacklist from '../pages/dashboard/blacklist/EditBlacklist';
 import ReportDetail from '../pages/dashboard/reports/ReportDetail';
 import EditChannel from '../pages/dashboard/channels/EditChannel';
 import AllChannels from '../pages/dashboard/channels/AllChannels';
+import Ads from '../pages/dashboard/ads/Ads';
+import EditAds from '../pages/dashboard/ads/EditAds';
 
 const rootLoader = async ({request}) => {
   const {pathname} = new URL(request.url);
@@ -177,6 +179,27 @@ const router = createBrowserRouter(
             }}
           />
           <Route index element={<Products />} />
+        </Route>
+        <Route
+          path="ads"
+          handle={{
+            crumb: () => <NavLink to="/dashboard/ads">Reklamlar</NavLink>,
+          }}>
+          <Route
+            path="new"
+            element={<EditAds />}
+            handle={{
+              crumb: () => <Text>Reklam Ekle</Text>,
+            }}
+          />
+          <Route
+            path=":id"
+            element={<EditAds />}
+            handle={{
+              crumb: () => <Text>Reklam Düzenle</Text>,
+            }}
+          />
+          <Route index element={<Ads />} />
         </Route>
         <Route
           path="policies"

@@ -128,7 +128,6 @@ const CreateUser = () => {
               </FormLabel>
               <Input
                 fontSize="sm"
-                type="text"
                 fontWeight="500"
                 type={'email'}
                 size="md"

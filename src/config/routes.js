@@ -26,6 +26,12 @@ export const routes = {
   editMarket: {
     getPath: id => `/dashboard/markets/${id}`,
   },
+  ads: {
+    path: '/dashboard/ads',
+  },
+  editAds: {
+    getPath: id => `/dashboard/ads/${id}`,
+  },
   vipChannels: {
     path: '/dashboard/channels/vip',
   },

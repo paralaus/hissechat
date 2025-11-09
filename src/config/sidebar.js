@@ -67,6 +67,24 @@ export const sidebarRoutes = [
     ],
   },
   {
+    name: 'Reklamlar',
+    icon: AiOutlineUserAdd,
+    children: [
+      {
+        name: 'Tümü',
+        path: routes.ads.path,
+        icon: FaRegFile,
+        exact: true,
+      },
+      {
+        name: 'Reklam Ekle',
+        path: routes.editAds.getPath('new'),
+        icon: HiOutlineDocumentPlus,
+        exact: true,
+      },
+    ],
+  },
+  {
     name: 'Kanallar',
     icon: RiChatPollLine,
     children: [
