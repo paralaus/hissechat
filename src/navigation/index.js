@@ -270,7 +270,7 @@ const router = createBrowserRouter(
               crumb: () => <Text>Vip Başvurularını Listele</Text>,
             }}
           />
-          <Route index element={<Suggestions />} />
+          <Route index element={<VipApplications />} />
         </Route>
         <Route
           path="settings"
