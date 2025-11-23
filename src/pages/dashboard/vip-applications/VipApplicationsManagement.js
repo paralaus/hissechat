@@ -18,7 +18,7 @@ import {
 } from '@chakra-ui/react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
-import { FaTrash, FaEye } from 'react-icons/fa';
+import { FaTrash } from 'react-icons/fa';
 import { api } from '../../../api'; // Yolu kontrol edin
 
 const VipApplications = () => {
