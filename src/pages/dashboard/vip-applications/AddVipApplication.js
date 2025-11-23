@@ -30,14 +30,14 @@ const schema = yup.object({
   telegramLink: yup.string().nullable(),
   instagramLink: yup.string().nullable(),
   otherLinks: yup.string().nullable(),
-  followerCount: yup.number().typeError('Sayı girmelisiniz').required('Takipçi sayısı zorunludur'),
+  followerCount: yup.string().typeError('Sayı girmelisiniz').required('Takipçi sayısı zorunludur'),
   contentType: yup.string().required('İçerik türü zorunludur'),
-  vipContentDescription: yup.string().required('VIP içerik açıklaması zorunludur'),
-  subscriptionPriceExpectation: yup.number().typeError('Sayı girmelisiniz').required('Fiyat beklentisi zorunludur'),
-  targetSubscriberCount: yup.number().typeError('Sayı girmelisiniz').required('Hedef abone sayısı zorunludur'),
-  dailyPostCount: yup.number().typeError('Sayı girmelisiniz').required('Günlük paylaşım sayısı zorunludur'),
+  vipContentPlan: yup.string().required('VIP içerik açıklaması zorunludur'),
+  priceExpectation: yup.string().typeError('Sayı girmelisiniz').required('Fiyat beklentisi zorunludur'),
+  targetSubscriberCount: yup.string().typeError('Sayı girmelisiniz').required('Hedef abone sayısı zorunludur'),
+  dailyPostCount: yup.string().typeError('Sayı girmelisiniz').required('Günlük paylaşım sayısı zorunludur'),
   hasVipExperience: yup.string().required('Deneyim seçimi zorunludur'), // Select için string tutuyoruz
-  vipExperienceDetails: yup.string().when('hasVipExperience', {
+  previousExperience: yup.string().when('hasVipExperience', {
     is: 'true',
     then: (schema) => schema.required('Deneyim detayları zorunludur'),
     otherwise: (schema) => schema.nullable(),
@@ -158,17 +158,17 @@ const AddVipApplication = () => {
             <FormErrorMessage>{errors.contentType?.message}</FormErrorMessage>
           </FormControl>
 
-          <FormControl isInvalid={!!errors.vipContentDescription}>
+          <FormControl isInvalid={!!errors.vipContentPlan}>
             <FormLabel>10. VIP Kanalında Ne Paylaşacaksınız?</FormLabel>
-            <Textarea {...register('vipContentDescription')} />
-            <FormErrorMessage>{errors.vipContentDescription?.message}</FormErrorMessage>
+            <Textarea {...register('vipContentPlan')} />
+            <FormErrorMessage>{errors.vipContentPlan?.message}</FormErrorMessage>
           </FormControl>
 
           <SimpleGrid columns={{ base: 1, md: 3 }} spacing={4}>
-            <FormControl isInvalid={!!errors.subscriptionPriceExpectation}>
+            <FormControl isInvalid={!!errors.priceExpectation}>
               <FormLabel>11. Aylık Fiyat Beklentisi (TL)</FormLabel>
-              <Input {...register('subscriptionPriceExpectation')} type="number" />
-              <FormErrorMessage>{errors.subscriptionPriceExpectation?.message}</FormErrorMessage>
+              <Input {...register('priceExpectation')} type="number" />
+              <FormErrorMessage>{errors.priceExpectation?.message}</FormErrorMessage>
             </FormControl>
 
             <FormControl isInvalid={!!errors.targetSubscriberCount}>
@@ -195,10 +195,10 @@ const AddVipApplication = () => {
             </FormControl>
 
             {hasExperienceValue === 'true' && (
-              <FormControl isInvalid={!!errors.vipExperienceDetails}>
+              <FormControl isInvalid={!!errors.previousExperience}>
                 <FormLabel>Varsa link veya detay</FormLabel>
-                <Input {...register('vipExperienceDetails')} placeholder="Önceki grup linki vb." />
-                <FormErrorMessage>{errors.vipExperienceDetails?.message}</FormErrorMessage>
+                <Input {...register('previousExperience')} placeholder="Önceki grup linki vb." />
+                <FormErrorMessage>{errors.previousExperience?.message}</FormErrorMessage>
               </FormControl>
             )}
           </SimpleGrid>
