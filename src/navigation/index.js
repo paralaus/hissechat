@@ -42,6 +42,8 @@ import EditChannel from '../pages/dashboard/channels/EditChannel';
 import AllChannels from '../pages/dashboard/channels/AllChannels';
 import Ads from '../pages/dashboard/ads/Ads';
 import EditAds from '../pages/dashboard/ads/EditAds';
+import AddVipApplication from '../pages/dashboard/vip-applications/AddVipApplication';
+import VipApplications from '../pages/dashboard/vip-applications/VipApplicationsManagement';
 
 const rootLoader = async ({request}) => {
   const {pathname} = new URL(request.url);
@@ -243,6 +245,29 @@ const router = createBrowserRouter(
             element={<EditSuggestion />}
             handle={{
               crumb: () => <Text>Öneri Düzenle</Text>,
+            }}
+          />
+          <Route index element={<Suggestions />} />
+        </Route>
+        <Route
+          path="vip-applications"
+          handle={{
+            crumb: () => (
+              <NavLink to="/dashboard/vip-applications">Vip Başvuruları</NavLink>
+            ),
+          }}>
+          <Route
+            path="new"
+            element={<AddVipApplication />}
+            handle={{
+              crumb: () => <Text>Vip Başvuru Ekle</Text>,
+            }}
+          />
+          <Route
+            path=""
+            element={<VipApplications />}
+            handle={{
+              crumb: () => <Text>Vip Başvurularını Listele</Text>,
             }}
           />
           <Route index element={<Suggestions />} />

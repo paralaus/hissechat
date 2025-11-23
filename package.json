@@ -27,7 +27,9 @@
     "react-scripts": "5.0.1",
     "web-vitals": "^2.1.4",
     "yup": "^1.4.0",
-    "zustand": "^4.5.2"
+    "zustand": "^4.5.2",
+    "@react-buddy/ide-toolbox": "^2.4.0",
+    "@react-buddy/palette-chakra-ui": "^2.3.1"
   },
   "scripts": {
     "start": "react-scripts start",

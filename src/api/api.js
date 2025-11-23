@@ -227,3 +227,20 @@ export const getChannelsOfUser = async (id, params) => {
 export const kickOutFromChannel = async (userId, channelId) => {
   return apiClient.post(`/channels/${channelId}/kick-out/${userId}`);
 };
+
+// VIP Application Endpoints
+export const createVipApplication = async body => {
+  return apiClient.post('/vip-applications', body);
+};
+
+export const getVipApplications = async params => {
+  return apiClient.get('/vip-applications', {params});
+};
+
+export const getVipApplication = async vipApplicationId => {
+  return apiClient.get(`/vip-applications/${vipApplicationId}`);
+};
+
+export const deleteVipApplication = async vipApplicationId => {
+  return apiClient.delete(`/vip-applications/${vipApplicationId}`);
+};
