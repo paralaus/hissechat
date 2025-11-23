@@ -42,8 +42,8 @@ import EditChannel from '../pages/dashboard/channels/EditChannel';
 import AllChannels from '../pages/dashboard/channels/AllChannels';
 import Ads from '../pages/dashboard/ads/Ads';
 import EditAds from '../pages/dashboard/ads/EditAds';
-import AddVipApplication from '../pages/dashboard/vip-applications/AddVipApplication';
-import VipApplications from '../pages/dashboard/vip-applications/VipApplicationsManagement';
+import AddVipApplication from '../pages/dashboard/vipapplications/AddVipApplication';
+import VipApplications from '../pages/dashboard/vipapplications/VipApplications';
 
 const rootLoader = async ({request}) => {
   const {pathname} = new URL(request.url);
@@ -250,10 +250,10 @@ const router = createBrowserRouter(
           <Route index element={<Suggestions />} />
         </Route>
         <Route
-          path="vip-applications"
+          path="vipapplications"
           handle={{
             crumb: () => (
-              <NavLink to="/dashboard/vip-applications">Vip Başvuruları</NavLink>
+              <NavLink to="/dashboard/vipapplications">Vip Başvuruları</NavLink>
             ),
           }}>
           <Route

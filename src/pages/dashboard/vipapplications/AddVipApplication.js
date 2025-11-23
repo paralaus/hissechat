@@ -1,4 +1,4 @@
-import React from 'react';
+import React, {useRef} from 'react';
 import {
   Box,
   Button,
@@ -12,14 +12,18 @@ import {
   SimpleGrid,
   Textarea,
   VStack,
-  useToast,
+  useToast, AlertDialogOverlay, AlertDialogContent, AlertDialogHeader, AlertDialogBody, AlertDialogFooter, AlertDialog,
 } from '@chakra-ui/react';
 import { useForm } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
-import { useMutation } from '@tanstack/react-query';
-import { useNavigate } from 'react-router-dom';
-import { api } from '../../../api'; // Yolu kontrol edin
+import {useMutation} from '@tanstack/react-query';
+import {useNavigate, useParams} from 'react-router-dom';
+import { api } from '../../../api';
+import { routes } from '../../../config/routes';
+import { getErrorMessage } from '../../../utils/string';
+import useDisclosure from '../../../hooks/useDisclosure';
+import {Page as Layout, Condition} from '../../../components';
 
 // Validasyon Şeması
 const schema = yup.object({
@@ -45,8 +49,11 @@ const schema = yup.object({
   termsAccepted: yup.boolean().oneOf([true], 'Şartları kabul etmelisiniz'),
 });
 
-const AddVipApplication = () => {
+const AddVipApplication = ({id}) => {
+  const isNew = !id || id === 'new';
   const toast = useToast();
+  const deleteModal = useDisclosure();
+  const cancelRef = useRef();
   const navigate = useNavigate();
   
   const {
@@ -64,8 +71,15 @@ const AddVipApplication = () => {
 
   const hasExperienceValue = watch('hasVipExperience');
 
+  const {mutateAsync: deleteVipApplication, isPending: isDeleting} = useMutation({
+    mutationFn: () => api.deleteVipApplication(id),
+  });
+
   const mutation = useMutation({
-    mutationFn: api.createVipApplication,
+    mutationFn: (values) =>
+      isNew
+        ? api.createVipApplication(values)
+        : api.updateVipApplication(id, values),
     onSuccess: () => {
       toast({
         title: 'Başvuru Alındı',
@@ -74,7 +88,7 @@ const AddVipApplication = () => {
         duration: 5000,
         isClosable: true,
       });
-      navigate('/dashboard/vip-applications'); // Listeleme sayfasına yönlendir
+      navigate('/dashboard/vipapplications'); // Listeleme sayfasına yönlendir
     },
     onError: (error) => {
       toast({
@@ -96,7 +110,26 @@ const AddVipApplication = () => {
     mutation.mutate(payload);
   };
 
+  const onDelete = async () => {
+    try {
+      await deleteVipApplication(); // 'data' is unused
+      toast({
+        title: 'Başarıyla silindi.',
+        status: 'success',
+        position: 'top',
+      });
+      navigate(routes.ads.path);
+    } catch (error) {
+      toast({
+        title: getErrorMessage(error),
+        status: 'error',
+        position: 'top',
+      });
+    }
+  };
+
   return (
+    <Layout>
     <Box p={8} bg="white" borderRadius="lg" shadow="sm">
       <Heading size="md" mb={6}>Yeni VIP Başvurusu Oluştur</Heading>
       <form onSubmit={handleSubmit(onSubmit)}>
@@ -212,7 +245,7 @@ const AddVipApplication = () => {
 
           <Button 
             type="submit" 
-            colorScheme="blue" 
+            colorScheme="primary"
             size="lg" 
             isLoading={isSubmitting}
             loadingText="Gönderiliyor"
@@ -222,7 +255,54 @@ const AddVipApplication = () => {
         </VStack>
       </form>
     </Box>
+    <Box display={'flex'} justifyContent={'end'}>
+      <Condition condition={!isNew}>
+        <Button
+          isLoading={isDeleting}
+          colorScheme={'red'}
+          isDisabled={isDeleting}
+          type="button"
+          my={'4'}
+          onClick={deleteModal.open}
+          fontSize={'sm'}>
+          Sil
+        </Button>
+      </Condition>
+    </Box>
+    <AlertDialog
+      closeOnOverlayClick
+      closeOnEsc
+      leastDestructiveRef={cancelRef}
+      isOpen={deleteModal.isOpen}
+      onClose={deleteModal.close}>
+      <AlertDialogOverlay>
+        <AlertDialogContent>
+          <AlertDialogHeader fontSize="lg" fontWeight="bold">
+            Emin misiniz?
+          </AlertDialogHeader>
+          <AlertDialogBody>Silmek istediğinize emin misiniz?</AlertDialogBody>
+          <AlertDialogFooter>
+            <Button ref={cancelRef} onClick={deleteModal.close}>
+              Vazgeç
+            </Button>
+            <Button
+              colorScheme="red"
+              onClick={onDelete}
+              ml={3}
+              isLoading={isDeleting}
+              disabled={isDeleting}>
+              Sil
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialogOverlay>
+    </AlertDialog>
+    </Layout>
   );
 };
-
-export default AddVipApplication;
+const Page = () => {
+  const {id} = useParams();
+  return <AddVipApplication key={id} id={id} />;
+};
+//export default AddVipApplication;
+export default Page;

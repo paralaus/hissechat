@@ -163,6 +163,24 @@ export const sidebarRoutes = [
     ],
   },
   {
+    name: 'Vip Başvurular',
+    icon: FaRegFileAlt,
+    children: [
+      {
+        name: 'Tüm Vip Başvurular',
+        path: routes.vipApplications.path,
+        icon: FaRegFile,
+        exact: true,
+      },
+      {
+        name: 'Vip Başvuru Ekle',
+        path: routes.editVipApplications.getPath('new'),
+        icon: IoMdAdd,
+        exact: true,
+      },
+    ],
+  },
+  {
     name: 'Kara Liste',
     icon: MdBlock,
     children: [

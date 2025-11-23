@@ -233,6 +233,10 @@ export const createVipApplication = async body => {
   return apiClient.post('/vip-applications', body);
 };
 
+export const updateVipApplication = async (vipApplicationId, body) => {
+  return apiClient.patch(`/vip-applications/${vipApplicationId}`, body);
+};
+
 export const getVipApplications = async params => {
   return apiClient.get('/vip-applications', {params});
 };

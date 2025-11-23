@@ -25,14 +25,14 @@ const VipApplications = () => {
   const queryClient = useQueryClient();
 
   const { data, isLoading, error } = useQuery({
-    queryKey: ['vip-applications'],
+    queryKey: ['vipapplications'],
     queryFn: () => api.getVipApplications(),
   });
 
   const deleteMutation = useMutation({
     mutationFn: api.deleteVipApplication,
     onSuccess: () => {
-      queryClient.invalidateQueries(['vip-applications']);
+      queryClient.invalidateQueries(['vipapplications']);
     },
   });
 
@@ -46,13 +46,23 @@ const VipApplications = () => {
   if (error) return <Box color="red.500">Veriler yüklenirken hata oluştu.</Box>;
 
   // API'den dönen verinin data.data içinde olduğunu varsayıyoruz (Axios + Backend yapınıza göre)
-  const applications = data?.data || [];
+  // Güvenli veri çekimi: Dizi olup olmadığını kontrol ediyoruz
+  let applications = [];
+  if (Array.isArray(data?.data)) {
+    applications = data.data;
+  } else if (Array.isArray(data?.data?.data)) {
+      // Bazen backend { data: [...] } döner, axios da bunu data içine koyar -> data.data.data olur
+    applications = data.data.data;
+  } else if (Array.isArray(data)) {
+      // React Query select kullanılmadıysa ve direkt array dönüyorsa
+      applications = data;
+  }
 
   return (
     <Box p={8} bg="white" borderRadius="lg" shadow="sm">
       <HStack justifyContent="space-between" mb={6}>
         <Heading size="md">VIP Başvuruları</Heading>
-        <Button as={Link} to="/dashboard/vip-applications/new" colorScheme="blue" size="sm">
+        <Button as={Link} to="/dashboard/vipapplications/new" colorScheme="blue" size="sm">
           Yeni Ekle
         </Button>
       </HStack>

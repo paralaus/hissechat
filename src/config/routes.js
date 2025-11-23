@@ -59,6 +59,12 @@ export const routes = {
   editSuggestion: {
     getPath: id => `/dashboard/suggestions/${id}`,
   },
+  vipApplications: {
+    path: '/dashboard/vipapplications',
+  },
+  editVipApplications: {
+    getPath: id => `/dashboard/vipapplications/${id}`,
+  },
   sendPushNotification: {
     path: '/dashboard/send-push-notification',
   },
