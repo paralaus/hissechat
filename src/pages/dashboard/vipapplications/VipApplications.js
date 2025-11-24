@@ -15,14 +15,22 @@ import {
   HStack,
   Spinner,
   Center,
+  useToast,
 } from '@chakra-ui/react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Link } from 'react-router-dom';
+import {Link, useNavigate} from 'react-router-dom';
 import { FaTrash } from 'react-icons/fa';
-import { api } from '../../../api'; // Yolu kontrol edin
+import { api } from '../../../api';
+import { routes } from '../../../config/routes'; // Yolu kontrol edin
 
 const VipApplications = () => {
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
+  const toast = useToast();
+
+  const onRow = async item => {
+    navigate(routes.editVipApplications.getPath(item.id));
+  };
 
   const { data, isLoading, error } = useQuery({
     queryKey: ['vipapplications'],
@@ -39,6 +47,12 @@ const VipApplications = () => {
   const handleDelete = (id) => {
     if (window.confirm('Bu başvuruyu silmek istediğinize emin misiniz?')) {
       deleteMutation.mutate(id);
+      toast({
+        title: 'Başarıyla silindi.',
+        status: 'success',
+        position: 'top',
+      });
+      navigate(routes.vipApplications.path);
     }
   };
 
@@ -48,14 +62,22 @@ const VipApplications = () => {
   // API'den dönen verinin data.data içinde olduğunu varsayıyoruz (Axios + Backend yapınıza göre)
   // Güvenli veri çekimi: Dizi olup olmadığını kontrol ediyoruz
   let applications = [];
+
+  // 1. Axios response'un 'data'sı direkt array ise
   if (Array.isArray(data?.data)) {
     applications = data.data;
-  } else if (Array.isArray(data?.data?.data)) {
-      // Bazen backend { data: [...] } döner, axios da bunu data içine koyar -> data.data.data olur
+  }
+  // 2. Pagination yapısı varsa genellikle 'results' içinde döner (data.data.results)
+  else if (Array.isArray(data?.data?.results)) {
+    applications = data.data.results;
+  }
+  // 3. Backend { data: [...] } şeklinde wrap etmişse (data.data.data)
+  else if (Array.isArray(data?.data?.data)) {
     applications = data.data.data;
-  } else if (Array.isArray(data)) {
-      // React Query select kullanılmadıysa ve direkt array dönüyorsa
-      applications = data;
+  }
+  // 4. Direkt data array ise (Nadir, interceptor varsa)
+  else if (Array.isArray(data)) {
+    applications = data;
   }
 
   return (
@@ -87,7 +109,11 @@ const VipApplications = () => {
               </Tr>
             )}
             {applications.map((app) => (
-              <Tr key={app._id || app.id}>
+              <Tr key={app._id || app.id}
+                  onClick={() => onRow(app)}
+                  cursor="pointer"
+                  _hover={{ bg: "gray.50" }}
+              >
                 <Td fontWeight="bold">{app.fullName}</Td>
                 <Td>{app.phone}</Td>
                 <Td>{app.followerCount}</Td>
@@ -106,7 +132,10 @@ const VipApplications = () => {
                       icon={<FaTrash />}
                       size="sm"
                       colorScheme="red"
-                      onClick={() => handleDelete(app._id || app.id)}
+                      onClick={(e) => {
+                        e.stopPropagation(); // Prevent row click when deleting
+                        handleDelete(app._id || app.id);
+                      }}
                       isLoading={deleteMutation.isPending}
                     />
                   </HStack>

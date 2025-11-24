@@ -17,13 +17,15 @@ import {
 import { useForm } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
-import {useMutation} from '@tanstack/react-query';
+import {useMutation, useQuery} from '@tanstack/react-query';
 import {useNavigate, useParams} from 'react-router-dom';
 import { api } from '../../../api';
 import { routes } from '../../../config/routes';
 import { getErrorMessage } from '../../../utils/string';
 import useDisclosure from '../../../hooks/useDisclosure';
-import {Page as Layout, Condition} from '../../../components';
+import {Page as Layout, Condition, ReadOnlyInfo} from '../../../components';
+import {pick} from '../../../utils/object';
+import {formatDate} from '../../../utils/date';
 
 // Validasyon Şeması
 const schema = yup.object({
@@ -40,12 +42,11 @@ const schema = yup.object({
   priceExpectation: yup.string().typeError('Sayı girmelisiniz').required('Fiyat beklentisi zorunludur'),
   targetSubscriberCount: yup.string().typeError('Sayı girmelisiniz').required('Hedef abone sayısı zorunludur'),
   dailyPostCount: yup.string().typeError('Sayı girmelisiniz').required('Günlük paylaşım sayısı zorunludur'),
-  hasVipExperience: yup.string().required('Deneyim seçimi zorunludur'), // Select için string tutuyoruz
-  previousExperience: yup.string().when('hasVipExperience', {
+  /*previousExperience: yup.string().when('hasVipExperience', {
     is: 'true',
     then: (schema) => schema.required('Deneyim detayları zorunludur'),
     otherwise: (schema) => schema.nullable(),
-  }),
+  }),*/
   termsAccepted: yup.boolean().oneOf([true], 'Şartları kabul etmelisiniz'),
 });
 
@@ -61,15 +62,15 @@ const AddVipApplication = ({id}) => {
     handleSubmit,
     watch,
     formState: { errors, isSubmitting },
+    reset,
   } = useForm({
     resolver: yupResolver(schema),
     defaultValues: {
-      hasVipExperience: 'false',
       termsAccepted: false,
     }
   });
 
-  const hasExperienceValue = watch('hasVipExperience');
+  //const hasExperienceValue = watch('hasVipExperience');
 
   const {mutateAsync: deleteVipApplication, isPending: isDeleting} = useMutation({
     mutationFn: () => api.deleteVipApplication(id),
@@ -88,7 +89,7 @@ const AddVipApplication = ({id}) => {
         duration: 5000,
         isClosable: true,
       });
-      navigate('/dashboard/vipapplications'); // Listeleme sayfasına yönlendir
+      navigate(routes.vipApplications.path); // Listeleme sayfasına yönlendir
     },
     onError: (error) => {
       toast({
@@ -101,11 +102,32 @@ const AddVipApplication = ({id}) => {
     },
   });
 
+  const {data} = useQuery({
+    enabled: !isNew,
+    queryKey: ['vipapplication', id],
+    queryFn: () =>
+      api
+        .getVipApplication(id)
+        .then(res => res.data)
+        .then(values => {
+          // Fix: Access fields from schema.fields for Yup objects
+          // Also handle case where values might be wrapped (e.g. values.data)
+          const rawData = values.data || values;
+
+          // Extract keys from Yup schema
+          const fieldKeys = Object.keys(schema.fields);
+
+          const formData = pick(rawData, fieldKeys);
+
+          reset(formData);
+          return rawData;
+        }),
+  });
+
   const onSubmit = (data) => {
     // Veriyi backend formatına uygun hale getirmek için ufak dönüşümler
     const payload = {
       ...data,
-      hasVipExperience: data.hasVipExperience === 'true',
     };
     mutation.mutate(payload);
   };
@@ -118,7 +140,7 @@ const AddVipApplication = ({id}) => {
         status: 'success',
         position: 'top',
       });
-      navigate(routes.ads.path);
+      navigate(routes.vipApplications.path);
     } catch (error) {
       toast({
         title: getErrorMessage(error),
@@ -138,25 +160,25 @@ const AddVipApplication = ({id}) => {
             
             <FormControl isInvalid={!!errors.fullName}>
               <FormLabel>1. Adınız Soyadınız</FormLabel>
-              <Input {...register('fullName')} placeholder="Ad Soyad" />
+              <Input {...register('fullName')} defaultValue={data?.fullName} placeholder="Ad Soyad" />
               <FormErrorMessage>{errors.fullName?.message}</FormErrorMessage>
             </FormControl>
 
             <FormControl isInvalid={!!errors.phone}>
               <FormLabel>2. Telefon Numaranız</FormLabel>
-              <Input {...register('phone')} placeholder="+90 555 ..." />
+              <Input {...register('phone')} defaultValue={data?.phone} placeholder="+90 555 ..." />
               <FormErrorMessage>{errors.phone?.message}</FormErrorMessage>
             </FormControl>
 
             <FormControl isInvalid={!!errors.email}>
               <FormLabel>3. E-posta Adresiniz</FormLabel>
-              <Input {...register('email')} type="email" placeholder="ornek@mail.com" />
+              <Input {...register('email')} defaultValue={data?.email} type="email" placeholder="ornek@mail.com" />
               <FormErrorMessage>{errors.email?.message}</FormErrorMessage>
             </FormControl>
 
             <FormControl isInvalid={!!errors.followerCount}>
               <FormLabel>8. Toplam Takipçi Sayınız</FormLabel>
-              <Input {...register('followerCount')} type="number" />
+              <Input {...register('followerCount')} defaultValue={data?.followerCount} type="number" />
               <FormErrorMessage>{errors.followerCount?.message}</FormErrorMessage>
             </FormControl>
 
@@ -164,85 +186,83 @@ const AddVipApplication = ({id}) => {
 
           <FormControl isInvalid={!!errors.socialMediaLinks}>
             <FormLabel>4. Sosyal Medya Hesapları (Genel)</FormLabel>
-            <Textarea {...register('socialMediaLinks')} placeholder="Hesaplarınız ve linkleri..." />
+            <Textarea {...register('socialMediaLinks')} defaultValue={data?.socialMediaLinks} placeholder="Hesaplarınız ve linkleri..." />
             <FormErrorMessage>{errors.socialMediaLinks?.message}</FormErrorMessage>
           </FormControl>
 
           <SimpleGrid columns={{ base: 1, md: 3 }} spacing={4}>
              <FormControl isInvalid={!!errors.telegramLink}>
               <FormLabel>5. Telegram Kanal/Grup Linki</FormLabel>
-              <Input {...register('telegramLink')} placeholder="https://t.me/..." />
+              <Input {...register('telegramLink')} defaultValue={data?.telegramLink} placeholder="https://t.me/..." />
             </FormControl>
 
             <FormControl isInvalid={!!errors.instagramLink}>
               <FormLabel>6. Instagram Profil Linki</FormLabel>
-              <Input {...register('instagramLink')} placeholder="https://instagram.com/..." />
+              <Input {...register('instagramLink')} defaultValue={data?.instagramLink} placeholder="https://instagram.com/..." />
             </FormControl>
 
              <FormControl isInvalid={!!errors.otherLinks}>
               <FormLabel>7. Diğer Linkler</FormLabel>
-              <Input {...register('otherLinks')} />
+              <Input {...register('otherLinks')} defaultValue={data?.otherLinks}/>
             </FormControl>
           </SimpleGrid>
 
           <FormControl isInvalid={!!errors.contentType}>
             <FormLabel>9. İçerik Türü (Analiz, Sinyal vb.)</FormLabel>
-            <Input {...register('contentType')} />
+            <Input {...register('contentType')} defaultValue={data?.contentType}/>
             <FormErrorMessage>{errors.contentType?.message}</FormErrorMessage>
           </FormControl>
 
           <FormControl isInvalid={!!errors.vipContentPlan}>
             <FormLabel>10. VIP Kanalında Ne Paylaşacaksınız?</FormLabel>
-            <Textarea {...register('vipContentPlan')} />
+            <Textarea {...register('vipContentPlan')} defaultValue={data?.vipContentPlan}/>
             <FormErrorMessage>{errors.vipContentPlan?.message}</FormErrorMessage>
           </FormControl>
 
           <SimpleGrid columns={{ base: 1, md: 3 }} spacing={4}>
             <FormControl isInvalid={!!errors.priceExpectation}>
               <FormLabel>11. Aylık Fiyat Beklentisi (TL)</FormLabel>
-              <Input {...register('priceExpectation')} type="number" />
+              <Input {...register('priceExpectation')} defaultValue={data?.priceExpectation} type="number" />
               <FormErrorMessage>{errors.priceExpectation?.message}</FormErrorMessage>
             </FormControl>
 
             <FormControl isInvalid={!!errors.targetSubscriberCount}>
               <FormLabel>12. İlk 3 Ay Hedef Abone</FormLabel>
-              <Input {...register('targetSubscriberCount')} type="number" />
+              <Input {...register('targetSubscriberCount')} defaultValue={data?.targetSubscriberCount} type="number" />
               <FormErrorMessage>{errors.targetSubscriberCount?.message}</FormErrorMessage>
             </FormControl>
 
             <FormControl isInvalid={!!errors.dailyPostCount}>
               <FormLabel>13. Günlük Ort. Paylaşım</FormLabel>
-              <Input {...register('dailyPostCount')} type="number" />
+              <Input {...register('dailyPostCount')} defaultValue={data?.dailyPostCount} type="number" />
               <FormErrorMessage>{errors.dailyPostCount?.message}</FormErrorMessage>
             </FormControl>
           </SimpleGrid>
 
           <SimpleGrid columns={{ base: 1, md: 2 }} spacing={4}>
-            <FormControl isInvalid={!!errors.hasVipExperience}>
-              <FormLabel>14. Daha önce VIP deneyiminiz oldu mu?</FormLabel>
-              <Select {...register('hasVipExperience')}>
-                <option value="false">Hayır</option>
-                <option value="true">Evet</option>
-              </Select>
-              <FormErrorMessage>{errors.hasVipExperience?.message}</FormErrorMessage>
+            <FormControl isInvalid={!!errors.previousExperience}>
+              <FormLabel>Varsa link veya detay</FormLabel>
+              <Input {...register('previousExperience')} defaultValue={data?.previousExperience} placeholder="Önceki grup linki vb." />
+              <FormErrorMessage>{errors.previousExperience?.message}</FormErrorMessage>
             </FormControl>
-
-            {hasExperienceValue === 'true' && (
-              <FormControl isInvalid={!!errors.previousExperience}>
-                <FormLabel>Varsa link veya detay</FormLabel>
-                <Input {...register('previousExperience')} placeholder="Önceki grup linki vb." />
-                <FormErrorMessage>{errors.previousExperience?.message}</FormErrorMessage>
-              </FormControl>
-            )}
           </SimpleGrid>
 
           <FormControl isInvalid={!!errors.termsAccepted}>
-            <Checkbox {...register('termsAccepted')}>
+            <Checkbox {...register('termsAccepted')} defaultValue={data?.termsAccepted}>
               15. HisseChat kullanım şartlarını kabul ediyorum.
             </Checkbox>
             <FormErrorMessage>{errors.termsAccepted?.message}</FormErrorMessage>
           </FormControl>
-
+          <Condition condition={!isNew}>
+            <ReadOnlyInfo
+              label={'Kayıt Tarihi'}
+              value={formatDate(data?.createdAt)}
+            />
+            <ReadOnlyInfo
+              label={'Son Güncellenme Tarihi'}
+              value={formatDate(data?.updatedAt)}
+            />
+          </Condition>
           <Button 
             type="submit" 
             colorScheme="primary"

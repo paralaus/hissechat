@@ -257,6 +257,13 @@ const router = createBrowserRouter(
             ),
           }}>
           <Route
+            path=":id"
+            element={<AddVipApplication />}
+            handle={{
+              crumb: () => <Text>Vip Başvuru Düzenle</Text>,
+            }}
+          />
+          <Route
             path="new"
             element={<AddVipApplication />}
             handle={{
