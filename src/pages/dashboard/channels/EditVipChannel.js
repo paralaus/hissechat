@@ -19,6 +19,7 @@ import {
   Textarea,
   FormHelperText,
   Switch,
+  Select,
 } from '@chakra-ui/react';
 import {useForm} from 'react-hook-form';
 import {yupResolver} from '@hookform/resolvers/yup';
@@ -35,9 +36,20 @@ import {pick} from '../../../utils/object';
 import useFileInput from '../../../hooks/useFileInput';
 import {AsyncSelect} from 'chakra-react-select';
 
+// Channel categories
+const channelCategories = [
+  { value: 'borsa', label: 'Borsa' },
+  { value: 'kripto', label: 'Kripto' },
+  { value: 'forex', label: 'Forex' },
+  { value: 'analiz', label: 'Analiz' },
+  { value: 'emtia', label: 'Emtia' },
+  { value: 'other', label: 'Diğer' },
+];
+
 const object = {
   name: yup.string().required('Bu alan zorunludur.'),
   thumbnail: yup.string(),
+  category: yup.string().notRequired(),
   about: yup.string().required('Bu alan zorunludur.'),
   admins: yup.array().required('Bu alan zorunludur.'),
   marketCode: yup.string().notRequired(),
@@ -216,6 +228,33 @@ const EditVipChannel = ({id}) => {
                 {...register('name')}
               />
               <FormErrorMessage>{errors.name?.message}</FormErrorMessage>
+            </FormControl>
+            <FormControl isInvalid={!!errors.category} mb="4">
+              <FormLabel
+                display="flex"
+                ms="4px"
+                fontSize="sm"
+                fontWeight="500"
+                mb="8px">
+                Kategori
+              </FormLabel>
+              <Select
+                fontSize="sm"
+                fontWeight="500"
+                size="md"
+                placeholder="Kategori seçin"
+                defaultValue={data?.category}
+                {...register('category')}>
+                {channelCategories.map(cat => (
+                  <option key={cat.value} value={cat.value}>
+                    {cat.label}
+                  </option>
+                ))}
+              </Select>
+              <FormHelperText>
+                Kanalın kategorisi - mobil uygulamada filtreleme için kullanılır.
+              </FormHelperText>
+              <FormErrorMessage>{errors.category?.message}</FormErrorMessage>
             </FormControl>
             <FormControl isInvalid={!!errors.about} mb="4">
               <FormLabel

@@ -236,6 +236,20 @@ const EditUser = () => {
               label={'Son Aktivite Tarihi'}
               value={formatDate(data?.lastActivityAt)}
             />
+            <ReadOnlyInfo 
+              label={'Giriş Yöntemi'} 
+              value={
+                data?.authProvider === 'google' ? '🔵 Google' :
+                data?.authProvider === 'apple' ? '🍎 Apple' :
+                '📧 E-posta'
+              } 
+            />
+            {data?.googleId && (
+              <ReadOnlyInfo label={'Google ID'} value={data?.googleId} />
+            )}
+            {data?.appleId && (
+              <ReadOnlyInfo label={'Apple ID'} value={data?.appleId} />
+            )}
             <ReadOnlyInfo label={'Bildirim Tokenı'} value={data?.deviceToken} />
             <ReadOnlyInfo label={'Cihaz'} value={data?.platform} />
             <Button
