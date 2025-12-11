@@ -2,7 +2,8 @@ import {useMemo, useRef, useState} from 'react';
 import {useMutation} from '@tanstack/react-query';
 import {uploadFile} from '../api/api';
 
-const useFileInput = () => {
+const useFileInput = (options = {}) => {
+  const { accept } = options;
   const ref = useRef();
   const [selected, setSelected] = useState(null);
 
@@ -28,13 +29,14 @@ const useFileInput = () => {
         ref={ref}
         type="file"
         name="file"
+        accept={accept}
         hidden
         onChange={event => {
           setSelected(event.target.files);
         }}
       />
     );
-  }, []);
+  }, [accept]);
 
   const open = () => {
     ref.current?.click?.();
@@ -42,6 +44,10 @@ const useFileInput = () => {
 
   const reset = () => {
     setSelected(null);
+    // Reset the input value to allow selecting the same file again
+    if (ref.current) {
+      ref.current.value = '';
+    }
   };
 
   return {

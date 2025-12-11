@@ -84,14 +84,19 @@ const SidebarContent = ({ onClose, ...rest }) => {
       h="full"
       css={{
         '&::-webkit-scrollbar': {
-          width: '4px',
+          width: '8px',
         },
         '&::-webkit-scrollbar-track': {
-          background: 'transparent',
+          background: 'rgba(255,255,255,0.05)',
+          borderRadius: '4px',
         },
         '&::-webkit-scrollbar-thumb': {
-          background: 'rgba(255,255,255,0.1)',
+          background: 'linear-gradient(180deg, rgba(99, 102, 241, 0.6) 0%, rgba(139, 92, 246, 0.6) 100%)',
           borderRadius: '4px',
+          border: '2px solid rgba(255,255,255,0.1)',
+        },
+        '&::-webkit-scrollbar-thumb:hover': {
+          background: 'linear-gradient(180deg, rgba(99, 102, 241, 0.8) 0%, rgba(139, 92, 246, 0.8) 100%)',
         },
       }}
       {...rest}

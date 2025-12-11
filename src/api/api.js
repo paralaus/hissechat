@@ -248,3 +248,17 @@ export const getVipApplication = async vipApplicationId => {
 export const deleteVipApplication = async vipApplicationId => {
   return apiClient.delete(`/vip-applications/${vipApplicationId}`);
 };
+
+// Bulk Messaging
+export const sendBulkMessage = async body => {
+  return apiClient.post('/channels/bulk-message', body);
+};
+
+// Channel Messages
+export const getChannelMessages = async (channelId, params) => {
+  return apiClient.get(`/channels/${channelId}/messages`, {params});
+};
+
+export const sendChannelMessage = async (channelId, body) => {
+  return apiClient.post(`/channels/${channelId}/messages`, body);
+};

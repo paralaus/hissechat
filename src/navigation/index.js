@@ -44,6 +44,9 @@ import Ads from '../pages/dashboard/ads/Ads';
 import EditAds from '../pages/dashboard/ads/EditAds';
 import AddVipApplication from '../pages/dashboard/vipapplications/AddVipApplication';
 import VipApplications from '../pages/dashboard/vipapplications/VipApplications';
+import BulkMessage from '../pages/dashboard/messaging/BulkMessage';
+import Channels from '../pages/dashboard/messaging/Channels';
+import ChannelChat from '../pages/dashboard/messaging/ChannelChat';
 
 const rootLoader = async ({request}) => {
   const {pathname} = new URL(request.url);
@@ -291,6 +294,27 @@ const router = createBrowserRouter(
           element={<SendPushNotification />}
           handle={{
             crumb: () => <Text>Bildirim Gönder</Text>,
+          }}
+        />
+        <Route
+          path="messaging/bulk"
+          element={<BulkMessage />}
+          handle={{
+            crumb: () => <Text>Toplu Mesaj</Text>,
+          }}
+        />
+        <Route
+          path="messaging/channels"
+          element={<Channels />}
+          handle={{
+            crumb: () => <Text>Kanallar</Text>,
+          }}
+        />
+        <Route
+          path="messaging/channels/:channelId"
+          element={<ChannelChat />}
+          handle={{
+            crumb: () => <Text>Sohbet</Text>,
           }}
         />
         <Route

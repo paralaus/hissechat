@@ -83,4 +83,13 @@ export const routes = {
   allChannels: {
     path: `/dashboard/channels/all`,
   },
+  bulkMessage: {
+    path: '/dashboard/messaging/bulk',
+  },
+  messagingChannels: {
+    path: '/dashboard/messaging/channels',
+  },
+  channelChat: {
+    getPath: (id) => `/dashboard/messaging/channels/${id}`,
+  },
 };
