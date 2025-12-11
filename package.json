@@ -57,5 +57,13 @@
   },
   "devDependencies": {
     "prettier": "^3.2.5"
+  },
+  "jest": {
+    "moduleNameMapper": {
+      "^@chakra-ui/utils/(.*)$": "@chakra-ui/utils/dist/cjs/$1.cjs"
+    },
+    "transformIgnorePatterns": [
+      "node_modules/(?!(@chakra-ui|framer-motion)/)"
+    ]
   }
 }

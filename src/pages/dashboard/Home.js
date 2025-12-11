@@ -1,16 +1,16 @@
-import {MiniStatistics, Page} from '../../components';
-import {SimpleGrid} from '@chakra-ui/react';
-import {FaUserClock, FaUsers, FaChartLine} from 'react-icons/fa';
-import {RiVipFill, RiMoneyDollarCircleFill} from 'react-icons/ri';
-import {BiSolidMessageDetail} from 'react-icons/bi';
-import {MdInsertChart, MdReport} from 'react-icons/md';
-import {useQuery} from '@tanstack/react-query';
-import {api} from '../../api';
-import {isValue} from '../../utils/string';
+import { MiniStatistics, Page, StatisticsSkeleton } from '../../components';
+import { SimpleGrid } from '@chakra-ui/react';
+import { FaUserClock, FaUsers, FaChartLine } from 'react-icons/fa';
+import { RiVipFill, RiMoneyDollarCircleFill } from 'react-icons/ri';
+import { BiSolidMessageDetail } from 'react-icons/bi';
+import { MdInsertChart, MdReport } from 'react-icons/md';
+import { useQuery } from '@tanstack/react-query';
+import { api } from '../../api';
+import { isValue } from '../../utils/string';
 
 const iconProps = {
   color: 'white',
-  size: 24,
+  size: 22,
 };
 
 const items = [
@@ -49,7 +49,6 @@ const items = [
     value: 'cryptoMarkets',
     icon: <MdInsertChart {...iconProps} />,
   },
-
   {
     title: 'Son Raporlar',
     value: 'latelyReports',
@@ -58,26 +57,38 @@ const items = [
 ];
 
 const Home = () => {
-  const {data} = useQuery({
+  const { data, isLoading } = useQuery({
     queryKey: ['statistics'],
-    queryFn: () => api.getStatistics().then(res => res.data),
+    queryFn: () => api.getStatistics().then((res) => res.data),
   });
+
+  // Yüklenirken skeleton göster
+  if (isLoading) {
+    return (
+      <Page title="Dashboard" subtitle="Genel bakış ve istatistikler">
+        <StatisticsSkeleton count={8} />
+      </Page>
+    );
+  }
+
+  // Görüntülenecek istatistikleri filtrele
+  const visibleItems = items.filter((item) => isValue(data?.[item.value]));
+
   return (
-    <Page>
-      <SimpleGrid columns={{sm: 1, md: 2, xl: 4}} spacing="24px">
-        {items.map(item => {
-          const dataItem = data?.[item.value];
-          if (!isValue(dataItem)) return null;
-          return (
-            <MiniStatistics
-              key={item.value}
-              title={item.title}
-              amount={data?.[item.value]}
-              icon={item.icon}
-            />
-          );
-        })}
+    <Page title="Dashboard" subtitle="Genel bakış ve istatistikler">
+      <SimpleGrid columns={{ base: 1, sm: 2, lg: 4 }} spacing="6">
+        {visibleItems.map((item) => (
+          <MiniStatistics
+            key={item.value}
+            title={item.title}
+            amount={data?.[item.value]}
+            icon={item.icon}
+          />
+        ))}
       </SimpleGrid>
+
+      {/* Buraya ileride ek widgetlar eklenebilir */}
+      {/* Örnek: Son aktiviteler, grafikler, vb. */}
     </Page>
   );
 };

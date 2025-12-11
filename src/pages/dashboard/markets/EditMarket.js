@@ -9,7 +9,7 @@ import {
   FormLabel,
   Input,
   useToast,
-  Avatar,
+  Image as ChakraImage,
   Select,
   AlertDialogOverlay,
   AlertDialogContent,
@@ -20,7 +20,10 @@ import {
   Textarea,
   FormHelperText,
   Text,
+  VStack,
+  Icon,
 } from '@chakra-ui/react';
+import {FiImage, FiUpload} from 'react-icons/fi';
 import {useForm} from 'react-hook-form';
 import {yupResolver} from '@hookform/resolvers/yup';
 import {useMutation, useQuery} from '@tanstack/react-query';
@@ -167,35 +170,77 @@ const EditMarket = ({id}) => {
             background="transparent"
             borderRadius="md"
             me="auto">
-            <Box display={'flex'} flexDirection="column">
-              <Avatar
-                name={data?.name}
-                src={objectUrl || getCombinedLogoUrl(getValues('logo'))}
-                size={'xl'}
-                m={'4'}
-                alignSelf={'center'}
-                cursor={'pointer'}
-                onClick={() => {
-                  open();
+            <Box display={'flex'} flexDirection="column" alignItems="center" mb="6">
+              {/* Logo Upload Area */}
+              <Box
+                onClick={() => open()}
+                cursor="pointer"
+                borderRadius="xl"
+                border="2px dashed"
+                borderColor={objectUrl || (getValues('logo')?.length > 0) ? 'transparent' : 'gray.300'}
+                bg={objectUrl || (getValues('logo')?.length > 0) ? 'transparent' : 'gray.50'}
+                p={objectUrl || (getValues('logo')?.length > 0) ? '0' : '8'}
+                minH="150px"
+                minW="150px"
+                maxW="200px"
+                display="flex"
+                alignItems="center"
+                justifyContent="center"
+                transition="all 0.2s"
+                _hover={{
+                  borderColor: 'brand.400',
+                  bg: objectUrl || (getValues('logo')?.length > 0) ? 'transparent' : 'brand.50',
                 }}
-              />
+                position="relative"
+                overflow="hidden"
+              >
+                {objectUrl || (getValues('logo')?.length > 0) ? (
+                  <ChakraImage
+                    src={objectUrl || getCombinedLogoUrl(getValues('logo'))}
+                    alt="Logo"
+                    maxH="150px"
+                    objectFit="contain"
+                    borderRadius="lg"
+                  />
+                ) : (
+                  <VStack spacing="3">
+                    <Box
+                      p="4"
+                      bg="gray.100"
+                      borderRadius="full"
+                    >
+                      <Icon as={FiImage} boxSize="8" color="gray.400" />
+                    </Box>
+                    <VStack spacing="1">
+                      <Text fontSize="sm" fontWeight="medium" color="gray.600">
+                        Logo Yükle
+                      </Text>
+                      <Text fontSize="xs" color="gray.400">
+                        Tıklayarak görsel seçin
+                      </Text>
+                    </VStack>
+                    <Icon as={FiUpload} boxSize="4" color="gray.400" />
+                  </VStack>
+                )}
+              </Box>
               {input}
-              <Input
-                type={'hidden'}
-                defaultValue={getValues('logo')}
-                {...register('logo')}
-              />
-              <Button
-                alignSelf={'center'}
-                variant={'ghost'}
-                onClick={() => {
-                  reset({
-                    logo: '',
-                  });
-                  resetFile();
-                }}>
-                Kaldır
-              </Button>
+              <Input type={'hidden'} {...register('logo')} />
+              {(objectUrl || (getValues('logo')?.length > 0)) && (
+                <Button
+                  mt="3"
+                  size="sm"
+                  variant="ghost"
+                  colorScheme="red"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    reset({
+                      logo: '',
+                    });
+                    resetFile();
+                  }}>
+                  Kaldır
+                </Button>
+              )}
             </Box>
             <FormControl isInvalid={!!errors.name} mb="4">
               <FormLabel

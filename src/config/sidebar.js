@@ -1,37 +1,37 @@
-import {FiHome, FiSettings, FiUsers} from 'react-icons/fi';
-//import {LuUsers2} from 'react-icons/lu';
+import { FiHome, FiSettings, FiUsers, FiBell } from 'react-icons/fi';
 import {
   AiOutlineUserAdd,
   AiOutlineProduct,
-  AiOutlineNotification,
 } from 'react-icons/ai';
-import {BiMoney} from 'react-icons/bi';
-//import {LuLineChart} from 'react-icons/lu';
-import {HiOutlineDocumentPlus} from 'react-icons/hi2';
-import {FaRegFileAlt, FaRegFile} from 'react-icons/fa';
-import {RiVipLine, RiChatPollLine} from 'react-icons/ri';
-import {GoListUnordered} from 'react-icons/go';
-import {IoMdAdd} from 'react-icons/io';
-import {routes} from './routes';
-import {MdBlock, MdOutlineReport} from 'react-icons/md';
+import { BiLineChart } from 'react-icons/bi';
+import { HiOutlineDocumentPlus } from 'react-icons/hi2';
+import { FaRegFileAlt, FaAd } from 'react-icons/fa';
+import { RiVipLine, RiChatPollLine } from 'react-icons/ri';
+import { GoListUnordered } from 'react-icons/go';
+import { IoMdAdd } from 'react-icons/io';
+import { MdBlock, MdOutlineReport, MdLightbulbOutline } from 'react-icons/md';
+import { routes } from './routes';
 
 export const sidebarRoutes = [
+  // Genel
   {
     name: 'Anasayfa',
     icon: FiHome,
     path: routes.dashboard.path,
     exact: true,
-    // TODO: roles check
-    // roles:[]
+    group: 'Genel',
   },
+  
+  // Kullanıcı Yönetimi
   {
     name: 'Kullanıcılar',
     icon: FiUsers,
+    group: 'Kullanıcı Yönetimi',
     children: [
       {
         name: 'Tüm Kullanıcılar',
         path: routes.users.path,
-        icon: AiOutlineUserAdd,
+        icon: GoListUnordered,
         exact: true,
       },
       {
@@ -49,13 +49,35 @@ export const sidebarRoutes = [
     ],
   },
   {
+    name: 'Kara Liste',
+    icon: MdBlock,
+    group: 'Kullanıcı Yönetimi',
+    children: [
+      {
+        name: 'Tümü',
+        path: routes.blacklist.path,
+        icon: GoListUnordered,
+        exact: true,
+      },
+      {
+        name: 'Yeni Ekle',
+        path: routes.editBlacklist.getPath('new'),
+        icon: IoMdAdd,
+        exact: true,
+      },
+    ],
+  },
+
+  // İçerik Yönetimi
+  {
     name: 'Piyasalar',
-    icon: AiOutlineUserAdd,
+    icon: BiLineChart,
+    group: 'İçerik Yönetimi',
     children: [
       {
         name: 'Tümü',
         path: routes.markets.path,
-        icon: BiMoney,
+        icon: GoListUnordered,
         exact: true,
       },
       {
@@ -67,26 +89,9 @@ export const sidebarRoutes = [
     ],
   },
   {
-    name: 'Reklamlar',
-    icon: AiOutlineUserAdd,
-    children: [
-      {
-        name: 'Tümü',
-        path: routes.ads.path,
-        icon: FaRegFile,
-        exact: true,
-      },
-      {
-        name: 'Reklam Ekle',
-        path: routes.editAds.getPath('new'),
-        icon: HiOutlineDocumentPlus,
-        exact: true,
-      },
-    ],
-  },
-  {
     name: 'Kanallar',
     icon: RiChatPollLine,
+    group: 'İçerik Yönetimi',
     children: [
       {
         name: 'Tüm Kanallar',
@@ -101,7 +106,7 @@ export const sidebarRoutes = [
         exact: true,
       },
       {
-        name: 'Vip Kanal ekle',
+        name: 'Vip Kanal Ekle',
         path: routes.editVipChannels.getPath('new'),
         icon: IoMdAdd,
         exact: true,
@@ -109,8 +114,49 @@ export const sidebarRoutes = [
     ],
   },
   {
+    name: 'Öneriler',
+    icon: MdLightbulbOutline,
+    group: 'İçerik Yönetimi',
+    children: [
+      {
+        name: 'Tüm Öneriler',
+        path: routes.suggestions.path,
+        icon: GoListUnordered,
+        exact: true,
+      },
+      {
+        name: 'Öneri Ekle',
+        path: routes.editSuggestion.getPath('new'),
+        icon: IoMdAdd,
+        exact: true,
+      },
+    ],
+  },
+  {
+    name: 'Reklamlar',
+    icon: FaAd,
+    group: 'İçerik Yönetimi',
+    children: [
+      {
+        name: 'Tümü',
+        path: routes.ads.path,
+        icon: GoListUnordered,
+        exact: true,
+      },
+      {
+        name: 'Reklam Ekle',
+        path: routes.editAds.getPath('new'),
+        icon: HiOutlineDocumentPlus,
+        exact: true,
+      },
+    ],
+  },
+
+  // Abonelik & VIP
+  {
     name: 'Abonelikler',
     icon: AiOutlineProduct,
+    group: 'Abonelik & VIP',
     children: [
       {
         name: 'Tüm Abonelikler',
@@ -127,13 +173,35 @@ export const sidebarRoutes = [
     ],
   },
   {
+    name: 'Vip Başvurular',
+    icon: RiVipLine,
+    group: 'Abonelik & VIP',
+    children: [
+      {
+        name: 'Tüm Vip Başvurular',
+        path: routes.vipApplications.path,
+        icon: GoListUnordered,
+        exact: true,
+      },
+      {
+        name: 'Vip Başvuru Ekle',
+        path: routes.editVipApplications.getPath('new'),
+        icon: IoMdAdd,
+        exact: true,
+      },
+    ],
+  },
+
+  // Sistem
+  {
     name: 'Sözleşmeler',
     icon: FaRegFileAlt,
+    group: 'Sistem',
     children: [
       {
         name: 'Tüm Sözleşmeler',
         path: routes.policies.path,
-        icon: FaRegFile,
+        icon: GoListUnordered,
         exact: true,
       },
       {
@@ -145,72 +213,21 @@ export const sidebarRoutes = [
     ],
   },
   {
-    name: 'Öneriler',
-    icon: FaRegFileAlt,
-    children: [
-      {
-        name: 'Tüm Öneriler',
-        path: routes.suggestions.path,
-        icon: FaRegFile,
-        exact: true,
-      },
-      {
-        name: 'Öneri Ekle',
-        path: routes.editSuggestion.getPath('new'),
-        icon: IoMdAdd,
-        exact: true,
-      },
-    ],
-  },
-  {
-    name: 'Vip Başvurular',
-    icon: FaRegFileAlt,
-    children: [
-      {
-        name: 'Tüm Vip Başvurular',
-        path: routes.vipApplications.path,
-        icon: FaRegFile,
-        exact: true,
-      },
-      {
-        name: 'Vip Başvuru Ekle',
-        path: routes.editVipApplications.getPath('new'),
-        icon: IoMdAdd,
-        exact: true,
-      },
-    ],
-  },
-  {
-    name: 'Kara Liste',
-    icon: MdBlock,
-    children: [
-      {
-        name: 'Tümü',
-        path: routes.blacklist.path,
-        icon: FaRegFile,
-        exact: true,
-      },
-      {
-        name: 'Yeni Ekle',
-        path: routes.editBlacklist.getPath('new'),
-        icon: IoMdAdd,
-        exact: true,
-      },
-    ],
-  },
-  {
     name: 'Raporlar',
     icon: MdOutlineReport,
     path: routes.reports.path,
+    group: 'Sistem',
   },
   {
     name: 'Bildirim Gönder',
-    icon: AiOutlineNotification,
+    icon: FiBell,
     path: routes.sendPushNotification.path,
+    group: 'Sistem',
   },
   {
     name: 'Ayarlar',
     icon: FiSettings,
     path: routes.settings.path,
+    group: 'Sistem',
   },
 ];

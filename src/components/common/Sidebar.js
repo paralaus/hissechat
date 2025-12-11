@@ -21,18 +21,18 @@ import {
   useToast,
   Avatar,
 } from '@chakra-ui/react';
-import {FiMenu, FiChevronDown} from 'react-icons/fi';
-import {MdKeyboardArrowDown, MdKeyboardArrowUp} from 'react-icons/md';
+import { FiMenu, FiChevronDown, FiLogOut, FiSettings } from 'react-icons/fi';
+import { MdKeyboardArrowDown, MdKeyboardArrowUp } from 'react-icons/md';
 
-import {meta} from '../../config/meta';
-import {sidebarRoutes} from '../../config/sidebar';
-import {useLocation, NavLink, useNavigate} from 'react-router-dom';
-import {trim} from '../../utils/string';
-import {useUserStore} from '../../store';
+import { meta } from '../../config/meta';
+import { sidebarRoutes } from '../../config/sidebar';
+import { useLocation, NavLink, useNavigate } from 'react-router-dom';
+import { trim } from '../../utils/string';
+import { useUserStore } from '../../store';
 import Cookies from 'js-cookie';
 import Breadcrumbs from './Breadcrumbs';
 
-const panelWidth = '240px';
+const SIDEBAR_WIDTH = '260px';
 
 const getIsActive = (link, location) => {
   return link.exact
@@ -40,14 +40,14 @@ const getIsActive = (link, location) => {
     : location.pathname.includes(link.path);
 };
 
-export default function SidebarWithHeader({children}) {
-  const {isOpen, onOpen, onClose} = useDisclosure();
+export default function SidebarWithHeader({ children }) {
+  const { isOpen, onOpen, onClose } = useDisclosure();
 
   return (
-    <Box minH="100vh">
+    <Box minH="100vh" bg="gray.50">
       <SidebarContent
         onClose={() => onClose}
-        display={{base: 'none', md: 'block'}}
+        display={{ base: 'none', md: 'block' }}
       />
       <Drawer
         autoFocus={false}
@@ -56,56 +56,92 @@ export default function SidebarWithHeader({children}) {
         onClose={onClose}
         returnFocusOnClose={false}
         onOverlayClick={onClose}
-        size="full">
+        size="full"
+      >
         <DrawerContent>
           <SidebarContent onClose={onClose} />
         </DrawerContent>
       </Drawer>
-      {/* mobilenav */}
       <MobileNav onOpen={onOpen} />
-      <Box ml={{base: 0, md: 60}} p="4">
+      <Box ml={{ base: 0, md: SIDEBAR_WIDTH }} p="6">
         {children}
       </Box>
     </Box>
   );
 }
 
-const SidebarContent = ({onClose, ...rest}) => {
+const SidebarContent = ({ onClose, ...rest }) => {
+  const bgColor = useColorModeValue('gray.900', 'gray.900');
+  
   return (
     <Box
-      overflow={'scroll'}
-      transition="3s ease"
-      bg={useColorModeValue('white', 'gray.900')}
-      borderRight="1px"
-      borderRightColor={useColorModeValue('gray.200', 'gray.700')}
-      w={{base: 'full', md: panelWidth}}
+      overflowY="auto"
+      overflowX="hidden"
+      transition="0.3s ease"
+      bg={bgColor}
+      w={{ base: 'full', md: SIDEBAR_WIDTH }}
       position="fixed"
       h="full"
-      {...rest}>
+      css={{
+        '&::-webkit-scrollbar': {
+          width: '4px',
+        },
+        '&::-webkit-scrollbar-track': {
+          background: 'transparent',
+        },
+        '&::-webkit-scrollbar-thumb': {
+          background: 'rgba(255,255,255,0.1)',
+          borderRadius: '4px',
+        },
+      }}
+      {...rest}
+    >
+      {/* Logo */}
       <Flex
-        h="20"
+        h="16"
         alignItems="center"
-        mx="8"
-        justifyContent={{
-          base: 'space-between',
-          md: 'center',
-        }}
-        flexDirection={{
-          base: 'row',
-          md: 'column',
-        }}>
+        px="6"
+        borderBottom="1px"
+        borderColor="whiteAlpha.100"
+        justifyContent="space-between"
+      >
         <NavLink to="/dashboard">
-          <Text
-            fontSize="2xl"
-            fontFamily="monospace"
-            fontWeight="bold"
-            textAlign={'center'}>
-            {meta.name}
-          </Text>
+          <HStack spacing="3">
+            <Box
+              w="8"
+              h="8"
+              bgGradient="linear(to-br, brand.400, brand.600)"
+              borderRadius="lg"
+              display="flex"
+              alignItems="center"
+              justifyContent="center"
+            >
+              <Text color="white" fontWeight="bold" fontSize="sm">
+                {meta.name.charAt(0)}
+              </Text>
+            </Box>
+            <Text
+              fontSize="lg"
+              fontWeight="bold"
+              color="white"
+              letterSpacing="-0.5px"
+            >
+              {meta.name}
+            </Text>
+          </HStack>
         </NavLink>
-        <CloseButton display={{base: 'flex', md: 'none'}} onClick={onClose} />
+        <CloseButton 
+          display={{ base: 'flex', md: 'none' }} 
+          onClick={onClose}
+          color="white"
+          _hover={{ bg: 'whiteAlpha.100' }}
+        />
       </Flex>
-      <Links routes={sidebarRoutes} />
+
+      {/* Navigation Links */}
+      <VStack spacing="1" align="stretch" p="4">
+        <Links />
+      </VStack>
     </Box>
   );
 };
@@ -114,60 +150,89 @@ const Links = () => {
   const location = useLocation();
   const [collapsed, setCollapsed] = React.useState({});
 
-  return sidebarRoutes.map(link => {
-    if (link.private) return <Box key={link.name}></Box>;
-    if (link.children) {
-      return (
-        <Box key={link.name} display={'flex'} flexDirection={'column'}>
-          <Flex>
-            <NavItem
-              icon={link.icon}
-              path={link.path}
-              isActive={false}
-              isParent={true}
-              onClick={() =>
-                setCollapsed({
-                  ...collapsed,
-                  [link.name]: !collapsed[link.name],
-                })
-              }
-              collapsed={collapsed[link.name]}>
-              {link.name}
-            </NavItem>
-          </Flex>
-          <Flex
-            flexDirection={'column'}
-            pl="4"
-            display={collapsed[link.name] ? 'flex' : 'none'}>
-            {link.children.map(child => {
-              if (child.private) return null;
-              return (
-                <NavItem
-                  key={child.name}
-                  path={child.path}
-                  isActive={getIsActive(child, location)}
-                  icon={child.icon}>
-                  {child.name}
-                </NavItem>
-              );
-            })}
-          </Flex>
-        </Box>
-      );
-    }
-
-    return (
-      <Box key={link.name}>
-        <NavItem
-          key={link.name}
-          icon={link.icon}
-          path={link.path}
-          isActive={getIsActive(link, location)}>
-          {link.name}
-        </NavItem>
-      </Box>
-    );
+  // Grupları bul
+  const groups = {};
+  sidebarRoutes.forEach(route => {
+    const group = route.group || 'Genel';
+    if (!groups[group]) groups[group] = [];
+    groups[group].push(route);
   });
+
+  return (
+    <>
+      {Object.entries(groups).map(([groupName, routes]) => (
+        <Box key={groupName} mb="4">
+          <Text
+            fontSize="xs"
+            color="whiteAlpha.500"
+            fontWeight="semibold"
+            textTransform="uppercase"
+            letterSpacing="wider"
+            px="3"
+            mb="2"
+          >
+            {groupName}
+          </Text>
+          {routes.map(link => {
+            if (link.private) return null;
+            
+            if (link.children) {
+              return (
+                <Box key={link.name}>
+                  <NavItem
+                    icon={link.icon}
+                    isActive={false}
+                    isParent={true}
+                    onClick={() =>
+                      setCollapsed({
+                        ...collapsed,
+                        [link.name]: !collapsed[link.name],
+                      })
+                    }
+                    collapsed={collapsed[link.name]}
+                  >
+                    {link.name}
+                  </NavItem>
+                  <VStack
+                    spacing="1"
+                    align="stretch"
+                    pl="4"
+                    display={collapsed[link.name] ? 'flex' : 'none'}
+                    mt="1"
+                  >
+                    {link.children.map(child => {
+                      if (child.private) return null;
+                      return (
+                        <NavItem
+                          key={child.name}
+                          path={child.path}
+                          isActive={getIsActive(child, location)}
+                          icon={child.icon}
+                        >
+                          {child.name}
+                        </NavItem>
+                      );
+                    })}
+                  </VStack>
+                </Box>
+              );
+            }
+
+            return (
+              <NavItem
+                key={link.name}
+                icon={link.icon}
+                path={link.path}
+                isActive={getIsActive(link, location)}
+              >
+                {link.name}
+              </NavItem>
+            );
+          })}
+        </Box>
+      ))}
+    </>
+  );
 };
 
 const NavItem = ({
@@ -177,101 +242,71 @@ const NavItem = ({
   isActive,
   isParent,
   collapsed,
+  onClick,
   ...rest
 }) => {
-  const style = {
-    color: isActive ? 'white' : 'inherit',
-    bg: isActive ? 'primary.400' : 'inherit',
-    _hover: isActive
-      ? {
-          bg: 'primary.700',
-          color: 'white',
-        }
-      : {
-          bg: 'gray.100',
-          // color: "main",
-        },
-  };
+  const content = (
+    <Flex
+      align="center"
+      px="3"
+      py="2.5"
+      borderRadius="lg"
+      cursor="pointer"
+      transition="all 0.2s"
+      bg={isActive ? 'brand.500' : 'transparent'}
+      color={isActive ? 'white' : 'whiteAlpha.700'}
+      _hover={{
+        bg: isActive ? 'brand.600' : 'whiteAlpha.100',
+        color: 'white',
+      }}
+      fontWeight={isActive ? '600' : '500'}
+      fontSize="sm"
+      onClick={onClick}
+      {...rest}
+    >
+      {icon && (
+        <Icon
+          as={icon}
+          mr="3"
+          fontSize="lg"
+          color={isActive ? 'white' : 'whiteAlpha.600'}
+          _groupHover={{ color: 'white' }}
+        />
+      )}
+      <Text flex="1">{children}</Text>
+      {isParent && (
+        <Icon
+          as={collapsed ? MdKeyboardArrowUp : MdKeyboardArrowDown}
+          fontSize="xl"
+          color="whiteAlpha.600"
+        />
+      )}
+    </Flex>
+  );
 
-  const iconStyle = {
-    _groupHover: isActive
-      ? {
-          color: 'white',
-        }
-      : {
-          // color: "main",
-        },
-  };
+  if (isParent) {
+    return <Box role="group">{content}</Box>;
+  }
+
   return (
     <Link
-      as={!isParent ? NavLink : 'button'}
+      as={NavLink}
       to={path}
-      style={{textDecoration: 'none'}}
-      _focus={{boxShadow: 'none'}}
-      display="flex"
-      flex={1}>
-      <Flex
-        flex={1}
-        align="center"
-        px="4"
-        height={'height'}
-        mx="4"
-        borderRadius="lg"
-        role="group"
-        cursor="pointer"
-        alignItems={'center'}
-        flexDirection={'row'}
-        // borderWidth={0.5}
-        // borderColor={"gray.100"}
-        my="1"
-        {...rest}
-        {...style}>
-        {icon && <Icon mr="4" fontSize="16" {...iconStyle} as={icon} />}
-        {children}
-        {isParent ? (
-          <Box ml="auto">
-            {collapsed ? (
-              <MdKeyboardArrowUp size={24} />
-            ) : (
-              <MdKeyboardArrowDown size={24} />
-            )}
-          </Box>
-        ) : null}
-      </Flex>
+      style={{ textDecoration: 'none' }}
+      _focus={{ boxShadow: 'none' }}
+      role="group"
+    >
+      {content}
     </Link>
   );
 };
 
-const MobileNav = ({onOpen, ...rest}) => {
-  const {user, setUser} = useUserStore();
+const MobileNav = ({ onOpen, ...rest }) => {
+  const { user, setUser } = useUserStore();
   const navigate = useNavigate();
   const toast = useToast();
-
-  //const location = useLocation();
-
-  /*const breadcrumb = useMemo(() => {
-    const routes = [];
-
-    for (let i = 0; i < sidebarRoutes.length; i++) {
-      const route = sidebarRoutes[i];
-      if (trim(location.pathname, '/') === trim(route.path, '/')) {
-        routes.push(route);
-        break;
-      }
-      if (route.children) {
-        for (let j = 0; j < route.children.length; j++) {
-          const child = route.children[j];
-
-          if (trim(location.pathname, '/') === trim(child.path, '/')) {
-            routes.push(route);
-            routes.push(child);
-            break;
-          }
-        }
-      }
-    }
-    return routes;
-  }, [location]);*/
+  const bgColor = useColorModeValue('white', 'gray.800');
+  const borderColor = useColorModeValue('gray.200', 'gray.700');
 
   const onLogout = () => {
     setUser(null);
@@ -280,82 +315,106 @@ const MobileNav = ({onOpen, ...rest}) => {
       title: 'Çıkış Yapıldı',
       status: 'success',
       position: 'top',
+      duration: 2000,
     });
     navigate('/auth/login');
   };
 
   return (
     <Flex
-      ml={{base: 0, md: panelWidth}}
-      px={{base: 4, md: 4}}
-      height="20"
+      ml={{ base: 0, md: SIDEBAR_WIDTH }}
+      px={{ base: 4, md: 6 }}
+      height="16"
       alignItems="center"
-      bg={useColorModeValue('white', 'gray.900')}
+      bg={bgColor}
       borderBottomWidth="1px"
-      borderBottomColor={useColorModeValue('gray.200', 'gray.700')}
-      justifyContent={{base: 'space-between', md: 'flex-end'}}
-      {...rest}>
+      borderBottomColor={borderColor}
+      justifyContent={{ base: 'space-between', md: 'space-between' }}
+      boxShadow="xs"
+      {...rest}
+    >
       <IconButton
-        display={{base: 'flex', md: 'none'}}
+        display={{ base: 'flex', md: 'none' }}
         onClick={onOpen}
-        variant="outline"
+        variant="ghost"
         aria-label="open menu"
         icon={<FiMenu />}
+        size="sm"
       />
+
       <Breadcrumbs />
+
       <NavLink to="/dashboard">
         <Text
-          display={{base: 'flex', md: 'none'}}
-          fontSize="2xl"
-          fontFamily="monospace"
-          fontWeight="bold">
+          display={{ base: 'flex', md: 'none' }}
+          fontSize="lg"
+          fontWeight="bold"
+          color="brand.500"
+        >
           {meta.name}
         </Text>
       </NavLink>
 
-      <HStack spacing={{base: '0', md: '6'}}>
-        {/* <IconButton
-          size="lg"
-          variant="ghost"
-          aria-label="open menu"
-          icon={<FiBell />}
-        /> */}
-
-        <Flex alignItems={'center'}>
+      <HStack spacing="3">
+        <Flex alignItems="center">
           <Menu>
             <MenuButton
               py={2}
-              transition="all 0.3s"
-              _focus={{boxShadow: 'none'}}>
-              <HStack>
+              transition="all 0.2s"
+              borderRadius="lg"
+              _hover={{ bg: 'gray.100' }}
+              _focus={{ boxShadow: 'none' }}
+            >
+              <HStack spacing="3" px="2">
                 <Avatar
-                  size={'sm'}
+                  size="sm"
                   name={user?.fullname}
                   src={user?.thumbnail}
+                  bg="brand.500"
+                  color="white"
                 />
                 <VStack
-                  display={{base: 'none', md: 'flex'}}
+                  display={{ base: 'none', md: 'flex' }}
                   alignItems="flex-start"
-                  spacing="1px"
-                  ml="2">
-                  <Text fontSize="sm">{user?.fullname}</Text>
-                  <Text fontSize="xs" color="gray.600" textAlign={'center'}>
-                    {user?.email}
+                  spacing="0"
+                >
+                  <Text fontSize="sm" fontWeight="medium" color="gray.700">
+                    {user?.fullname}
+                  </Text>
+                  <Text fontSize="xs" color="gray.500">
+                    {user?.role === 'admin' ? 'Yönetici' : 'Kullanıcı'}
                   </Text>
                 </VStack>
-                <Box display={{base: 'none', md: 'flex'}}>
-                  <FiChevronDown />
+                <Box display={{ base: 'none', md: 'flex' }}>
+                  <FiChevronDown color="gray.500" />
                 </Box>
               </HStack>
             </MenuButton>
             <MenuList
-              bg={useColorModeValue('white', 'gray.900')}
-              borderColor={useColorModeValue('gray.200', 'gray.700')}>
-              <MenuItem as={NavLink} to="/dashboard/settings">
+              bg={bgColor}
+              borderColor={borderColor}
+              boxShadow="lg"
+              py="2"
+            >
+              <MenuItem
+                as={NavLink}
+                to="/dashboard/settings"
+                icon={<FiSettings />}
+                fontSize="sm"
+                _hover={{ bg: 'gray.100' }}
+              >
                 Ayarlar
               </MenuItem>
               <MenuDivider />
-              <MenuItem onClick={onLogout}>Çıkış Yap</MenuItem>
+              <MenuItem
+                onClick={onLogout}
+                icon={<FiLogOut />}
+                fontSize="sm"
+                color="red.500"
+                _hover={{ bg: 'red.50' }}
+              >
+                Çıkış Yap
+              </MenuItem>
             </MenuList>
           </Menu>
         </Flex>

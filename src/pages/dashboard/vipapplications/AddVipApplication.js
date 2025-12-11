@@ -8,7 +8,6 @@ import {
   FormLabel,
   Heading,
   Input,
-  Select,
   SimpleGrid,
   Textarea,
   VStack,
@@ -60,7 +59,6 @@ const AddVipApplication = ({id}) => {
   const {
     register,
     handleSubmit,
-    watch,
     formState: { errors, isSubmitting },
     reset,
   } = useForm({
