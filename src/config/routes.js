@@ -92,4 +92,10 @@ export const routes = {
   channelChat: {
     getPath: (id) => `/dashboard/messaging/channels/${id}`,
   },
+  appDistribution: {
+    path: '/dashboard/distribution',
+  },
+  moderation: {
+    path: '/dashboard/moderation',
+  },
 };

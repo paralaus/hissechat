@@ -40,6 +40,53 @@ export const createUser = async body => {
   return apiClient.post('/users', body);
 };
 
+// Get testers for Firebase App Distribution
+export const getTesters = async (platform = 'all') => {
+  return apiClient.get('/users/testers', { params: { platform } });
+};
+
+// App Distribution
+export const getDistributionStatus = async () => {
+  return apiClient.get('/distribution/status');
+};
+
+export const distributeApp = async (file, releaseNotes, groups = 'testers', onProgress) => {
+  const formData = new FormData();
+  formData.append('app', file);
+  formData.append('releaseNotes', releaseNotes || '');
+  formData.append('groups', groups);
+  
+  return apiClient.post('/distribution/upload', formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data',
+    },
+    timeout: 600000, // 10 minutes for large files
+    onUploadProgress: (progressEvent) => {
+      if (onProgress) {
+        const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+        onProgress(percentCompleted);
+      }
+    },
+  });
+};
+
+// Moderation API
+export const getMessagesForModeration = async (params) => {
+  return apiClient.get('/channel-messages/moderation', { params });
+};
+
+export const getFlaggedMessages = async (params) => {
+  return apiClient.get('/channel-messages/flagged', { params });
+};
+
+export const blockMessage = async (messageId, reason) => {
+  return apiClient.post(`/channel-messages/${messageId}/block`, { reason });
+};
+
+export const unblockMessage = async (messageId) => {
+  return apiClient.post(`/channel-messages/${messageId}/unblock`);
+};
+
 export const getMarketDetails = async params => {
   return apiClient.get('/market-details', {params});
 };

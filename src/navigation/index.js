@@ -47,6 +47,8 @@ import VipApplications from '../pages/dashboard/vipapplications/VipApplications'
 import BulkMessage from '../pages/dashboard/messaging/BulkMessage';
 import Channels from '../pages/dashboard/messaging/Channels';
 import ChannelChat from '../pages/dashboard/messaging/ChannelChat';
+import AppDistribution from '../pages/dashboard/distribution/AppDistribution';
+import Moderation from '../pages/dashboard/moderation/Moderation';
 
 const rootLoader = async ({request}) => {
   const {pathname} = new URL(request.url);
@@ -315,6 +317,20 @@ const router = createBrowserRouter(
           element={<ChannelChat />}
           handle={{
             crumb: () => <Text>Sohbet</Text>,
+          }}
+        />
+        <Route
+          path="distribution"
+          element={<AppDistribution />}
+          handle={{
+            crumb: () => <Text>Test Dağıtımı</Text>,
+          }}
+        />
+        <Route
+          path="moderation"
+          element={<Moderation />}
+          handle={{
+            crumb: () => <Text>İçerik Moderasyonu</Text>,
           }}
         />
         <Route

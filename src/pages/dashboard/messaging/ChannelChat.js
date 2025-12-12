@@ -61,6 +61,7 @@ import {
   FiTrash2,
   FiCheckSquare,
   FiSquare,
+  FiShield,
 } from 'react-icons/fi';
 import EmojiPicker from 'emoji-picker-react';
 import {getCombinedLogoUrl} from '../../../utils/image';
@@ -242,6 +243,45 @@ const MessageBubble = ({message, isOwn, onReply, allMessages, searchQuery, isHig
     
     return null;
   }, [message.replyTo, allMessages]);
+
+  // Blocked message rendering
+  if (message.isBlocked) {
+    return (
+      <Flex 
+        ref={messageRef}
+        justify={isOwn ? 'flex-end' : 'flex-start'} 
+        mb="3"
+      >
+        <Box
+          maxW="70%"
+          bg="red.50"
+          border="1px dashed"
+          borderColor="red.300"
+          px="4"
+          py="3"
+          borderRadius="lg"
+        >
+          <HStack spacing="2" mb="2">
+            <Icon as={FiShield} color="red.600" />
+            <Text fontSize="sm" fontWeight="600" color="red.700">
+              Engellenmiş Mesaj
+            </Text>
+          </HStack>
+          <Text fontSize="sm" color="red.600" fontStyle="italic">
+            Bu mesaj kurallara aykırı olduğundan Admin tarafından engellenmiştir.
+          </Text>
+          {message.blockReason && (
+            <Text fontSize="xs" color="red.500" mt="2">
+              Sebep: {message.blockReason}
+            </Text>
+          )}
+          <Text fontSize="xs" color="gray.500" mt="2">
+            {time}
+          </Text>
+        </Box>
+      </Flex>
+    );
+  }
 
   return (
     <Flex 
@@ -793,7 +833,9 @@ const ChannelChat = () => {
       }
       return undefined;
     },
-    refetchInterval: 5000, // Auto-refresh every 5 seconds
+    refetchInterval: 3000, // Auto-refresh every 3 seconds
+    refetchIntervalInBackground: true, // Keep polling even when tab is not focused
+    refetchOnWindowFocus: true, // Refetch when window regains focus
   });
 
   // Send message mutation

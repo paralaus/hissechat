@@ -1,4 +1,4 @@
-import { FiHome, FiSettings, FiUsers, FiBell, FiSend, FiMessageCircle } from 'react-icons/fi';
+import { FiHome, FiSettings, FiUsers, FiBell, FiSend, FiMessageCircle, FiSmartphone, FiShield } from 'react-icons/fi';
 import {
   AiOutlineUserAdd,
   AiOutlineProduct,
@@ -240,6 +240,18 @@ export const sidebarRoutes = [
         icon: FiSend,
       },
     ],
+  },
+  {
+    name: 'Test Dağıtımı',
+    icon: FiSmartphone,
+    path: routes.appDistribution.path,
+    group: 'Sistem',
+  },
+  {
+    name: 'İçerik Moderasyonu',
+    icon: FiShield,
+    path: routes.moderation.path,
+    group: 'Sistem',
   },
   {
     name: 'Ayarlar',
