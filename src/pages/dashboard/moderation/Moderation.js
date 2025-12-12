@@ -1,5 +1,4 @@
-import React, {useState, useEffect} from 'react';
-import {useNavigate} from 'react-router-dom';
+import React, {useState} from 'react';
 import {
   Box,
   VStack,
@@ -15,9 +14,7 @@ import {
   Button,
   useToast,
   Card,
-  CardHeader,
   CardBody,
-  Heading,
   SimpleGrid,
   Stat,
   StatLabel,
@@ -36,11 +33,6 @@ import {
   Textarea,
   FormControl,
   FormLabel,
-  Tabs,
-  TabList,
-  Tab,
-  TabPanels,
-  TabPanel,
   Input,
   InputGroup,
   InputLeftElement,
@@ -108,7 +100,7 @@ const MessageCard = ({message, onBlock, onUnblock, isBlocking}) => {
                   </Text>
                 </VStack>
               </HStack>
-              <HStack>
+              <HStack flexWrap="wrap">
                 {message.isBlocked && (
                   <Badge colorScheme="red">Bloklu</Badge>
                 )}
@@ -117,6 +109,9 @@ const MessageCard = ({message, onBlock, onUnblock, isBlocking}) => {
                 )}
                 {message.reportCount > 0 && (
                   <Badge colorScheme="yellow">{message.reportCount} Şikayet</Badge>
+                )}
+                {message.profanityWords?.length > 0 && (
+                  <Badge colorScheme="purple">🚫 Uygunsuz</Badge>
                 )}
               </HStack>
             </HStack>
@@ -179,6 +174,19 @@ const MessageCard = ({message, onBlock, onUnblock, isBlocking}) => {
               <Alert status="error" size="sm" borderRadius="md">
                 <AlertIcon />
                 <Text fontSize="xs">Engel Sebebi: {message.blockReason}</Text>
+              </Alert>
+            )}
+
+            {/* Profanity Words Found */}
+            {message.profanityWords?.length > 0 && (
+              <Alert status="warning" size="sm" borderRadius="md">
+                <AlertIcon />
+                <Box>
+                  <Text fontSize="xs" fontWeight="bold">Tespit Edilen Uygunsuz Kelimeler:</Text>
+                  <Text fontSize="xs" color="orange.700">
+                    {message.profanityWords.join(', ')}
+                  </Text>
+                </Box>
               </Alert>
             )}
 
@@ -250,7 +258,7 @@ const Moderation = () => {
   const toast = useToast();
   const queryClient = useQueryClient();
   const [selectedChannel, setSelectedChannel] = useState('');
-  const [filterType, setFilterType] = useState('flagged'); // 'all', 'flagged', 'blocked'
+  const [filterType, setFilterType] = useState('profanity'); // 'all', 'flagged', 'blocked', 'profanity'
   const [searchTerm, setSearchTerm] = useState('');
   const [blockingMessageId, setBlockingMessageId] = useState(null);
 
@@ -258,7 +266,7 @@ const Moderation = () => {
   const {data: channels = []} = useQuery({
     queryKey: ['all-channels-moderation'],
     queryFn: async () => {
-      const res = await api.getChannels({limit: 1000});
+      const res = await api.getAllChannels({limit: 1000});
       return res.data?.results || [];
     },
   });
@@ -280,6 +288,8 @@ const Moderation = () => {
         params.showBlocked = true;
       } else if (filterType === 'flagged') {
         params.showFlagged = true;
+      } else if (filterType === 'profanity') {
+        params.showProfanity = true;
       }
       
       const res = await api.getMessagesForModeration(params);
@@ -419,9 +429,10 @@ const Moderation = () => {
                 onChange={(e) => setFilterType(e.target.value)}
                 maxW="200px"
               >
-                <option value="flagged">Şikayet Edilenler</option>
-                <option value="blocked">Engellenenler</option>
-                <option value="all">Tümü</option>
+                <option value="profanity">🚫 Uygunsuz Kelime İçerenler</option>
+                <option value="flagged">⚠️ Şikayet Edilenler</option>
+                <option value="blocked">🛡️ Engellenenler</option>
+                <option value="all">📋 Tümü</option>
               </Select>
 
               <InputGroup maxW="300px">
@@ -456,7 +467,9 @@ const Moderation = () => {
           <Alert status="info" borderRadius="md">
             <AlertIcon />
             <Text>
-              {filterType === 'flagged' 
+              {filterType === 'profanity' 
+                ? 'Uygunsuz kelime içeren mesaj bulunamadı.'
+                : filterType === 'flagged' 
                 ? 'Şikayet edilen mesaj bulunamadı.' 
                 : filterType === 'blocked'
                 ? 'Engellenen mesaj bulunamadı.'
