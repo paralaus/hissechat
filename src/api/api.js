@@ -250,8 +250,8 @@ export const deleteVipApplication = async vipApplicationId => {
 };
 
 // Bulk Messaging
-export const sendBulkMessage = async body => {
-  return apiClient.post('/channels/bulk-message', body);
+export const sendBulkMessage = async (body, options = {}) => {
+  return apiClient.post('/channels/bulk-message', body, { signal: options.signal });
 };
 
 // Channel Messages
@@ -261,4 +261,46 @@ export const getChannelMessages = async (channelId, params) => {
 
 export const sendChannelMessage = async (channelId, body) => {
   return apiClient.post(`/channels/${channelId}/messages`, body);
+};
+
+export const deleteChannelMessage = async (channelId, messageId) => {
+  return apiClient.delete(`/channels/${channelId}/messages/${messageId}`);
+};
+
+export const deleteChannelMessages = async (channelId, messageIds) => {
+  // Delete multiple messages sequentially
+  const results = await Promise.allSettled(
+    messageIds.map(messageId => apiClient.delete(`/channels/${channelId}/messages/${messageId}`))
+  );
+  return results;
+};
+
+// Conference
+export const createConference = async body => {
+  return apiClient.post('/conferences', body);
+};
+
+export const getActiveConferences = async params => {
+  return apiClient.get('/conferences', {params});
+};
+
+export const getConferenceByRoom = async roomId => {
+  return apiClient.get(`/conferences/room/${roomId}`);
+};
+
+// Channel Polls
+export const createChannelPoll = async (channelId, body) => {
+  return apiClient.post(`/channels/${channelId}/polls`, body);
+};
+
+export const getChannelPolls = async (channelId, params) => {
+  return apiClient.get(`/channels/${channelId}/polls`, {params});
+};
+
+export const votePoll = async (pollId, optionIndex) => {
+  return apiClient.post(`/polls/${pollId}/vote`, {optionIndex});
+};
+
+export const closePoll = async pollId => {
+  return apiClient.post(`/polls/${pollId}/close`);
 };

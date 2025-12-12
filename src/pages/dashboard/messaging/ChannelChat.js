@@ -32,6 +32,8 @@ import {
   PopoverTrigger,
   PopoverContent,
   PopoverBody,
+  Button,
+  useToast,
 } from '@chakra-ui/react';
 import {useQuery, useMutation, useQueryClient, useInfiniteQuery} from '@tanstack/react-query';
 import {api} from '../../../api';
@@ -41,6 +43,7 @@ import {
   FiArrowLeft,
   FiImage,
   FiVideo,
+  FiVideoOff,
   FiMusic,
   FiFile,
   FiPaperclip,
@@ -53,14 +56,19 @@ import {
   FiDownload,
   FiExternalLink,
   FiSmile,
+  FiBarChart2,
+  FiCheck,
+  FiTrash2,
+  FiCheckSquare,
+  FiSquare,
 } from 'react-icons/fi';
 import EmojiPicker from 'emoji-picker-react';
 import {getCombinedLogoUrl} from '../../../utils/image';
 import {format} from 'date-fns';
 import {tr} from 'date-fns/locale';
 import useFileInput from '../../../hooks/useFileInput';
-import {useToast} from '@chakra-ui/react';
 import {getErrorMessage} from '../../../utils/string';
+import VideoConference from '../../../components/conference/VideoConference';
 
 // Media Preview Modal Component
 const MediaPreviewModal = ({isOpen, onClose, mediaType, mediaUrl, fileName}) => {
@@ -198,17 +206,42 @@ const HighlightText = ({text, searchQuery}) => {
   );
 };
 
-const MessageBubble = ({message, isOwn, onReply, allMessages, searchQuery, isHighlighted, messageRef, onMediaClick}) => {
+const MessageBubble = ({message, isOwn, onReply, allMessages, searchQuery, isHighlighted, messageRef, onMediaClick, onJoinConference, onVotePoll, onClosePoll, currentUserId, isSelectMode, isSelected, onSelect}) => {
   const time = message.createdAt 
     ? format(new Date(message.createdAt), 'HH:mm', {locale: tr})
     : '';
 
-  const hasMedia = message.image || message.video || message.audio || message.file;
+  const hasMedia = message.image || message.video || message.audio || message.file || message.conference?.roomId;
+
+  // Handle click in select mode
+  const handleClick = () => {
+    if (isSelectMode && onSelect) {
+      onSelect(message.id || message._id);
+    }
+  };
 
   // Find the replied message if exists
-  const repliedMessage = message.replyTo 
-    ? allMessages?.find(m => m.id === message.replyTo || m._id === message.replyTo)
-    : null;
+  // replyTo can be an object with _id, user, text OR a string ID
+  const repliedMessage = React.useMemo(() => {
+    if (!message.replyTo) return null;
+    
+    // If replyTo is already an object with _id AND user info, use it directly
+    if (typeof message.replyTo === 'object') {
+      // Must have _id and user to be valid
+      if (message.replyTo._id && message.replyTo.user) {
+        return message.replyTo;
+      }
+      // Empty or invalid object, ignore
+      return null;
+    }
+    
+    // If replyTo is a string ID, find the message
+    if (typeof message.replyTo === 'string' && message.replyTo.length > 0) {
+      return allMessages?.find(m => m.id === message.replyTo || m._id === message.replyTo);
+    }
+    
+    return null;
+  }, [message.replyTo, allMessages]);
 
   return (
     <Flex 
@@ -216,14 +249,37 @@ const MessageBubble = ({message, isOwn, onReply, allMessages, searchQuery, isHig
       justify={isOwn ? 'flex-end' : 'flex-start'} 
       mb="3" 
       role="group"
-      bg={isHighlighted ? 'yellow.100' : 'transparent'}
+      bg={isHighlighted ? 'yellow.100' : isSelected ? 'blue.50' : 'transparent'}
       mx={isHighlighted ? '-4' : '0'}
       px={isHighlighted ? '4' : '0'}
       py={isHighlighted ? '2' : '0'}
       borderRadius="lg"
       transition="all 0.3s"
+      cursor={isSelectMode ? 'pointer' : 'default'}
+      onClick={isSelectMode ? handleClick : undefined}
+      _hover={isSelectMode ? { bg: isSelected ? 'blue.100' : 'gray.50' } : {}}
+      border={isSelected ? '2px solid' : 'none'}
+      borderColor={isSelected ? 'blue.400' : 'transparent'}
     >
-      <HStack align="end" spacing="2" maxW="70%">
+      {/* Selection Checkbox */}
+      {isSelectMode && (
+        <Box 
+          mr="2" 
+          display="flex" 
+          alignItems="center"
+          onClick={(e) => {
+            e.stopPropagation();
+            handleClick();
+          }}
+        >
+          <Icon 
+            as={isSelected ? FiCheckSquare : FiSquare} 
+            color={isSelected ? 'blue.500' : 'gray.400'} 
+            boxSize="5"
+          />
+        </Box>
+      )}
+      <HStack align="end" spacing="2" maxW={isSelectMode ? '65%' : '70%'}>
         {!isOwn && (
           <Avatar
             size="sm"
@@ -262,8 +318,8 @@ const MessageBubble = ({message, isOwn, onReply, allMessages, searchQuery, isHig
             </Text>
           )}
           
-          {/* Reply Preview */}
-          {repliedMessage && (
+          {/* Reply Preview - Don't show for conference messages */}
+          {repliedMessage && !message.conference?.roomId && (
             <Box
               bg={isOwn ? 'blue.400' : 'gray.100'}
               p="2"
@@ -369,6 +425,261 @@ const MessageBubble = ({message, isOwn, onReply, allMessages, searchQuery, isHig
               <Text fontSize="sm">📄 Dosya - Açmak için tıklayın</Text>
             </HStack>
           )}
+
+          {/* Conference Message - Only show if roomId exists */}
+          {message.conference?.roomId && (() => {
+            // Determine conference status
+            const now = new Date();
+            let confStatus = 'unknown'; // Default to unknown for old messages
+            
+            // Check if message has new status fields
+            const hasStatusFields = message.conference.startTime || 
+                                   message.conference.scheduledEndTime || 
+                                   message.conference.isActive !== undefined;
+            
+            if (hasStatusFields) {
+              confStatus = 'active'; // Has fields, assume active unless proven otherwise
+              
+              if (message.conference.startTime) {
+                const startDate = new Date(message.conference.startTime);
+                if (startDate > now && !message.conference.isActive) {
+                  confStatus = 'upcoming';
+                }
+              }
+              
+              if (message.conference.scheduledEndTime) {
+                const endDate = new Date(message.conference.scheduledEndTime);
+                if (endDate < now) {
+                  confStatus = 'ended';
+                }
+              }
+              
+              if (message.conference.isActive === false && message.conference.startTime) {
+                const startDate = new Date(message.conference.startTime);
+                if (startDate < now) {
+                  confStatus = 'ended';
+                }
+              }
+            }
+            
+            const bgColors = {
+              active: isOwn ? 'green.500' : 'green.50',
+              upcoming: isOwn ? 'orange.500' : 'orange.50',
+              ended: isOwn ? 'gray.500' : 'gray.100',
+              unknown: isOwn ? 'blue.500' : 'blue.50',
+            };
+            
+            const borderColors = {
+              active: isOwn ? 'green.400' : 'green.200',
+              upcoming: isOwn ? 'orange.400' : 'orange.200',
+              ended: isOwn ? 'gray.400' : 'gray.200',
+              unknown: isOwn ? 'blue.400' : 'blue.200',
+            };
+            
+            const iconBgColors = {
+              active: isOwn ? 'green.400' : 'green.100',
+              upcoming: isOwn ? 'orange.400' : 'orange.100',
+              ended: isOwn ? 'gray.400' : 'gray.200',
+              unknown: isOwn ? 'blue.400' : 'blue.100',
+            };
+            
+            const textColors = {
+              active: isOwn ? 'white' : 'green.700',
+              upcoming: isOwn ? 'white' : 'orange.700',
+              ended: isOwn ? 'white' : 'gray.600',
+              unknown: isOwn ? 'white' : 'blue.700',
+            };
+            
+            const subTextColors = {
+              active: isOwn ? 'green.100' : 'green.600',
+              upcoming: isOwn ? 'orange.100' : 'orange.600',
+              ended: isOwn ? 'gray.200' : 'gray.500',
+              unknown: isOwn ? 'blue.100' : 'blue.600',
+            };
+            
+            const icons = {
+              active: '🎥',
+              upcoming: '⏰',
+              ended: '🔴',
+              unknown: '🎥',
+            };
+            
+            const statusTexts = {
+              active: '📞 Görüşmeye Katıl',
+              upcoming: '⏳ Henüz Başlamadı',
+              ended: '✖️ Sona Erdi',
+              unknown: '📞 Durumu Kontrol Et',
+            };
+            
+            return (
+              <Box
+                bg={bgColors[confStatus]}
+                p="4"
+                borderRadius="lg"
+                mb={message.text ? '2' : '0'}
+                cursor={confStatus === 'active' || confStatus === 'unknown' ? 'pointer' : 'not-allowed'}
+                onClick={() => onJoinConference?.(message.conference)}
+                _hover={confStatus === 'active' || confStatus === 'unknown' ? { opacity: 0.9, transform: 'scale(1.02)' } : {}}
+                transition="all 0.2s"
+                border="2px solid"
+                borderColor={borderColors[confStatus]}
+                opacity={confStatus === 'ended' ? 0.7 : 1}
+              >
+                <HStack spacing="3" mb="2">
+                  <Box
+                    bg={iconBgColors[confStatus]}
+                    p="2"
+                    borderRadius="full"
+                  >
+                    <Icon as={confStatus === 'ended' ? FiVideoOff : FiVideo} color={textColors[confStatus]} boxSize="5" />
+                  </Box>
+                  <VStack align="start" spacing="0">
+                    <Text fontWeight="bold" fontSize="sm" color={textColors[confStatus]}>
+                      {icons[confStatus]} Video Görüşme
+                    </Text>
+                    <Text fontSize="xs" color={subTextColors[confStatus]}>
+                      {message.conference.title || 'Video konferans'}
+                    </Text>
+                  </VStack>
+                </HStack>
+                <Box
+                  bg={iconBgColors[confStatus]}
+                  px="3"
+                  py="2"
+                  borderRadius="md"
+                  textAlign="center"
+                >
+                  <Text fontSize="sm" fontWeight="600" color={textColors[confStatus]}>
+                    {statusTexts[confStatus]}
+                  </Text>
+                </Box>
+              </Box>
+            );
+          })()}
+          
+          {/* Poll Message */}
+          {(message.poll?.id || message.poll?._id) && (() => {
+            const poll = message.poll;
+            const pollId = poll.id || poll._id;
+            const totalVotes = poll.totalVotes || poll.votes?.length || 0;
+            const hasVoted = poll.votes?.some(v => {
+              const odaId = typeof v.user === 'string' ? v.user : (v.user?.id || v.user?._id);
+              return odaId === currentUserId;
+            });
+            const myVote = poll.votes?.find(v => {
+              const odaId = typeof v.user === 'string' ? v.user : (v.user?.id || v.user?._id);
+              return odaId === currentUserId;
+            });
+            
+            const getPercentage = (optionIndex) => {
+              if (totalVotes === 0) return 0;
+              return Math.round((poll.options[optionIndex].voteCount / totalVotes) * 100);
+            };
+            
+            return (
+              <Box
+                bg={isOwn ? 'purple.500' : 'gray.50'}
+                p="4"
+                borderRadius="lg"
+                mb={message.text ? '2' : '0'}
+                border="2px solid"
+                borderColor={isOwn ? 'purple.400' : 'purple.200'}
+              >
+                <HStack spacing="3" mb="3">
+                  <Box
+                    bg={isOwn ? 'purple.400' : 'purple.100'}
+                    p="2"
+                    borderRadius="full"
+                  >
+                    <Icon as={FiBarChart2} color={isOwn ? 'white' : 'purple.600'} boxSize="5" />
+                  </Box>
+                  <VStack align="start" spacing="0" flex="1">
+                    <HStack justify="space-between" w="100%">
+                      <Text fontWeight="bold" fontSize="sm" color={isOwn ? 'white' : 'purple.700'}>
+                        📊 Anket
+                      </Text>
+                      {poll.isActive ? (
+                        <Badge colorScheme="green" size="sm">Aktif</Badge>
+                      ) : (
+                        <Badge colorScheme="gray" size="sm">Kapandı</Badge>
+                      )}
+                    </HStack>
+                  </VStack>
+                </HStack>
+                
+                <Text fontWeight="600" fontSize="md" color={isOwn ? 'white' : 'gray.800'} mb="3">
+                  {poll.question}
+                </Text>
+                
+                <VStack spacing="2" align="stretch">
+                  {poll.options.map((option, index) => {
+                    const isSelected = myVote?.optionIndex === index;
+                    const percentage = getPercentage(index);
+                    const showResults = hasVoted || !poll.isActive;
+                    
+                    return (
+                      <Box
+                        key={index}
+                        position="relative"
+                        bg={isOwn ? (isSelected ? 'purple.300' : 'purple.400') : (isSelected ? 'purple.100' : 'gray.100')}
+                        borderRadius="md"
+                        p="2"
+                        cursor={poll.isActive && !hasVoted ? 'pointer' : 'default'}
+                        onClick={() => {
+                          if (poll.isActive && !hasVoted && onVotePoll) {
+                            onVotePoll(pollId, index);
+                          }
+                        }}
+                        _hover={poll.isActive && !hasVoted ? { opacity: 0.9 } : {}}
+                        border={isSelected ? '2px solid' : 'none'}
+                        borderColor={isOwn ? 'white' : 'purple.500'}
+                        overflow="hidden"
+                      >
+                        {showResults && (
+                          <Box
+                            position="absolute"
+                            left="0"
+                            top="0"
+                            bottom="0"
+                            width={`${percentage}%`}
+                            bg={isOwn ? 'rgba(255,255,255,0.2)' : 'purple.200'}
+                            transition="width 0.5s"
+                          />
+                        )}
+                        <HStack position="relative" justify="space-between">
+                          <HStack spacing="2">
+                            {isSelected && <Icon as={FiCheck} color={isOwn ? 'white' : 'purple.600'} />}
+                            <Text fontSize="sm" color={isOwn ? 'white' : 'gray.700'}>{option.text}</Text>
+                          </HStack>
+                          {showResults && (
+                            <Text fontSize="sm" fontWeight="bold" color={isOwn ? 'white' : 'purple.600'}>
+                              {percentage}%
+                            </Text>
+                          )}
+                        </HStack>
+                      </Box>
+                    );
+                  })}
+                </VStack>
+                
+                <HStack mt="3" justify="space-between">
+                  <Text fontSize="xs" color={isOwn ? 'purple.100' : 'gray.500'}>
+                    {totalVotes} oy
+                  </Text>
+                  {(poll.createdBy?.id || poll.createdBy?._id) === currentUserId && poll.isActive && onClosePoll && (
+                    <Button
+                      size="xs"
+                      colorScheme="red"
+                      variant="ghost"
+                      onClick={() => onClosePoll(pollId)}
+                    >
+                      Anketi Kapat
+                    </Button>
+                  )}
+                </HStack>
+              </Box>
+            );
+          })()}
           
           {/* Text Content */}
           {message.text && (
@@ -425,8 +736,24 @@ const ChannelChat = () => {
   const mediaModal = useDisclosure();
   const [previewMedia, setPreviewMedia] = useState({ type: null, url: null, fileName: null });
 
+  // Video call modal state
+  const {isOpen: isVideoCallOpen, onOpen: onVideoCallOpen, onClose: onVideoCallClose} = useDisclosure();
+  const [currentConferenceData, setCurrentConferenceData] = useState(null);
+
   // Emoji picker state
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  
+  // Poll modal state
+  const [pollModalOpen, setPollModalOpen] = useState(false);
+  const [pollQuestion, setPollQuestion] = useState('');
+  const [pollOptions, setPollOptions] = useState(['', '']);
+  const [pollIsAnonymous, setPollIsAnonymous] = useState(false);
+  const [pollAllowMultiple, setPollAllowMultiple] = useState(false);
+
+  // Multi-select delete state
+  const [isSelectMode, setIsSelectMode] = useState(false);
+  const [selectedMessageIds, setSelectedMessageIds] = useState(new Set());
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // File inputs
   const imageInput = useFileInput({accept: 'image/*'});
@@ -552,9 +879,20 @@ const ChannelChat = () => {
       setIsSending(true);
       const body = {text: messageText};
 
-      // Add reply reference if replying
+      // Add reply reference if replying (send as object with message preview)
       if (replyTo) {
-        body.replyTo = replyTo.id || replyTo._id;
+        body.replyTo = {
+          _id: replyTo.id || replyTo._id,
+          user: {
+            fullname: replyTo.user?.fullname || 'Kullanıcı',
+            thumbnail: replyTo.user?.thumbnail || null,
+          },
+          text: replyTo.text || null,
+          image: replyTo.image || null,
+          video: replyTo.video || null,
+          audio: replyTo.audio || null,
+          file: replyTo.file || null,
+        };
       }
 
       // Upload media if present
@@ -594,6 +932,428 @@ const ChannelChat = () => {
 
   const cancelReply = () => {
     setReplyTo(null);
+  };
+
+  // Create and send conference message
+  const handleCreateConference = async () => {
+    try {
+      setIsSending(true);
+      
+      // Clear any reply state
+      setReplyTo(null);
+      
+      // Generate unique room ID
+      const roomId = `hissechat-${channelId}-${Date.now()}`;
+      const conferenceTitle = `${channel?.name || 'Kanal'} Video Görüşmesi`;
+      const startTime = new Date().toISOString();
+      const scheduledEndTime = new Date(Date.now() + 60 * 60 * 1000).toISOString(); // 1 hour later
+      
+      // Create conference in backend
+      await api.createConference({
+        roomId,
+        title: conferenceTitle,
+        channelId,
+      });
+      
+      // Send conference message to channel (no text, just conference card)
+      const conferenceBody = {
+        conference: {
+          roomId,
+          title: conferenceTitle,
+          startTime,
+          scheduledEndTime,
+          isActive: true,
+        },
+      };
+
+      await sendMessageMutation.mutateAsync(conferenceBody);
+      
+      // Set conference data and open modal
+      setCurrentConferenceData({
+        roomId,
+        title: conferenceTitle,
+        channelId,
+      });
+      onVideoCallOpen();
+      
+      toast({
+        title: 'Video görüşme başlatıldı',
+        description: 'Kanal üyelerine bildirim gönderildi',
+        status: 'success',
+        position: 'top',
+      });
+    } catch (error) {
+      toast({
+        title: getErrorMessage(error),
+        status: 'error',
+        position: 'top',
+      });
+    } finally {
+      setIsSending(false);
+    }
+  };
+
+  // Check conference status helper (from message data)
+  const getConferenceStatusFromMessage = (conferenceData) => {
+    const now = new Date();
+    
+    // If startTime exists and is in the future
+    if (conferenceData.startTime) {
+      const startDate = new Date(conferenceData.startTime);
+      if (startDate > now && !conferenceData.isActive) {
+        return {
+          status: 'upcoming',
+          message: `Bu konferans henüz başlamadı.\nBaşlama zamanı: ${startDate.toLocaleString('tr-TR', { 
+            day: '2-digit', 
+            month: 'short', 
+            year: 'numeric',
+            hour: '2-digit', 
+            minute: '2-digit' 
+          })}`,
+        };
+      }
+    }
+    
+    // If endTime exists and has passed
+    if (conferenceData.scheduledEndTime) {
+      const endDate = new Date(conferenceData.scheduledEndTime);
+      if (endDate < now) {
+        return {
+          status: 'ended',
+          message: 'Bu konferans sona ermiş.',
+        };
+      }
+    }
+    
+    // If explicitly marked as not active and has a start time in the past
+    if (conferenceData.isActive === false && conferenceData.startTime) {
+      const startDate = new Date(conferenceData.startTime);
+      if (startDate < now) {
+        return {
+          status: 'ended',
+          message: 'Bu konferans sona ermiş.',
+        };
+      }
+    }
+    
+    return { status: 'unknown', message: '' }; // Need to check backend
+  };
+
+  // Join existing conference from message
+  const handleJoinConference = async (conferenceData) => {
+    if (!conferenceData) {
+      toast({
+        title: 'Konferans bilgisi bulunamadı',
+        status: 'error',
+        position: 'top',
+      });
+      return;
+    }
+    
+    // Extract roomId - either directly or from jitsiUrl
+    let roomId = conferenceData.roomId;
+    if (!roomId && conferenceData.jitsiUrl) {
+      const urlParts = conferenceData.jitsiUrl.split('/');
+      const lastPart = urlParts[urlParts.length - 1];
+      roomId = lastPart.split('#')[0];
+    }
+    
+    if (!roomId) {
+      toast({
+        title: 'Konferans odası bulunamadı',
+        status: 'error',
+        position: 'top',
+      });
+      return;
+    }
+    
+    // First check from message data
+    const messageStatus = getConferenceStatusFromMessage(conferenceData);
+    
+    if (messageStatus.status === 'upcoming') {
+      toast({
+        title: '⏰ Henüz Başlamadı',
+        description: messageStatus.message,
+        status: 'warning',
+        position: 'top',
+        duration: 5000,
+      });
+      return;
+    }
+    
+    if (messageStatus.status === 'ended') {
+      toast({
+        title: '🔴 Konferans Sona Erdi',
+        description: messageStatus.message,
+        status: 'error',
+        position: 'top',
+        duration: 5000,
+      });
+      return;
+    }
+    
+    // If status unknown (old messages without new fields), check backend
+    if (messageStatus.status === 'unknown') {
+      try {
+        const response = await api.getConferenceByRoom(roomId);
+        const backendConference = response?.data;
+        
+        if (!backendConference) {
+          toast({
+            title: '🔴 Konferans Bulunamadı',
+            description: 'Bu konferans artık mevcut değil.',
+            status: 'error',
+            position: 'top',
+            duration: 5000,
+          });
+          return;
+        }
+        
+        const now = new Date();
+        
+        // Check if conference has ended
+        if (backendConference.scheduledEndTime) {
+          const endDate = new Date(backendConference.scheduledEndTime);
+          if (endDate < now) {
+            toast({
+              title: '🔴 Konferans Sona Erdi',
+              description: 'Bu konferans sona ermiş.',
+              status: 'error',
+              position: 'top',
+              duration: 5000,
+            });
+            return;
+          }
+        }
+        
+        // Check if conference is not active
+        if (backendConference.isActive === false) {
+          toast({
+            title: '🔴 Konferans Sona Erdi',
+            description: 'Bu konferans sona ermiş.',
+            status: 'error',
+            position: 'top',
+            duration: 5000,
+          });
+          return;
+        }
+        
+        // Check if conference hasn't started yet
+        if (backendConference.startTime) {
+          const startDate = new Date(backendConference.startTime);
+          if (startDate > now && !backendConference.isActive) {
+            toast({
+              title: '⏰ Henüz Başlamadı',
+              description: `Bu konferans henüz başlamadı.\nBaşlama zamanı: ${startDate.toLocaleString('tr-TR', { 
+                day: '2-digit', 
+                month: 'short', 
+                year: 'numeric',
+                hour: '2-digit', 
+                minute: '2-digit' 
+              })}`,
+              status: 'warning',
+              position: 'top',
+              duration: 5000,
+            });
+            return;
+          }
+        }
+      } catch (error) {
+        // If API fails (e.g., conference not found), show error
+        console.error('Conference check error:', error);
+        toast({
+          title: '🔴 Konferans Bulunamadı',
+          description: 'Bu konferans artık mevcut değil veya sona ermiş.',
+          status: 'error',
+          position: 'top',
+          duration: 5000,
+        });
+        return;
+      }
+    }
+    
+    setCurrentConferenceData({
+      roomId,
+      title: conferenceData.title || 'Video Konferans',
+      channelId,
+    });
+    onVideoCallOpen();
+  };
+
+  // Poll handlers
+  const handleVotePoll = async (pollId, optionIndex) => {
+    try {
+      await api.votePoll(pollId, optionIndex);
+      queryClient.invalidateQueries(['channel-messages', channelId]);
+      toast({
+        title: 'Oyunuz kaydedildi',
+        status: 'success',
+        position: 'top',
+        duration: 2000,
+      });
+    } catch (error) {
+      toast({
+        title: 'Oy verilemedi',
+        description: error?.response?.data?.message || 'Bir hata oluştu',
+        status: 'error',
+        position: 'top',
+      });
+    }
+  };
+
+  const handleClosePoll = async (pollId) => {
+    if (!window.confirm('Bu anketi kapatmak istediğinizden emin misiniz?')) {
+      return;
+    }
+    try {
+      await api.closePoll(pollId);
+      queryClient.invalidateQueries(['channel-messages', channelId]);
+      toast({
+        title: 'Anket kapatıldı',
+        status: 'success',
+        position: 'top',
+        duration: 2000,
+      });
+    } catch (error) {
+      toast({
+        title: 'Anket kapatılamadı',
+        description: error?.response?.data?.message || 'Bir hata oluştu',
+        status: 'error',
+        position: 'top',
+      });
+    }
+  };
+
+  const handleCreatePoll = async () => {
+    const validOptions = pollOptions.filter(o => o.trim().length > 0);
+    if (pollQuestion.trim().length === 0) {
+      toast({
+        title: 'Soru gerekli',
+        status: 'warning',
+        position: 'top',
+      });
+      return;
+    }
+    if (validOptions.length < 2) {
+      toast({
+        title: 'En az 2 seçenek gerekli',
+        status: 'warning',
+        position: 'top',
+      });
+      return;
+    }
+    
+    try {
+      await api.createChannelPoll(channelId, {
+        question: pollQuestion.trim(),
+        options: validOptions,
+        isAnonymous: pollIsAnonymous,
+        allowMultiple: pollAllowMultiple,
+      });
+      queryClient.invalidateQueries(['channel-messages', channelId]);
+      setPollModalOpen(false);
+      setPollQuestion('');
+      setPollOptions(['', '']);
+      setPollIsAnonymous(false);
+      setPollAllowMultiple(false);
+      toast({
+        title: 'Anket oluşturuldu',
+        status: 'success',
+        position: 'top',
+        duration: 2000,
+      });
+    } catch (error) {
+      toast({
+        title: 'Anket oluşturulamadı',
+        description: error?.response?.data?.message || 'Bir hata oluştu',
+        status: 'error',
+        position: 'top',
+      });
+    }
+  };
+
+  // Multi-select delete functions
+  const toggleSelectMode = () => {
+    setIsSelectMode(!isSelectMode);
+    setSelectedMessageIds(new Set());
+  };
+
+  const toggleMessageSelection = (messageId) => {
+    setSelectedMessageIds(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(messageId)) {
+        newSet.delete(messageId);
+      } else {
+        newSet.add(messageId);
+      }
+      return newSet;
+    });
+  };
+
+  const selectAllMessages = () => {
+    const allIds = new Set(allMessages.map(m => m.id || m._id));
+    setSelectedMessageIds(allIds);
+  };
+
+  const clearSelection = () => {
+    setSelectedMessageIds(new Set());
+  };
+
+  const handleDeleteSelected = async () => {
+    if (selectedMessageIds.size === 0) {
+      toast({
+        title: 'Mesaj seçilmedi',
+        description: 'Silmek için en az bir mesaj seçin',
+        status: 'warning',
+        position: 'top',
+      });
+      return;
+    }
+
+    const confirmDelete = window.confirm(
+      `${selectedMessageIds.size} mesaj silinecek. Emin misiniz?`
+    );
+
+    if (!confirmDelete) return;
+
+    setIsDeleting(true);
+    try {
+      const messageIdsArray = Array.from(selectedMessageIds);
+      const results = await api.deleteChannelMessages(channelId, messageIdsArray);
+      
+      const successCount = results.filter(r => r.status === 'fulfilled').length;
+      const failCount = results.filter(r => r.status === 'rejected').length;
+
+      if (successCount > 0) {
+        queryClient.invalidateQueries(['channel-messages', channelId]);
+        toast({
+          title: 'Mesajlar silindi',
+          description: `${successCount} mesaj başarıyla silindi${failCount > 0 ? `, ${failCount} mesaj silinemedi` : ''}`,
+          status: 'success',
+          position: 'top',
+          duration: 3000,
+        });
+      } else {
+        toast({
+          title: 'Silme başarısız',
+          description: 'Mesajlar silinemedi',
+          status: 'error',
+          position: 'top',
+        });
+      }
+
+      setSelectedMessageIds(new Set());
+      setIsSelectMode(false);
+    } catch (error) {
+      toast({
+        title: 'Silme hatası',
+        description: error?.response?.data?.message || 'Bir hata oluştu',
+        status: 'error',
+        position: 'top',
+      });
+    } finally {
+      setIsDeleting(false);
+    }
   };
 
   // Search functions
@@ -718,23 +1478,98 @@ const ChannelChat = () => {
             </VStack>
           </HStack>
           <HStack spacing="2">
-            <Tooltip label="Ara">
-              <IconButton
-                icon={<FiSearch />}
-                variant={isSearchOpen ? 'solid' : 'ghost'}
-                colorScheme={isSearchOpen ? 'blue' : 'gray'}
-                onClick={toggleSearch}
-                aria-label="Ara"
-              />
-            </Tooltip>
-            <Tooltip label="Yenile">
-              <IconButton
-                icon={<FiRefreshCw />}
-                variant="ghost"
-                onClick={() => refetchMessages()}
-                aria-label="Yenile"
-              />
-            </Tooltip>
+            {/* Select Mode Controls */}
+            {isSelectMode ? (
+              <>
+                <Badge colorScheme="blue" fontSize="sm" px="2" py="1">
+                  {selectedMessageIds.size} seçili
+                </Badge>
+                <Tooltip label="Tümünü Seç">
+                  <IconButton
+                    icon={<FiCheckSquare />}
+                    variant="ghost"
+                    colorScheme="blue"
+                    onClick={selectAllMessages}
+                    aria-label="Tümünü Seç"
+                  />
+                </Tooltip>
+                <Tooltip label="Seçimi Temizle">
+                  <IconButton
+                    icon={<FiSquare />}
+                    variant="ghost"
+                    onClick={clearSelection}
+                    aria-label="Seçimi Temizle"
+                  />
+                </Tooltip>
+                <Tooltip label="Seçilenleri Sil">
+                  <IconButton
+                    icon={<FiTrash2 />}
+                    variant="solid"
+                    colorScheme="red"
+                    onClick={handleDeleteSelected}
+                    isLoading={isDeleting}
+                    isDisabled={selectedMessageIds.size === 0}
+                    aria-label="Seçilenleri Sil"
+                  />
+                </Tooltip>
+                <Tooltip label="Seçim Modundan Çık">
+                  <IconButton
+                    icon={<FiX />}
+                    variant="ghost"
+                    onClick={toggleSelectMode}
+                    aria-label="İptal"
+                  />
+                </Tooltip>
+              </>
+            ) : (
+              <>
+                <Tooltip label="Mesaj Seç ve Sil">
+                  <IconButton
+                    icon={<FiTrash2 />}
+                    variant="ghost"
+                    colorScheme="red"
+                    onClick={toggleSelectMode}
+                    aria-label="Mesaj Sil"
+                  />
+                </Tooltip>
+                <Tooltip label="Anket Oluştur">
+                  <IconButton
+                    icon={<FiBarChart2 />}
+                    variant="ghost"
+                    colorScheme="purple"
+                    onClick={() => setPollModalOpen(true)}
+                    aria-label="Anket Oluştur"
+                  />
+                </Tooltip>
+                <Tooltip label="Video Görüşme Başlat ve Kanala Gönder">
+                  <IconButton
+                    icon={<FiVideo />}
+                    variant="ghost"
+                    colorScheme="green"
+                    onClick={handleCreateConference}
+                    isLoading={isSending}
+                    aria-label="Video Görüşme"
+                  />
+                </Tooltip>
+                <Tooltip label="Ara">
+                  <IconButton
+                    icon={<FiSearch />}
+                    variant={isSearchOpen ? 'solid' : 'ghost'}
+                    colorScheme={isSearchOpen ? 'blue' : 'gray'}
+                    onClick={toggleSearch}
+                    aria-label="Ara"
+                  />
+                </Tooltip>
+                <Tooltip label="Yenile">
+                  <IconButton
+                    icon={<FiRefreshCw />}
+                    variant="ghost"
+                    onClick={() => refetchMessages()}
+                    aria-label="Yenile"
+                  />
+                </Tooltip>
+              </>
+            )}
           </HStack>
         </HStack>
 
@@ -869,6 +1704,13 @@ const ChannelChat = () => {
                   isHighlighted={messageId === currentHighlightedId}
                   messageRef={(el) => { messageRefs.current[messageId] = el; }}
                   onMediaClick={handleMediaClick}
+                  onJoinConference={handleJoinConference}
+                  onVotePoll={handleVotePoll}
+                  onClosePoll={handleClosePoll}
+                  currentUserId={currentUserId}
+                  isSelectMode={isSelectMode}
+                  isSelected={selectedMessageIds.has(messageId)}
+                  onSelect={toggleMessageSelection}
                 />
               );
             })}
@@ -1072,6 +1914,127 @@ const ChannelChat = () => {
         mediaUrl={previewMedia.url}
         fileName={previewMedia.fileName}
       />
+
+      {/* Video Call - Native Conference */}
+      {isVideoCallOpen && currentConferenceData && (
+        <VideoConference
+          roomId={currentConferenceData.roomId}
+          channelId={currentConferenceData.channelId}
+          title={currentConferenceData.title}
+          onClose={() => {
+            setCurrentConferenceData(null);
+            onVideoCallClose();
+          }}
+        />
+      )}
+
+      {/* Poll Creation Modal */}
+      <Modal isOpen={pollModalOpen} onClose={() => setPollModalOpen(false)} size="lg">
+        <ModalOverlay />
+        <ModalContent>
+          <Box p="6">
+            <HStack mb="4" justify="space-between">
+              <HStack spacing="3">
+                <Box bg="purple.100" p="2" borderRadius="full">
+                  <Icon as={FiBarChart2} color="purple.600" boxSize="5" />
+                </Box>
+                <Text fontSize="lg" fontWeight="bold">Anket Oluştur</Text>
+              </HStack>
+              <ModalCloseButton position="relative" top="0" right="0" />
+            </HStack>
+            
+            <VStack spacing="4" align="stretch">
+              {/* Question */}
+              <Box>
+                <Text fontSize="sm" fontWeight="500" color="gray.600" mb="1">Soru</Text>
+                <Input
+                  placeholder="Anket sorusu yazın..."
+                  value={pollQuestion}
+                  onChange={(e) => setPollQuestion(e.target.value)}
+                  size="lg"
+                />
+              </Box>
+              
+              {/* Options */}
+              <Box>
+                <Text fontSize="sm" fontWeight="500" color="gray.600" mb="2">Seçenekler (en az 2)</Text>
+                <VStack spacing="2">
+                  {pollOptions.map((option, index) => (
+                    <HStack key={index} w="100%">
+                      <Badge colorScheme="purple" fontSize="sm" borderRadius="full" px="2">
+                        {index + 1}
+                      </Badge>
+                      <Input
+                        placeholder={`Seçenek ${index + 1}`}
+                        value={option}
+                        onChange={(e) => {
+                          const newOptions = [...pollOptions];
+                          newOptions[index] = e.target.value;
+                          setPollOptions(newOptions);
+                        }}
+                        flex="1"
+                      />
+                      {pollOptions.length > 2 && (
+                        <IconButton
+                          icon={<FiX />}
+                          size="sm"
+                          variant="ghost"
+                          colorScheme="red"
+                          onClick={() => setPollOptions(pollOptions.filter((_, i) => i !== index))}
+                          aria-label="Kaldır"
+                        />
+                      )}
+                    </HStack>
+                  ))}
+                  {pollOptions.length < 6 && (
+                    <Button
+                      leftIcon={<Text>+</Text>}
+                      variant="outline"
+                      colorScheme="purple"
+                      size="sm"
+                      onClick={() => setPollOptions([...pollOptions, ''])}
+                    >
+                      Seçenek Ekle
+                    </Button>
+                  )}
+                </VStack>
+              </Box>
+              
+              {/* Settings */}
+              <Box bg="gray.50" p="3" borderRadius="md">
+                <HStack justify="space-between" mb="2">
+                  <Text fontSize="sm">Anonim Oylama</Text>
+                  <input
+                    type="checkbox"
+                    checked={pollIsAnonymous}
+                    onChange={(e) => setPollIsAnonymous(e.target.checked)}
+                    style={{ width: '20px', height: '20px' }}
+                  />
+                </HStack>
+                <HStack justify="space-between">
+                  <Text fontSize="sm">Birden Fazla Seçim</Text>
+                  <input
+                    type="checkbox"
+                    checked={pollAllowMultiple}
+                    onChange={(e) => setPollAllowMultiple(e.target.checked)}
+                    style={{ width: '20px', height: '20px' }}
+                  />
+                </HStack>
+              </Box>
+              
+              <Button
+                colorScheme="purple"
+                size="lg"
+                onClick={handleCreatePoll}
+                isDisabled={!pollQuestion.trim() || pollOptions.filter(o => o.trim()).length < 2}
+                leftIcon={<Icon as={FiBarChart2} />}
+              >
+                Anketi Gönder
+              </Button>
+            </VStack>
+          </Box>
+        </ModalContent>
+      </Modal>
     </Page>
   );
 };

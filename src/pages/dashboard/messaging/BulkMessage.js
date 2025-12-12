@@ -38,6 +38,7 @@ import {
   PopoverTrigger,
   PopoverContent,
   PopoverBody,
+  Spinner,
 } from '@chakra-ui/react';
 import {useForm} from 'react-hook-form';
 import {yupResolver} from '@hookform/resolvers/yup';
@@ -81,8 +82,12 @@ const BulkMessage = () => {
   const toast = useToast();
   const [sendResult, setSendResult] = useState(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [isSending, setIsSending] = useState(false);
+  const [isCancelled, setIsCancelled] = useState(false);
+  const [sendProgress, setSendProgress] = useState({ current: 0, total: 0, successCount: 0, failCount: 0 });
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const textareaRef = React.useRef(null);
+  const abortControllerRef = React.useRef(null);
 
   // File inputs for different media types
   const imageInput = useFileInput({accept: 'image/*'});
@@ -124,13 +129,57 @@ const BulkMessage = () => {
   });
 
   const {mutateAsync, isPending} = useMutation({
-    mutationFn: (values) => api.sendBulkMessage(values),
+    mutationFn: (values) => {
+      // Create new AbortController for this request
+      abortControllerRef.current = new AbortController();
+      return api.sendBulkMessage(values, { signal: abortControllerRef.current.signal });
+    },
   });
+
+  // Cancel handler
+  const handleCancel = () => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      setIsCancelled(true);
+      setIsSending(false);
+      setIsUploading(false);
+      toast({
+        title: 'Gönderim iptal edildi',
+        description: 'Bazı mesajlar gönderilmiş olabilir.',
+        status: 'warning',
+        position: 'top',
+        duration: 5000,
+      });
+    }
+  };
+
+  // Calculate target channel count based on selection
+  const getTargetChannelCount = () => {
+    const targetType = watch('targetType');
+    const selectedChannels = watch('selectedChannels') || [];
+    
+    switch (targetType) {
+      case 'all':
+        return (channelsData?.length || 0) + (vipChannelsData?.length || 0);
+      case 'market':
+        return channelsData?.filter(c => c.type === 'market').length || 0;
+      case 'vip':
+        return vipChannelsData?.length || 0;
+      case 'selected':
+        return selectedChannels.length;
+      default:
+        return 0;
+    }
+  };
 
   const onSubmit = async (values) => {
     try {
       setSendResult(null);
+      setIsCancelled(false);
       setIsUploading(true);
+      
+      const totalChannels = getTargetChannelCount();
+      setSendProgress({ current: 0, total: totalChannels, successCount: 0, failCount: 0 });
 
       // Upload media files if present
       if (imageInput.objectUrl) {
@@ -151,9 +200,19 @@ const BulkMessage = () => {
       }
 
       setIsUploading(false);
+      setIsSending(true);
 
       const {data} = await mutateAsync(values);
+      
+      setIsSending(false);
+      
       if (data) {
+        setSendProgress({ 
+          current: totalChannels, 
+          total: totalChannels, 
+          successCount: data.successCount || 0, 
+          failCount: data.failCount || 0 
+        });
         setSendResult(data);
         toast({
           title: 'Toplu mesaj gönderildi!',
@@ -170,6 +229,14 @@ const BulkMessage = () => {
       }
     } catch (error) {
       setIsUploading(false);
+      setIsSending(false);
+      
+      // Don't show error toast if cancelled
+      if (error.name === 'AbortError' || error.message === 'canceled') {
+        // Already handled in handleCancel
+        return;
+      }
+      
       toast({
         title: getErrorMessage(error),
         status: 'error',
@@ -264,8 +331,85 @@ const BulkMessage = () => {
         </Stat>
       </StatGroup>
 
+      {/* Sending Progress */}
+      {(isUploading || isSending) && (
+        <Alert
+          status="info"
+          variant="subtle"
+          flexDirection="column"
+          alignItems="flex-start"
+          borderRadius="lg"
+          mb="6"
+          p="4"
+        >
+          <HStack width="100%" mb="3" justify="space-between">
+            <HStack>
+              <Spinner size="sm" color="blue.500" />
+              <AlertTitle>
+                {isUploading ? '📤 Medya yükleniyor...' : '📨 Mesajlar gönderiliyor...'}
+              </AlertTitle>
+            </HStack>
+            <Button
+              size="sm"
+              colorScheme="red"
+              variant="outline"
+              onClick={handleCancel}
+              leftIcon={<Icon as={FiX} />}
+            >
+              İptal Et
+            </Button>
+          </HStack>
+          
+          {isSending && sendProgress.total > 0 && (
+            <Box width="100%">
+              <HStack justify="space-between" mb="2">
+                <Text fontSize="sm" color="gray.600">
+                  Hedef: {sendProgress.total} kanal
+                </Text>
+                <Badge colorScheme="blue" fontSize="sm">
+                  Gönderiliyor...
+                </Badge>
+              </HStack>
+              <Progress 
+                value={100} 
+                size="sm" 
+                colorScheme="blue" 
+                borderRadius="full"
+                isIndeterminate
+              />
+              <HStack mt="3" spacing="4" fontSize="sm" justify="space-between">
+                <Text color="gray.500">
+                  ⏳ Lütfen bekleyin, mesajlar gönderiliyor...
+                </Text>
+                <Text color="orange.500" fontSize="xs">
+                  💡 İptal ederseniz, gönderilmiş mesajlar kalacaktır.
+                </Text>
+              </HStack>
+            </Box>
+          )}
+        </Alert>
+      )}
+
+      {/* Cancelled Result */}
+      {isCancelled && !isSending && !isUploading && !sendResult && (
+        <Alert
+          status="warning"
+          variant="subtle"
+          borderRadius="lg"
+          mb="6"
+        >
+          <AlertIcon />
+          <Box>
+            <AlertTitle>⚠️ Gönderim İptal Edildi</AlertTitle>
+            <AlertDescription>
+              İşlem iptal edildi. Bazı mesajlar gönderilmiş olabilir.
+            </AlertDescription>
+          </Box>
+        </Alert>
+      )}
+
       {/* Send Result */}
-      {sendResult && (
+      {sendResult && !isSending && (
         <Alert
           status={sendResult.failCount > 0 ? 'warning' : 'success'}
           variant="subtle"
@@ -276,14 +420,41 @@ const BulkMessage = () => {
           p="4"
         >
           <AlertIcon />
-          <AlertTitle mt={2}>Gönderim Tamamlandı</AlertTitle>
-          <AlertDescription mt={2}>
-            <VStack align="start" spacing="1">
-              <Text>✅ Başarılı: {sendResult.successCount} kanal</Text>
-              {sendResult.failCount > 0 && (
-                <Text>❌ Başarısız: {sendResult.failCount} kanal</Text>
-              )}
-              <Text color="gray.500">Toplam süre: {sendResult.duration}ms</Text>
+          <AlertTitle mt={2}>🎉 Gönderim Tamamlandı</AlertTitle>
+          <AlertDescription mt={2} width="100%">
+            <VStack align="start" spacing="2" width="100%">
+              <HStack spacing="6">
+                <HStack>
+                  <Badge colorScheme="green" fontSize="md" px="3" py="1">
+                    ✅ {sendResult.successCount}
+                  </Badge>
+                  <Text>Başarılı</Text>
+                </HStack>
+                {sendResult.failCount > 0 && (
+                  <HStack>
+                    <Badge colorScheme="red" fontSize="md" px="3" py="1">
+                      ❌ {sendResult.failCount}
+                    </Badge>
+                    <Text>Başarısız</Text>
+                  </HStack>
+                )}
+              </HStack>
+              
+              <Progress 
+                value={(sendResult.successCount / (sendResult.successCount + sendResult.failCount)) * 100} 
+                size="sm" 
+                colorScheme={sendResult.failCount > 0 ? 'yellow' : 'green'}
+                borderRadius="full"
+                width="100%"
+              />
+              
+              <HStack spacing="4" fontSize="sm" color="gray.500">
+                <Text>📊 Toplam: {sendResult.successCount + sendResult.failCount} kanal</Text>
+                <Text>⏱️ Süre: {(sendResult.duration / 1000).toFixed(1)}s</Text>
+                <Text>
+                  📈 Başarı: {Math.round((sendResult.successCount / (sendResult.successCount + sendResult.failCount)) * 100)}%
+                </Text>
+              </HStack>
             </VStack>
           </AlertDescription>
         </Alert>

@@ -18,11 +18,12 @@ import {
   Spinner,
   Icon,
   Select,
+  Button,
 } from '@chakra-ui/react';
-import {useQuery} from '@tanstack/react-query';
+import {useInfiniteQuery} from '@tanstack/react-query';
 import {api} from '../../../api';
 import {Page} from '../../../components';
-import {FiSearch, FiMessageCircle, FiTrendingUp, FiStar, FiFilter} from 'react-icons/fi';
+import {FiSearch, FiMessageCircle, FiTrendingUp, FiStar, FiFilter, FiChevronDown} from 'react-icons/fi';
 import {getCombinedLogoUrl} from '../../../utils/image';
 import {formatDistanceToNow} from 'date-fns';
 import {tr} from 'date-fns/locale';
@@ -91,7 +92,16 @@ const ChannelItem = ({channel, onClick}) => {
   );
 };
 
-const ChannelList = ({channels, isLoading, onChannelClick, emptyMessage}) => {
+const ChannelList = ({
+  channels, 
+  isLoading, 
+  onChannelClick, 
+  emptyMessage,
+  hasNextPage,
+  isFetchingNextPage,
+  onLoadMore,
+  totalCount,
+}) => {
   if (isLoading) {
     return (
       <Box textAlign="center" py="10">
@@ -112,6 +122,13 @@ const ChannelList = ({channels, isLoading, onChannelClick, emptyMessage}) => {
 
   return (
     <VStack spacing="3" align="stretch">
+      {/* Channel count info */}
+      <HStack justify="space-between" px="2" mb="2">
+        <Text fontSize="sm" color="gray.500">
+          {channels.length} / {totalCount || channels.length} kanal gösteriliyor
+        </Text>
+      </HStack>
+
       {channels.map((channel) => (
         <ChannelItem
           key={channel.id}
@@ -119,6 +136,32 @@ const ChannelList = ({channels, isLoading, onChannelClick, emptyMessage}) => {
           onClick={() => onChannelClick(channel)}
         />
       ))}
+
+      {/* Load More Button */}
+      {hasNextPage && (
+        <Box textAlign="center" pt="4">
+          <Button
+            onClick={onLoadMore}
+            isLoading={isFetchingNextPage}
+            loadingText="Yükleniyor..."
+            variant="outline"
+            colorScheme="blue"
+            size="md"
+            leftIcon={<Icon as={FiChevronDown} />}
+          >
+            Daha Fazla Yükle
+          </Button>
+        </Box>
+      )}
+
+      {/* All loaded message */}
+      {!hasNextPage && channels.length > 0 && totalCount > PAGE_SIZE && (
+        <Box textAlign="center" py="4">
+          <Text fontSize="sm" color="gray.400">
+            — Tüm kanallar yüklendi ({channels.length}) —
+          </Text>
+        </Box>
+      )}
     </VStack>
   );
 };
@@ -130,24 +173,71 @@ const SORT_OPTIONS = {
   NAME_DESC: 'name_desc',
 };
 
+const PAGE_SIZE = 50;
+
 const Channels = () => {
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState(SORT_OPTIONS.MOST_MESSAGES);
 
-  // Fetch all channels
-  const {data: allChannelsData, isLoading: isLoadingAll} = useQuery({
+  // Fetch all channels with pagination
+  const {
+    data: allChannelsPages,
+    isLoading: isLoadingAll,
+    fetchNextPage: fetchNextAllChannels,
+    hasNextPage: hasNextAllChannels,
+    isFetchingNextPage: isFetchingNextAllChannels,
+  } = useInfiniteQuery({
     queryKey: ['all-channels-messaging'],
-    queryFn: () => api.getAllChannels({limit: 1000}),
-    select: (res) => res.data?.results || [],
+    queryFn: async ({ pageParam = 1 }) => {
+      const res = await api.getAllChannels({ limit: PAGE_SIZE, page: pageParam });
+      return res.data;
+    },
+    getNextPageParam: (lastPage) => {
+      if (lastPage.page < lastPage.totalPages) {
+        return lastPage.page + 1;
+      }
+      return undefined;
+    },
+    initialPageParam: 1,
   });
 
-  // Fetch VIP channels
-  const {data: vipChannelsData, isLoading: isLoadingVip} = useQuery({
+  // Fetch VIP channels with pagination
+  const {
+    data: vipChannelsPages,
+    isLoading: isLoadingVip,
+    fetchNextPage: fetchNextVipChannels,
+    hasNextPage: hasNextVipChannels,
+    isFetchingNextPage: isFetchingNextVipChannels,
+  } = useInfiniteQuery({
     queryKey: ['vip-channels-messaging'],
-    queryFn: () => api.getVipChannels({limit: 1000}),
-    select: (res) => res.data?.results || [],
+    queryFn: async ({ pageParam = 1 }) => {
+      const res = await api.getVipChannels({ limit: PAGE_SIZE, page: pageParam });
+      return res.data;
+    },
+    getNextPageParam: (lastPage) => {
+      if (lastPage.page < lastPage.totalPages) {
+        return lastPage.page + 1;
+      }
+      return undefined;
+    },
+    initialPageParam: 1,
   });
+
+  // Flatten paginated data
+  const allChannelsData = React.useMemo(() => {
+    if (!allChannelsPages?.pages) return [];
+    return allChannelsPages.pages.flatMap(page => page.results || []);
+  }, [allChannelsPages]);
+
+  const vipChannelsData = React.useMemo(() => {
+    if (!vipChannelsPages?.pages) return [];
+    return vipChannelsPages.pages.flatMap(page => page.results || []);
+  }, [vipChannelsPages]);
+
+  // Get total counts
+  const totalAllChannels = allChannelsPages?.pages?.[0]?.totalResults || 0;
+  const totalVipChannels = vipChannelsPages?.pages?.[0]?.totalResults || 0;
 
   const handleChannelClick = (channel) => {
     navigate(`/dashboard/messaging/channels/${channel.id}`);
@@ -254,7 +344,7 @@ const Channels = () => {
             <Tab>
               <HStack spacing="2">
                 <Icon as={FiMessageCircle} />
-                <Text>Tümü ({allFiltered?.length || 0})</Text>
+                <Text>Tümü ({totalAllChannels || allFiltered?.length || 0})</Text>
               </HStack>
             </Tab>
             <Tab>
@@ -266,7 +356,7 @@ const Channels = () => {
             <Tab>
               <HStack spacing="2">
                 <Icon as={FiStar} />
-                <Text>VIP ({vipChannels?.length || 0})</Text>
+                <Text>VIP ({totalVipChannels || vipChannels?.length || 0})</Text>
               </HStack>
             </Tab>
           </TabList>
@@ -279,6 +369,10 @@ const Channels = () => {
                 isLoading={isLoadingAll}
                 onChannelClick={handleChannelClick}
                 emptyMessage="Kanal bulunamadı"
+                hasNextPage={hasNextAllChannels}
+                isFetchingNextPage={isFetchingNextAllChannels}
+                onLoadMore={fetchNextAllChannels}
+                totalCount={totalAllChannels}
               />
             </TabPanel>
 
@@ -289,6 +383,10 @@ const Channels = () => {
                 isLoading={isLoadingAll}
                 onChannelClick={handleChannelClick}
                 emptyMessage="Piyasa kanalı bulunamadı"
+                hasNextPage={hasNextAllChannels}
+                isFetchingNextPage={isFetchingNextAllChannels}
+                onLoadMore={fetchNextAllChannels}
+                totalCount={marketChannels?.length}
               />
             </TabPanel>
 
@@ -299,6 +397,10 @@ const Channels = () => {
                 isLoading={isLoadingVip}
                 onChannelClick={handleChannelClick}
                 emptyMessage="VIP kanal bulunamadı"
+                hasNextPage={hasNextVipChannels}
+                isFetchingNextPage={isFetchingNextVipChannels}
+                onLoadMore={fetchNextVipChannels}
+                totalCount={totalVipChannels}
               />
             </TabPanel>
           </TabPanels>
