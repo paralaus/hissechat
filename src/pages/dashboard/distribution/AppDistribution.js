@@ -65,6 +65,7 @@ const AppDistribution = () => {
   const [testers, setTesters] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedPlatform, setSelectedPlatform] = useState('all');
+  const [chunkSize, setChunkSize] = useState('500');
   const toast = useToast();
   
   // Upload modal state
@@ -79,7 +80,7 @@ const AppDistribution = () => {
   const fetchTesters = async () => {
     setLoading(true);
     try {
-      const response = await api.getTesters(selectedPlatform);
+      const response = await api.getTesters(selectedPlatform, parseInt(chunkSize, 10) || undefined);
       setTesters(response.data);
     } catch (error) {
       toast({
@@ -95,7 +96,7 @@ const AppDistribution = () => {
 
   useEffect(() => {
     fetchTesters();
-  }, [selectedPlatform]);
+  }, [selectedPlatform, chunkSize]);
 
   // Filter users by search term
   const filteredUsers = testers?.users?.filter(user => 
@@ -128,7 +129,7 @@ const AppDistribution = () => {
       return [firstName, lastName, u.email?.trim() || ''];
     });
     
-    const maxRows = 5805;
+    const maxRows = Math.max(1, parseInt(chunkSize, 10) || 5805);
     const totalRows = rows.length;
     const parts = Math.ceil(totalRows / maxRows);
     const dateStr = new Date().toISOString().split('T')[0];
@@ -193,7 +194,7 @@ const AppDistribution = () => {
       return [firstName, lastName, u.email.trim()];
     });
     
-    const maxRows = 5805;
+    const maxRows = Math.max(1, parseInt(chunkSize, 10) || 5805);
     const totalRows = rows.length;
     const parts = Math.ceil(totalRows / maxRows);
     const dateStr = new Date().toISOString().split('T')[0];
@@ -394,6 +395,18 @@ const AppDistribution = () => {
             <Heading size="md">Hızlı İşlemler</Heading>
           </CardHeader>
           <CardBody>
+            <HStack mb={4} spacing={4} align="center">
+              <FormControl maxW="260px">
+                <FormLabel>Dosya başına kayıt</FormLabel>
+                <Input
+                  type="number"
+                  min={1}
+                  value={chunkSize}
+                  onChange={(e) => setChunkSize(e.target.value)}
+                  placeholder="Örn: 500"
+                />
+              </FormControl>
+            </HStack>
             <SimpleGrid columns={{ base: 1, md: 3 }} spacing={4}>
               <Button
                 leftIcon={<FiUpload />}

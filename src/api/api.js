@@ -41,8 +41,8 @@ export const createUser = async body => {
 };
 
 // Get testers for Firebase App Distribution
-export const getTesters = async (platform = 'all') => {
-  return apiClient.get('/users/testers', { params: { platform } });
+export const getTesters = async (platform = 'all', chunkSize) => {
+  return apiClient.get('/users/testers', { params: { platform, chunkSize } });
 };
 
 // App Distribution
