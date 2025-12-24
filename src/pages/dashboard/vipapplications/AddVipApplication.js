@@ -206,7 +206,7 @@ const AddVipApplication = ({id}) => {
           </SimpleGrid>
 
           <FormControl isInvalid={!!errors.contentType}>
-            <FormLabel>9. İçerik Türü (Analiz, Sinyal vb.)</FormLabel>
+            <FormLabel>9. İçerik Türü (Analiz vb.)</FormLabel>
             <Input {...register('contentType')} defaultValue={data?.contentType}/>
             <FormErrorMessage>{errors.contentType?.message}</FormErrorMessage>
           </FormControl>

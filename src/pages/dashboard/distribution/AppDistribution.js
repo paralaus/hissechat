@@ -118,13 +118,15 @@ const AppDistribution = () => {
   const exportToCSV = () => {
     if (!testers?.users) return;
     
-    const headers = ['Email', 'Ad Soyad', 'Platform', 'Son Aktivite'];
-    const rows = testers.users.map(u => [
-      u.email,
-      u.fullname || '',
-      u.platform || 'Bilinmiyor',
-      u.lastActivity ? new Date(u.lastActivity).toLocaleDateString('tr-TR') : 'Bilinmiyor'
-    ]);
+    // TestFlight CSV format: First Name, Last Name, Email
+    const headers = ['First Name', 'Last Name', 'Email'];
+    const rows = testers.users.map(u => {
+      const fullname = u.fullname || '';
+      const nameParts = fullname.trim().split(' ');
+      const firstName = nameParts[0] || 'Tester';
+      const lastName = nameParts.slice(1).join(' ') || '-';
+      return [firstName, lastName, u.email?.trim() || ''];
+    });
     
     const csvContent = [
       headers.join(','),
@@ -139,7 +141,7 @@ const AppDistribution = () => {
     
     toast({
       title: 'Dışa Aktarıldı',
-      description: 'CSV dosyası indirildi',
+      description: 'CSV dosyası indirildi (TestFlight formatında)',
       status: 'success',
       duration: 2000,
     });
