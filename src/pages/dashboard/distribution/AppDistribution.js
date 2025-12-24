@@ -128,20 +128,31 @@ const AppDistribution = () => {
       return [firstName, lastName, u.email?.trim() || ''];
     });
     
-    const csvContent = [
-      headers.join(','),
-      ...rows.map(r => r.map(cell => `"${cell}"`).join(','))
-    ].join('\n');
+    const maxRows = 5805;
+    const totalRows = rows.length;
+    const parts = Math.ceil(totalRows / maxRows);
+    const dateStr = new Date().toISOString().split('T')[0];
+    for (let i = 0; i < parts; i++) {
+      const start = i * maxRows;
+      const end = Math.min(start + maxRows, totalRows);
+      const chunkRows = rows.slice(start, end);
+      const csvContent = [
+        headers.join(','),
+        ...chunkRows.map(r => r.map(cell => `"${cell}"`).join(','))
+      ].join('\n');
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = `testers_${selectedPlatform}_${dateStr}_part${i + 1}_of_${parts}.csv`;
+      link.click();
+    }
     
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
-    link.download = `testers_${selectedPlatform}_${new Date().toISOString().split('T')[0]}.csv`;
-    link.click();
-    
+    const description = parts > 1 
+      ? `${totalRows} kullanıcı ${parts} dosyaya bölünerek indirildi`
+      : `${totalRows} kullanıcı indirildi`;
     toast({
       title: 'Dışa Aktarıldı',
-      description: 'CSV dosyası indirildi (TestFlight formatında)',
+      description,
       status: 'success',
       duration: 2000,
     });
@@ -182,21 +193,27 @@ const AppDistribution = () => {
       return [firstName, lastName, u.email.trim()];
     });
     
-    const csvContent = [
-      headers.join(','),
-      ...rows.map(r => r.map(cell => `"${cell}"`).join(','))
-    ].join('\n');
-    
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
-    link.download = `testflight_testers_${new Date().toISOString().split('T')[0]}.csv`;
-    link.click();
-    
+    const maxRows = 5805;
+    const totalRows = rows.length;
+    const parts = Math.ceil(totalRows / maxRows);
+    const dateStr = new Date().toISOString().split('T')[0];
+    for (let i = 0; i < parts; i++) {
+      const start = i * maxRows;
+      const end = Math.min(start + maxRows, totalRows);
+      const chunkRows = rows.slice(start, end);
+      const csvContent = [
+        headers.join(','),
+        ...chunkRows.map(r => r.map(cell => `"${cell}"`).join(','))
+      ].join('\n');
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = `testflight_testers_${dateStr}_part${i + 1}_of_${parts}.csv`;
+      link.click();
+    }
     const description = invalidCount > 0 
-      ? `${iosUsers.length} iOS kullanıcısı dışa aktarıldı (${invalidCount} geçersiz email filtrelendi)`
-      : `${iosUsers.length} iOS kullanıcısı dışa aktarıldı`;
-    
+      ? `${iosUsers.length} iOS kullanıcısı ${parts} dosyaya bölünerek indirildi (${invalidCount} geçersiz email filtrelendi)`
+      : `${iosUsers.length} iOS kullanıcısı ${parts} dosyaya bölünerek indirildi`;
     toast({
       title: 'TestFlight CSV İndirildi',
       description,
