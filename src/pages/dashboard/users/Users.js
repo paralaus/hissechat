@@ -107,6 +107,31 @@ const Users = () => {
               return <Badge colorScheme={colorScheme}>{label}</Badge>;
             },
           },
+          {
+            header: '',
+            accessorKey: 'actions',
+            cell: ({row}) => {
+              const user = row.original;
+              const isPrivileged = user.isPrivileged;
+              const userId = user.id || user._id;
+              
+              return (
+                <Tooltip label={isPrivileged ? "Ayrıcalığı Kaldır" : "Ayrıcalıklı Üye Yap"}>
+                  <IconButton
+                    icon={<FiStar fill={isPrivileged ? "orange" : "none"} color={isPrivileged ? "orange" : "gray"} />}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      togglePrivilegeMutation.mutate({ userId, isPrivileged: !isPrivileged });
+                    }}
+                    isLoading={togglePrivilegeMutation.isPending && togglePrivilegeMutation.variables?.userId === userId}
+                    variant="ghost"
+                    size="sm"
+                    aria-label="Toggle Privilege"
+                  />
+                </Tooltip>
+              );
+            },
+          },
         ]}
         fetchData={fetchData}
       />

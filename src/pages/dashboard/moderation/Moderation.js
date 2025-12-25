@@ -51,14 +51,22 @@ import {
   FiVideo,
   FiMusic,
   FiFile,
+  FiUserX,
 } from 'react-icons/fi';
 import {getCombinedLogoUrl} from '../../../utils/image';
 import {format} from 'date-fns';
 import {tr} from 'date-fns/locale';
 
-const MessageCard = ({message, onBlock, onUnblock, isBlocking}) => {
+const MessageCard = ({message, onBlock, onUnblock, onBanUser, onUnbanUser, isBlocking, isBanning, isUnbanning}) => {
   const {isOpen, onOpen, onClose} = useDisclosure();
+  const banModal = useDisclosure();
   const [blockReason, setBlockReason] = useState('');
+  const [banDuration, setBanDuration] = useState('24h'); // 1h, 12h, 24h, 3d, 1w, perm
+
+  const handleBan = () => {
+    onBanUser(message.user?.id || message.user?._id, banDuration);
+    banModal.onClose();
+  };
 
   const handleBlock = () => {
     onBlock(message.id || message._id, blockReason);
@@ -192,6 +200,17 @@ const MessageCard = ({message, onBlock, onUnblock, isBlocking}) => {
 
             {/* Actions */}
             <HStack justify="flex-end" spacing={2}>
+              <Button
+                size="sm"
+                colorScheme="purple"
+                variant="outline"
+                leftIcon={<FiUserX />}
+                onClick={banModal.onOpen}
+                isLoading={isBanning}
+              >
+                Kullanıcıyı Banla
+              </Button>
+              
               {message.isBlocked ? (
                 <Button
                   size="sm"
@@ -246,6 +265,45 @@ const MessageCard = ({message, onBlock, onUnblock, isBlocking}) => {
             </Button>
             <Button colorScheme="red" onClick={handleBlock}>
               Engelle
+            </Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
+
+      {/* Ban User Modal */}
+      <Modal isOpen={banModal.isOpen} onClose={banModal.onClose}>
+        <ModalOverlay />
+        <ModalContent>
+          <ModalHeader>Kullanıcıyı Banla</ModalHeader>
+          <ModalCloseButton />
+          <ModalBody>
+            <Text mb={4}>
+              <strong>{message.user?.fullname}</strong> adlı kullanıcıyı banlamak üzeresiniz.
+            </Text>
+            <FormControl>
+              <FormLabel>Ban Süresi</FormLabel>
+              <Select value={banDuration} onChange={(e) => setBanDuration(e.target.value)}>
+                <option value="1h">1 Saat</option>
+                <option value="12h">12 Saat</option>
+                <option value="24h">1 Gün</option>
+                <option value="3d">3 Gün</option>
+                <option value="1w">1 Hafta</option>
+                <option value="perm">Süresiz (Permanent)</option>
+              </Select>
+            </FormControl>
+            <Alert status="warning" mt={4} borderRadius="md">
+              <AlertIcon />
+              <Text fontSize="sm">
+                Kullanıcı bu süre boyunca uygulama özelliklerini kullanamayacaktır.
+              </Text>
+            </Alert>
+          </ModalBody>
+          <ModalFooter>
+            <Button variant="ghost" mr={3} onClick={banModal.onClose}>
+              İptal
+            </Button>
+            <Button colorScheme="purple" onClick={handleBan}>
+              Banla
             </Button>
           </ModalFooter>
         </ModalContent>
@@ -366,6 +424,51 @@ const Moderation = () => {
     unblockMutation.mutate(messageId);
   };
 
+  const handleBanUser = (userId, duration) => {
+    let banExpiresAt = null;
+    const now = new Date();
+    
+    switch (duration) {
+      case '1h': banExpiresAt = add(now, {hours: 1}); break;
+      case '12h': banExpiresAt = add(now, {hours: 12}); break;
+      case '24h': banExpiresAt = add(now, {hours: 24}); break;
+      case '3d': banExpiresAt = add(now, {days: 3}); break;
+      case '1w': banExpiresAt = add(now, {weeks: 1}); break;
+      case 'perm': banExpiresAt = null; break;
+      default: banExpiresAt = add(now, {hours: 24});
+    }
+
+    banUserMutation.mutate({userId, banExpiresAt});
+  };
+
+  // Unban user mutation
+  const unbanUserMutation = useMutation({
+    mutationFn: (userId) => api.manageUser(userId, {
+      isBanned: false,
+      banExpiresAt: null
+    }),
+    onSuccess: () => {
+      toast({
+        title: 'Kullanıcı banı kaldırıldı',
+        status: 'success',
+        duration: 2000,
+      });
+      queryClient.invalidateQueries(['moderation-messages']);
+    },
+    onError: (error) => {
+      toast({
+        title: 'Hata',
+        description: error.response?.data?.message || 'Ban kaldırılamadı',
+        status: 'error',
+        duration: 3000,
+      });
+    },
+  });
+
+  const handleUnbanUser = (userId) => {
+    unbanUserMutation.mutate(userId);
+  };
+
   // Stats
   const blockedCount = messages.filter(m => m.isBlocked).length;
   const flaggedCount = messages.filter(m => m.isFlagged && !m.isBlocked).length;
@@ -484,7 +587,11 @@ const Moderation = () => {
                 message={message}
                 onBlock={handleBlock}
                 onUnblock={handleUnblock}
+                onBanUser={handleBanUser}
+                onUnbanUser={handleUnbanUser}
                 isBlocking={blockingMessageId === (message.id || message._id)}
+                isBanning={banUserMutation.isPending}
+                isUnbanning={unbanUserMutation.isPending}
               />
             ))}
           </SimpleGrid>
