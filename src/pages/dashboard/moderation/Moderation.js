@@ -425,6 +425,30 @@ const Moderation = () => {
     unblockMutation.mutate(messageId);
   };
 
+  const banUserMutation = useMutation({
+    mutationFn: ({userId, banExpiresAt}) => api.manageUser(userId, {
+      isBanned: true,
+      banExpiresAt: banExpiresAt
+    }),
+    onSuccess: () => {
+      toast({
+        title: 'Kullanıcı banlandı',
+        status: 'success',
+        duration: 2000,
+      });
+      queryClient.invalidateQueries(['moderation-messages']);
+      banModal.onClose();
+    },
+    onError: (error) => {
+      toast({
+        title: 'Hata',
+        description: error.response?.data?.message || 'Kullanıcı banlanamadı',
+        status: 'error',
+        duration: 3000,
+      });
+    },
+  });
+
   const handleBanUser = (userId, duration) => {
     let banExpiresAt = null;
     const now = new Date();

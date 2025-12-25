@@ -40,6 +40,28 @@ const fetchData = async options => {
 const Users = () => {
   const navigate = useNavigate();
   const [filterParams, setFilterParams] = useState({});
+  const queryClient = useQueryClient();
+  const toast = useToast();
+
+  const togglePrivilegeMutation = useMutation({
+    mutationFn: ({userId, isPrivileged}) => api.manageUser(userId, {isPrivileged}),
+    onSuccess: () => {
+      queryClient.invalidateQueries(['data']);
+      toast({
+        title: 'Kullanıcı güncellendi',
+        status: 'success',
+        duration: 2000,
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: 'Hata',
+        description: error.response?.data?.message || 'İşlem başarısız',
+        status: 'error',
+        duration: 3000,
+      });
+    },
+  });
 
   const onRow = async item => {
     navigate(routes.editUser.getPath(item.id));
