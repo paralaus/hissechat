@@ -32,6 +32,7 @@ import PocketBase from 'pocketbase';
 import {POCKETBASE_URL} from '../../../config/pocketbase';
 
 const pb = new PocketBase(POCKETBASE_URL);
+pb.autoCancellation(false);
 
 const fetchData = async options => {
   // 1. Fetch unverified users from PocketBase
