@@ -1,10 +1,12 @@
-import {Text, Badge, HStack, Button, Box} from '@chakra-ui/react';
+import {Text, Badge, HStack, Button, Box, IconButton, Tooltip, useToast} from '@chakra-ui/react';
 import {DataTable, Page} from '../../../components';
 import {useNavigate} from 'react-router-dom';
 import {api} from '../../../api';
 import {RoleLabel} from '../../../config';
 import {routes} from '../../../config/routes';
 import {useState} from 'react';
+import {useMutation, useQueryClient} from '@tanstack/react-query';
+import {FiStar} from 'react-icons/fi';
 
 const fetchData = async options => {
   // Backend doesn't support isPrivileged filter, so we filter client-side
