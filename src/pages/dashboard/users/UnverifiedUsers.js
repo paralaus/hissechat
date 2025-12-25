@@ -28,71 +28,66 @@ import {routes} from '../../../config/routes';
 import {useState} from 'react';
 import {useMutation, useQuery, useQueryClient} from '@tanstack/react-query';
 import {FiCheck, FiMail} from 'react-icons/fi';
-import PocketBase from 'pocketbase';
-import {POCKETBASE_URL} from '../../../config/pocketbase';
-
-const pb = new PocketBase(POCKETBASE_URL);
-pb.autoCancellation(false);
 
 const fetchData = async options => {
-  // 1. Fetch unverified users from PocketBase
-  let pbUsers = [];
-  try {
-    // Attempt to fetch unverified users from PocketBase
-    // Note: This requires the 'users' collection to be listable (API rules)
-    // or we need to be authenticated as an admin.
-    const pbResponse = await pb.collection('users').getList(1, 100, {
-      filter: 'verified = false',
-      sort: '-created',
-    });
-    pbUsers = pbResponse.items;
-  } catch (error) {
-    console.error('PocketBase fetch error:', error);
-    // If PB fetch fails, we might want to throw or return empty, but let's try to handle gracefully
-    // by returning a specific error indicator or fallback to MongoDB filtering if possible,
-    // though the user specifically asked for PB data.
+  // Check if this is a "fetch all" call (for bulk actions) or a pagination call
+  const isBulkFetch = !options.page && !options.limit;
+  
+  if (isBulkFetch) {
+    // Fetch a large number to get "all" unverified users for the bulk button
+    try {
+      const response = await api.getUsers({ isVerified: false, limit: 1000 });
+      return {
+        results: [], 
+        allUnverified: response.data.results || [],
+        totalResults: response.data.totalResults
+      };
+    } catch (error) {
+      console.error('Fetch all error:', error);
+      return { results: [], allUnverified: [], totalResults: 0 };
+    }
   }
 
-  // 2. Fetch all users from MongoDB to match IDs
-  // We need MongoDB IDs to update the 'isVerified' status in the backend/MongoDB
-  const mongoResponse = await api.getUsers({ limit: 1000 });
-  const mongoUsers = mongoResponse.data.results || [];
-
-  // 3. Merge data
-  // We want to show users that are unverified in PocketBase
-  const mergedUsers = pbUsers.map(pbUser => {
-    const mongoUser = mongoUsers.find(u => u.email === pbUser.email);
-    return {
-      ...mongoUser, // Use MongoDB user data as base if exists (for role, etc.)
-      // Fallback to PB data if not in Mongo (though user said they should be there)
-      id: mongoUser?.id || mongoUser?._id, // Mongo ID
-      pbId: pbUser.id, // PocketBase ID
-      email: pbUser.email,
-      fullname: mongoUser?.fullname || pbUser.name || pbUser.username || 'İsimsiz',
-      isVerified: mongoUser?.isVerified || false, // Mongo status
-      pbVerified: pbUser.verified, // PB status (should be false)
-      role: mongoUser?.role || 'user',
-      mongoUserExists: !!mongoUser,
-    };
-  });
-
-  // Filter out any that might have been verified in the meantime or if PB list included verified (unlikely with filter)
-  const finalUsers = mergedUsers;
-
-  // Manual pagination for the DataTable (client-side of the fetched batch)
+  // Regular pagination fetch for the DataTable
   const page = options.page || 1;
   const limit = options.limit || 10;
-  const startIndex = (page - 1) * limit;
-  const endIndex = startIndex + limit;
   
-  return {
-    results: finalUsers.slice(startIndex, endIndex),
-    page: page,
-    limit: limit,
-    totalPages: Math.ceil(finalUsers.length / limit),
-    totalResults: finalUsers.length,
-    allUnverified: finalUsers, // Return all for bulk action
-  };
+  try {
+    const response = await api.getUsers({ 
+      isVerified: false, 
+      page, 
+      limit,
+      sortBy: 'createdAt:desc'
+    });
+    
+    const mongoUsers = response.data.results || [];
+    
+    // Map to the format expected by the columns
+    const formattedUsers = mongoUsers.map(u => ({
+      ...u,
+      mongoUserExists: true,
+      pbVerified: u.isVerified, // Should be false
+    }));
+
+    return {
+      results: formattedUsers,
+      page: response.data.page,
+      limit: response.data.limit,
+      totalPages: response.data.totalPages,
+      totalResults: response.data.totalResults,
+      allUnverified: [] // Not needed here
+    };
+  } catch (error) {
+    console.error('Fetch error:', error);
+    return {
+      results: [],
+      page: 1,
+      limit: 10,
+      totalPages: 0,
+      totalResults: 0,
+      allUnverified: []
+    };
+  }
 };
 
 const UnverifiedUsers = () => {
