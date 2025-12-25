@@ -34,9 +34,8 @@ const fetchData = async options => {
   const response = await api.getUsers({ ...options, limit: 1000, page: 1 });
   
   const allUsers = response.data.results || [];
-  // Assuming 'verified' field exists. If not, we might need to check how PocketBase stores it.
-  // Usually it is 'verified' (boolean).
-  const unverifiedUsers = allUsers.filter(u => !u.verified);
+  // Assuming 'isVerified' field exists based on user request.
+  const unverifiedUsers = allUsers.filter(u => !u.isVerified);
   
   // Manual pagination
   const page = options.page || 1;
@@ -74,7 +73,7 @@ const UnverifiedUsers = () => {
   });
 
   const verifyUserMutation = useMutation({
-    mutationFn: ({userId}) => api.updateUser(userId, {verified: true}),
+    mutationFn: ({userId}) => api.updateUser(userId, {verified: true, isVerified: true}),
     onSuccess: () => {
       queryClient.invalidateQueries(['unverified-users']);
       toast({
@@ -102,7 +101,7 @@ const UnverifiedUsers = () => {
 
     for (let i = 0; i < total; i++) {
       try {
-        await api.updateUser(users[i].id || users[i]._id, {verified: true});
+        await api.updateUser(users[i].id || users[i]._id, {verified: true, isVerified: true});
         // Simulate email sending or assume backend handles it if triggered
         // If we had an email endpoint: await api.sendEmail(users[i].email, emailBody);
         successCount++;
@@ -168,7 +167,7 @@ const UnverifiedUsers = () => {
           },
           {
             header: 'Durum',
-            accessorKey: 'verified',
+            accessorKey: 'isVerified',
             cell: () => <Badge colorScheme="red">Doğrulanmamış</Badge>
           },
           {
