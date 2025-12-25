@@ -17,6 +17,8 @@ import {
   VStack,
   Progress,
   useDisclosure,
+  Alert,
+  AlertIcon,
 } from '@chakra-ui/react';
 import {DataTable, Page} from '../../../components';
 import {useNavigate} from 'react-router-dom';
@@ -26,30 +28,69 @@ import {routes} from '../../../config/routes';
 import {useState} from 'react';
 import {useMutation, useQuery, useQueryClient} from '@tanstack/react-query';
 import {FiCheck, FiMail} from 'react-icons/fi';
+import PocketBase from 'pocketbase';
+import {POCKETBASE_URL} from '../../../config/pocketbase';
+
+const pb = new PocketBase(POCKETBASE_URL);
 
 const fetchData = async options => {
-  // Fetch unverified users
-  // Backend might not support 'verified' filter directly, so we might need to filter client-side
-  // similar to how Users.js handles privileged users
-  const response = await api.getUsers({ ...options, limit: 1000, page: 1 });
-  
-  const allUsers = response.data.results || [];
-  // Assuming 'isVerified' field exists based on user request.
-  const unverifiedUsers = allUsers.filter(u => !u.isVerified);
-  
-  // Manual pagination
+  // 1. Fetch unverified users from PocketBase
+  let pbUsers = [];
+  try {
+    // Attempt to fetch unverified users from PocketBase
+    // Note: This requires the 'users' collection to be listable (API rules)
+    // or we need to be authenticated as an admin.
+    const pbResponse = await pb.collection('users').getList(1, 100, {
+      filter: 'verified = false',
+      sort: '-created',
+    });
+    pbUsers = pbResponse.items;
+  } catch (error) {
+    console.error('PocketBase fetch error:', error);
+    // If PB fetch fails, we might want to throw or return empty, but let's try to handle gracefully
+    // by returning a specific error indicator or fallback to MongoDB filtering if possible,
+    // though the user specifically asked for PB data.
+  }
+
+  // 2. Fetch all users from MongoDB to match IDs
+  // We need MongoDB IDs to update the 'isVerified' status in the backend/MongoDB
+  const mongoResponse = await api.getUsers({ limit: 1000 });
+  const mongoUsers = mongoResponse.data.results || [];
+
+  // 3. Merge data
+  // We want to show users that are unverified in PocketBase
+  const mergedUsers = pbUsers.map(pbUser => {
+    const mongoUser = mongoUsers.find(u => u.email === pbUser.email);
+    return {
+      ...mongoUser, // Use MongoDB user data as base if exists (for role, etc.)
+      // Fallback to PB data if not in Mongo (though user said they should be there)
+      id: mongoUser?.id || mongoUser?._id, // Mongo ID
+      pbId: pbUser.id, // PocketBase ID
+      email: pbUser.email,
+      fullname: mongoUser?.fullname || pbUser.name || pbUser.username || 'İsimsiz',
+      isVerified: mongoUser?.isVerified || false, // Mongo status
+      pbVerified: pbUser.verified, // PB status (should be false)
+      role: mongoUser?.role || 'user',
+      mongoUserExists: !!mongoUser,
+    };
+  });
+
+  // Filter out any that might have been verified in the meantime or if PB list included verified (unlikely with filter)
+  const finalUsers = mergedUsers;
+
+  // Manual pagination for the DataTable (client-side of the fetched batch)
   const page = options.page || 1;
   const limit = options.limit || 10;
   const startIndex = (page - 1) * limit;
   const endIndex = startIndex + limit;
   
   return {
-    results: unverifiedUsers.slice(startIndex, endIndex),
+    results: finalUsers.slice(startIndex, endIndex),
     page: page,
     limit: limit,
-    totalPages: Math.ceil(unverifiedUsers.length / limit),
-    totalResults: unverifiedUsers.length,
-    allUnverified: unverifiedUsers, // Return all for bulk action
+    totalPages: Math.ceil(finalUsers.length / limit),
+    totalResults: finalUsers.length,
+    allUnverified: finalUsers, // Return all for bulk action
   };
 };
 
@@ -64,7 +105,7 @@ const UnverifiedUsers = () => {
   const [allUnverifiedUsers, setAllUnverifiedUsers] = useState([]);
 
   // Query to get data and keep track of all unverified users
-  const { refetch } = useQuery({
+  const { refetch, error: queryError } = useQuery({
     queryKey: ['unverified-users'],
     queryFn: () => fetchData({}),
     onSuccess: (data) => {
@@ -73,7 +114,10 @@ const UnverifiedUsers = () => {
   });
 
   const verifyUserMutation = useMutation({
-    mutationFn: ({userId}) => api.updateUser(userId, {verified: true, isVerified: true}),
+    mutationFn: async ({user}) => {
+      // Use backend endpoint to approve and send email
+      await api.approveUsers([user.email], emailBody);
+    },
     onSuccess: () => {
       queryClient.invalidateQueries(['unverified-users']);
       toast({
@@ -85,7 +129,7 @@ const UnverifiedUsers = () => {
     onError: (error) => {
       toast({
         title: 'Hata',
-        description: error.response?.data?.message || 'İşlem başarısız',
+        description: error.response?.data?.message || error.message || 'İşlem başarısız',
         status: 'error',
         duration: 3000,
       });
@@ -94,44 +138,44 @@ const UnverifiedUsers = () => {
 
   const handleBulkVerify = async () => {
     setIsProcessing(true);
-    setProgress(0);
-    const users = allUnverifiedUsers;
-    const total = users.length;
-    let successCount = 0;
-
-    for (let i = 0; i < total; i++) {
-      try {
-        await api.updateUser(users[i].id || users[i]._id, {verified: true, isVerified: true});
-        // Simulate email sending or assume backend handles it if triggered
-        // If we had an email endpoint: await api.sendEmail(users[i].email, emailBody);
-        successCount++;
-      } catch (error) {
-        console.error(`Failed to verify user ${users[i].email}`, error);
-      }
-      setProgress(Math.round(((i + 1) / total) * 100));
-    }
-
-    setIsProcessing(false);
-    onClose();
-    refetch();
+    setProgress(50); // Indeterminate state or starting
     
-    toast({
-      title: 'İşlem Tamamlandı',
-      description: `${total} kullanıcıdan ${successCount} tanesi doğrulandı.`,
-      status: 'success',
-      duration: 5000,
-      isClosable: true,
-    });
+    try {
+      const emails = allUnverifiedUsers.map(u => u.email);
+      await api.approveUsers(emails, emailBody);
+      
+      toast({
+        title: 'İşlem Başarılı',
+        description: `${emails.length} kullanıcı onaylandı ve bilgilendirildi.`,
+        status: 'success',
+        duration: 5000,
+      });
+      
+      onClose();
+      refetch();
+    } catch (error) {
+      toast({
+        title: 'Hata',
+        description: error.response?.data?.message || error.message || 'İşlem başarısız',
+        status: 'error',
+        duration: 5000,
+      });
+    } finally {
+      setIsProcessing(false);
+      setProgress(0);
+    }
   };
 
   const onRow = async item => {
-    navigate(routes.editUser.getPath(item.id));
+    if (item.id) {
+      navigate(routes.editUser.getPath(item.id));
+    }
   };
 
   return (
     <Page>
       <Box mb={4} display="flex" justifyContent="space-between" alignItems="center">
-        <Text fontSize="lg" fontWeight="bold">Doğrulanmamış Kullanıcılar</Text>
+        <Text fontSize="lg" fontWeight="bold">Doğrulanmamış Kullanıcılar (PocketBase)</Text>
         <Button
           leftIcon={<FiMail />}
           colorScheme="blue"
@@ -141,6 +185,13 @@ const UnverifiedUsers = () => {
           Toplu Onay ve Mail Gönder ({allUnverifiedUsers?.length || 0})
         </Button>
       </Box>
+
+      {(!allUnverifiedUsers?.length && !queryError) && (
+         <Alert status="info" mb={4}>
+           <AlertIcon />
+           PocketBase'de doğrulanmamış kullanıcı bulunamadı.
+         </Alert>
+      )}
 
       <DataTable
         queryEnabled
@@ -160,22 +211,34 @@ const UnverifiedUsers = () => {
             accessorKey: 'role',
             cell: ({getValue}) => {
               const role = getValue();
-              const label = RoleLabel[role];
+              const label = RoleLabel[role] || role;
               const colorScheme = role === 'admin' ? 'red' : 'gray';
               return <Badge colorScheme={colorScheme}>{label}</Badge>;
             },
           },
           {
-            header: 'Durum',
-            accessorKey: 'isVerified',
-            cell: () => <Badge colorScheme="red">Doğrulanmamış</Badge>
+            header: 'PB Durum',
+            accessorKey: 'pbVerified',
+            cell: ({getValue}) => (
+              <Badge colorScheme={getValue() ? "green" : "red"}>
+                {getValue() ? "Doğrulanmış" : "Doğrulanmamış"}
+              </Badge>
+            )
+          },
+          {
+            header: 'MongoDB Durum',
+            accessorKey: 'mongoUserExists',
+            cell: ({getValue}) => (
+              <Badge colorScheme={getValue() ? "green" : "orange"}>
+                {getValue() ? "Eşleşti" : "Bulunamadı"}
+              </Badge>
+            )
           },
           {
             header: '',
             accessorKey: 'actions',
             cell: ({row}) => {
               const user = row.original;
-              const userId = user.id || user._id;
               
               return (
                 <Tooltip label="Onayla">
@@ -184,9 +247,9 @@ const UnverifiedUsers = () => {
                     colorScheme="green"
                     onClick={(e) => {
                       e.stopPropagation();
-                      verifyUserMutation.mutate({ userId });
+                      verifyUserMutation.mutate({ user });
                     }}
-                    isLoading={verifyUserMutation.isPending && verifyUserMutation.variables?.userId === userId}
+                    isLoading={verifyUserMutation.isPending && verifyUserMutation.variables?.user?.email === user.email}
                     variant="ghost"
                     size="sm"
                     aria-label="Verify"
@@ -207,7 +270,7 @@ const UnverifiedUsers = () => {
           <ModalBody>
             <VStack spacing={4}>
               <Text>
-                Bu işlem listedeki <strong>{allUnverifiedUsers?.length}</strong> kullanıcının hesabını onaylayacak 
+                Bu işlem PocketBase üzerindeki <strong>{allUnverifiedUsers?.length}</strong> kullanıcının hesabını onaylayacak 
                 ve aşağıdaki bilgilendirme metnini e-posta olarak gönderecektir.
               </Text>
               

@@ -239,6 +239,10 @@ export const getStatistics = async () => {
   return apiClient.get(`/admin/statistics`);
 };
 
+export const approveUsers = async (emails, message) => {
+  return apiClient.post('/admin/approve-users', { emails, message });
+};
+
 export const getReports = async params => {
   return apiClient.get('/reports', {params});
 };
