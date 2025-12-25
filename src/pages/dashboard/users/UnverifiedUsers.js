@@ -33,37 +33,37 @@ const fetchData = async options => {
   // Check if this is a "fetch all" call (for bulk actions) or a pagination call
   const isBulkFetch = !options.page && !options.limit;
   
-  if (isBulkFetch) {
-    // Fetch a large number to get "all" unverified users for the bulk button
-    try {
-      const response = await api.getUsers({ isVerified: false, limit: 1000 });
-      return {
-        results: [], 
-        allUnverified: response.data.results || [],
-        totalResults: response.data.totalResults
-      };
-    } catch (error) {
-      console.error('Fetch all error:', error);
-      return { results: [], allUnverified: [], totalResults: 0 };
-    }
-  }
-
-  // Regular pagination fetch for the DataTable
-  const page = options.page || 1;
-  const limit = options.limit || 10;
-  
+  // Backend "isVerified" filtresini desteklemediği için tüm kullanıcıları çekip client-side filtreleme yapıyoruz
   try {
+    // Toplu işlem için veya normal listeleme için önce veriyi çekelim
+    // Not: Bu işlem limiti 1000 kullanıcı ile sınırlıdır.
     const response = await api.getUsers({ 
-      isVerified: false, 
-      page, 
-      limit,
+      limit: 1000,
       sortBy: 'createdAt:desc'
     });
     
-    const mongoUsers = response.data.results || [];
+    const allUsers = response.data.results || [];
+    // isVerified false olanları filtrele
+    const unverifiedUsers = allUsers.filter(u => !u.isVerified);
+    
+    if (isBulkFetch) {
+      return {
+        results: [], 
+        allUnverified: unverifiedUsers,
+        totalResults: unverifiedUsers.length
+      };
+    }
+
+    // Regular pagination fetch for the DataTable (Client-side pagination)
+    const page = options.page || 1;
+    const limit = options.limit || 10;
+    const startIndex = (page - 1) * limit;
+    const endIndex = startIndex + limit;
+    
+    const paginatedUsers = unverifiedUsers.slice(startIndex, endIndex);
     
     // Map to the format expected by the columns
-    const formattedUsers = mongoUsers.map(u => ({
+    const formattedUsers = paginatedUsers.map(u => ({
       ...u,
       mongoUserExists: true,
       pbVerified: u.isVerified, // Should be false
@@ -71,10 +71,10 @@ const fetchData = async options => {
 
     return {
       results: formattedUsers,
-      page: response.data.page,
-      limit: response.data.limit,
-      totalPages: response.data.totalPages,
-      totalResults: response.data.totalResults,
+      page: page,
+      limit: limit,
+      totalPages: Math.ceil(unverifiedUsers.length / limit),
+      totalResults: unverifiedUsers.length,
       allUnverified: [] // Not needed here
     };
   } catch (error) {
