@@ -11,6 +11,9 @@ export const routes = {
   users: {
     path: '/dashboard/users',
   },
+  unverifiedUsers: {
+    path: '/dashboard/users/unverified',
+  },
   createUser: {
     path: '/dashboard/users/create',
   },

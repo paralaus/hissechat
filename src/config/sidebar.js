@@ -35,6 +35,12 @@ export const sidebarRoutes = [
         exact: true,
       },
       {
+        name: 'Doğrulanmamış Üyeler',
+        path: routes.unverifiedUsers.path,
+        icon: GoListUnordered,
+        exact: true,
+      },
+      {
         name: 'Kullanıcı Ekle',
         path: routes.createUser.path,
         icon: AiOutlineUserAdd,
