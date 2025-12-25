@@ -437,7 +437,6 @@ const Moderation = () => {
         duration: 2000,
       });
       queryClient.invalidateQueries(['moderation-messages']);
-      banModal.onClose();
     },
     onError: (error) => {
       toast({
