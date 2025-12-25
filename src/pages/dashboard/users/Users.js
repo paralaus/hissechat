@@ -1,9 +1,10 @@
-import {Text} from '@chakra-ui/react';
+import {Text, Badge, HStack, Button, Box} from '@chakra-ui/react';
 import {DataTable, Page} from '../../../components';
 import {useNavigate} from 'react-router-dom';
 import {api} from '../../../api';
 import {RoleLabel} from '../../../config';
 import {routes} from '../../../config/routes';
+import {useState} from 'react';
 
 const fetchData = async options => {
   const response = await api.getUsers(options);
@@ -12,17 +13,76 @@ const fetchData = async options => {
 
 const Users = () => {
   const navigate = useNavigate();
+  const [filterParams, setFilterParams] = useState({});
 
   const onRow = async item => {
     navigate(routes.editUser.getPath(item.id));
   };
 
+  const handleFilter = (type) => {
+    switch (type) {
+      case 'admin':
+        setFilterParams({ role: 'admin' });
+        break;
+      case 'privileged':
+        setFilterParams({ isPrivileged: true });
+        break;
+      case 'user':
+        setFilterParams({ role: 'user' });
+        break;
+      default:
+        setFilterParams({});
+    }
+  };
+
+  const getActiveFilter = () => {
+    if (filterParams.role === 'admin') return 'admin';
+    if (filterParams.isPrivileged) return 'privileged';
+    if (filterParams.role === 'user') return 'user';
+    return 'all';
+  };
+
+  const activeFilter = getActiveFilter();
+
   return (
     <Page>
+      <Box mb={4}>
+        <HStack spacing={2}>
+          <Button
+            size="sm"
+            colorScheme={activeFilter === 'all' ? 'blue' : 'gray'}
+            onClick={() => handleFilter('all')}
+          >
+            Tümü
+          </Button>
+          <Button
+            size="sm"
+            colorScheme={activeFilter === 'admin' ? 'blue' : 'gray'}
+            onClick={() => handleFilter('admin')}
+          >
+            Yöneticiler
+          </Button>
+          <Button
+            size="sm"
+            colorScheme={activeFilter === 'privileged' ? 'blue' : 'gray'}
+            onClick={() => handleFilter('privileged')}
+          >
+            Personel
+          </Button>
+          <Button
+            size="sm"
+            colorScheme={activeFilter === 'user' ? 'blue' : 'gray'}
+            onClick={() => handleFilter('user')}
+          >
+            Kullanıcılar
+          </Button>
+        </HStack>
+      </Box>
       <DataTable
         queryEnabled
         editVisible
         onRow={onRow}
+        filters={filterParams}
         columns={[
           {
             header: 'Ad Soyad',
@@ -35,9 +95,16 @@ const Users = () => {
           {
             header: 'Rol',
             accessorKey: 'role',
-            cell: ({getValue}) => {
-              const data = RoleLabel[getValue()];
-              return <Text>{data}</Text>;
+            cell: ({getValue, row}) => {
+              const role = getValue();
+              const isPrivileged = row.original.isPrivileged;
+              const label = RoleLabel[role];
+              
+              let colorScheme = 'gray';
+              if (role === 'admin') colorScheme = 'red';
+              else if (isPrivileged) colorScheme = 'orange';
+              
+              return <Badge colorScheme={colorScheme}>{label}</Badge>;
             },
           },
         ]}

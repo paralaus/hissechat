@@ -52,6 +52,7 @@ const DataTable = ({
   queryEnabled = false,
   shadow = true,
   emptyMessage = 'Kayıt bulunamadı',
+  filters = {},
 }) => {
   const { value, setValue, debouncedValue } = useDebouncedValue('');
   const [sortBy, setSortBy] = useState(defaultSortBy);
@@ -73,6 +74,7 @@ const DataTable = ({
       pagination,
       ...(queryEnabled ? [debouncedValue] : []),
       sortBy,
+      filters,
     ],
     queryFn: () =>
       fetchData({
@@ -80,6 +82,7 @@ const DataTable = ({
         limit: pagination.pageSize,
         sortBy,
         ...(queryEnabled ? { query: debouncedValue } : {}),
+        ...filters,
       }),
   });
 
