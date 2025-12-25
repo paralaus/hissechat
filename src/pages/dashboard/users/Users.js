@@ -44,7 +44,7 @@ const Users = () => {
   const toast = useToast();
 
   const togglePrivilegeMutation = useMutation({
-    mutationFn: ({userId, isPrivileged}) => api.manageUser(userId, {isPrivileged}),
+    mutationFn: ({userId, isPrivileged}) => api.updateUser(userId, {isPrivileged}),
     onSuccess: () => {
       queryClient.invalidateQueries(['data']);
       toast({
