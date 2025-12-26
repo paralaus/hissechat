@@ -98,6 +98,13 @@ const ForwardMessageModal = ({ isOpen, onClose, messageToForward }) => {
         page: pageParam,
         // search: searchQuery // Add if API supports it
       };
+      
+      // If we have a search query, let's try to search in all channels endpoint if supported
+      // Or we can rely on client side filtering as we do below
+      if (searchQuery) {
+          params.search = searchQuery;
+      }
+
       const res = await api.getAllChannels(params);
       return res.data;
     },
@@ -110,7 +117,7 @@ const ForwardMessageModal = ({ isOpen, onClose, messageToForward }) => {
     enabled: isOpen, // Only fetch when modal is open
   });
 
-  const channels = data?.pages.flatMap(page => page.channels || []) || [];
+  const channels = data?.pages.flatMap(page => page.channels || page.results || []) || [];
   
   // Filter client-side if API search is not available/reliable for this specific modal use case
   const filteredChannels = (searchQuery 
