@@ -62,6 +62,7 @@ import {
   FiCheckSquare,
   FiSquare,
   FiShield,
+  FiShare2,
 } from 'react-icons/fi';
 import EmojiPicker from 'emoji-picker-react';
 import {getCombinedLogoUrl} from '../../../utils/image';
@@ -70,6 +71,7 @@ import {tr} from 'date-fns/locale';
 import useFileInput from '../../../hooks/useFileInput';
 import {getErrorMessage} from '../../../utils/string';
 import VideoConference from '../../../components/conference/VideoConference';
+import ForwardMessageModal from '../../../components/modals/ForwardMessageModal';
 
 // Media Preview Modal Component
 const MediaPreviewModal = ({isOpen, onClose, mediaType, mediaUrl, fileName}) => {
@@ -335,16 +337,24 @@ const MessageBubble = ({message, isOwn, onReply, allMessages, searchQuery, isHig
         
         {/* Reply button for own messages (left side) */}
         {isOwn && (
-          <IconButton
-            icon={<FiCornerUpLeft />}
-            size="xs"
-            variant="ghost"
-            opacity="0"
-            _groupHover={{opacity: 1}}
-            onClick={() => onReply(message)}
-            aria-label="Cevapla"
-            title="Cevapla"
-          />
+          <VStack spacing={0} opacity="0" _groupHover={{opacity: 1}}>
+            <IconButton
+              icon={<FiCornerUpLeft />}
+              size="xs"
+              variant="ghost"
+              onClick={() => onReply(message)}
+              aria-label="Cevapla"
+              title="Cevapla"
+            />
+            <IconButton
+              icon={<FiShare2 />}
+              size="xs"
+              variant="ghost"
+              onClick={() => onForward && onForward(message)}
+              aria-label="İlet"
+              title="İlet"
+            />
+          </VStack>
         )}
         
         <Box
@@ -759,16 +769,24 @@ const MessageBubble = ({message, isOwn, onReply, allMessages, searchQuery, isHig
         
         {/* Reply button for other's messages (right side) */}
         {!isOwn && (
-          <IconButton
-            icon={<FiCornerUpLeft />}
-            size="xs"
-            variant="ghost"
-            opacity="0"
-            _groupHover={{opacity: 1}}
-            onClick={() => onReply(message)}
-            aria-label="Cevapla"
-            title="Cevapla"
-          />
+          <VStack spacing={0} opacity="0" _groupHover={{opacity: 1}}>
+            <IconButton
+              icon={<FiCornerUpLeft />}
+              size="xs"
+              variant="ghost"
+              onClick={() => onReply(message)}
+              aria-label="Cevapla"
+              title="Cevapla"
+            />
+            <IconButton
+              icon={<FiShare2 />}
+              size="xs"
+              variant="ghost"
+              onClick={() => onForward && onForward(message)}
+              aria-label="İlet"
+              title="İlet"
+            />
+          </VStack>
         )}
       </HStack>
     </Flex>
@@ -1778,6 +1796,7 @@ const ChannelChat = () => {
                   isSelected={selectedMessageIds.has(messageId)}
                   onSelect={toggleMessageSelection}
                   onReplyClick={scrollToMessage}
+                  onForward={handleForward}
                 />
               );
             })}
@@ -1972,6 +1991,16 @@ const ChannelChat = () => {
           />
         </HStack>
       </Box>
+
+      {/* Forward Message Modal */}
+      <ForwardMessageModal
+        isOpen={forwardModalOpen}
+        onClose={() => {
+          setForwardModalOpen(false);
+          setMessageToForward(null);
+        }}
+        messageToForward={messageToForward}
+      />
 
       {/* Media Preview Modal */}
       <MediaPreviewModal
