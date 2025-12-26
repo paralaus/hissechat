@@ -372,6 +372,8 @@ const MessageBubble = ({message, isOwn, onReply, allMessages, searchQuery, isHig
               mb="2"
               borderLeft="3px solid"
               borderLeftColor={isOwn ? 'blue.200' : 'blue.400'}
+              cursor="pointer"
+              onClick={() => onReplyClick && onReplyClick(repliedMessage.id || repliedMessage._id)}
             >
               <Text fontSize="xs" fontWeight="600" color={isOwn ? 'blue.100' : 'blue.600'}>
                 {repliedMessage.user?.fullname || 'Kullanıcı'}
@@ -1775,6 +1777,7 @@ const ChannelChat = () => {
                   isSelectMode={isSelectMode}
                   isSelected={selectedMessageIds.has(messageId)}
                   onSelect={toggleMessageSelection}
+                  onReplyClick={scrollToMessage}
                 />
               );
             })}
