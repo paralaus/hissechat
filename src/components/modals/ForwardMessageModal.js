@@ -125,16 +125,14 @@ const ForwardMessageModal = ({ isOpen, onClose, messageToForward }) => {
 
       // Prepare message content
       const messageData = {
-        channelId: selectedChannel.id || selectedChannel._id,
         text: messageToForward.text,
         image: messageToForward.image,
         video: messageToForward.video,
         audio: messageToForward.audio,
         file: messageToForward.file,
-        // We don't forward parent/reply info to keep context clean in new channel
       };
 
-      await api.sendMessage(messageData);
+      await api.sendChannelMessage(selectedChannel.id || selectedChannel._id, messageData);
 
       toast({
         title: 'Mesaj iletildi',
