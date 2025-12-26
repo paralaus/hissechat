@@ -224,6 +224,11 @@ const MessageBubble = ({message, isOwn, onReply, allMessages, searchQuery, isHig
   // Find the replied message if exists
   // replyTo can be an object with _id, user, text OR a string ID
   const repliedMessage = React.useMemo(() => {
+    // If we have a 'parent' field which is an object, use it (populated from backend)
+    if (message.parent && typeof message.parent === 'object') {
+      return message.parent;
+    }
+
     if (!message.replyTo) return null;
     
     // If replyTo is already an object with _id AND user info, use it directly
@@ -242,7 +247,7 @@ const MessageBubble = ({message, isOwn, onReply, allMessages, searchQuery, isHig
     }
     
     return null;
-  }, [message.replyTo, allMessages]);
+  }, [message.replyTo, message.parent, allMessages]);
 
   // Blocked message rendering
   if (message.isBlocked) {
