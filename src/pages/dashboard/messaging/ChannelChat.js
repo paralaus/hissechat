@@ -216,6 +216,19 @@ const MessageBubble = ({message, isOwn, onReply, onForward, onReplyClick, allMes
 
   const hasMedia = message.image || message.video || message.audio || message.file || message.conference?.roomId;
 
+  // If message is deleted or has no content (and not blocked), don't render
+  const hasContent = (message.text && message.text.trim().length > 0) || 
+                     message.image || 
+                     message.video || 
+                     message.audio || 
+                     message.file || 
+                     message.conference || 
+                     message.poll;
+
+  if (!message.isBlocked && (message.deletedAt || message.isDeleted || !hasContent)) {
+    return null;
+  }
+
   // Handle click in select mode
   const handleClick = () => {
     if (isSelectMode && onSelect) {
@@ -1449,6 +1462,10 @@ const ChannelChat = () => {
 
       if (successCount > 0) {
         queryClient.invalidateQueries(['channel-messages', channelId]);
+        // Also invalidate channel lists to update "last message" preview
+        queryClient.invalidateQueries(['all-channels-messaging']);
+        queryClient.invalidateQueries(['vip-channels-messaging']);
+        
         toast({
           title: 'Mesajlar silindi',
           description: `${successCount} mesaj başarıyla silindi${failCount > 0 ? `, ${failCount} mesaj silinemedi` : ''}`,
