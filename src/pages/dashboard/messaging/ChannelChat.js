@@ -209,7 +209,7 @@ const HighlightText = ({text, searchQuery}) => {
   );
 };
 
-const MessageBubble = ({message, isOwn, onReply, allMessages, searchQuery, isHighlighted, messageRef, onMediaClick, onJoinConference, onVotePoll, onClosePoll, currentUserId, isSelectMode, isSelected, onSelect}) => {
+const MessageBubble = ({message, isOwn, onReply, onForward, onReplyClick, allMessages, searchQuery, isHighlighted, messageRef, onMediaClick, onJoinConference, onVotePoll, onClosePoll, currentUserId, isSelectMode, isSelected, onSelect}) => {
   const time = message.createdAt 
     ? format(new Date(message.createdAt), 'HH:mm', {locale: tr})
     : '';
@@ -832,6 +832,10 @@ const ChannelChat = () => {
   const [pollIsAnonymous, setPollIsAnonymous] = useState(false);
   const [pollAllowMultiple, setPollAllowMultiple] = useState(false);
 
+  // Forward message state
+  const [forwardModalOpen, setForwardModalOpen] = useState(false);
+  const [messageToForward, setMessageToForward] = useState(null);
+
   // Multi-select delete state
   const [isSelectMode, setIsSelectMode] = useState(false);
   const [selectedMessageIds, setSelectedMessageIds] = useState(new Set());
@@ -1012,6 +1016,25 @@ const ChannelChat = () => {
   const handleReply = (message) => {
     setReplyTo(message);
     inputRef.current?.focus();
+  };
+
+  const handleForward = (message) => {
+    setMessageToForward(message);
+    setForwardModalOpen(true);
+  };
+
+  const scrollToMessage = (messageId) => {
+    const ref = messageRefs.current[messageId];
+    if (ref) {
+      ref.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      // Add a highlight effect temporarily
+      ref.style.transition = 'background-color 0.5s';
+      const originalBg = ref.style.backgroundColor;
+      ref.style.backgroundColor = '#FEFCBF'; // yellow.100
+      setTimeout(() => {
+        ref.style.backgroundColor = originalBg;
+      }, 2000);
+    }
   };
 
   const cancelReply = () => {
@@ -1461,12 +1484,7 @@ const ChannelChat = () => {
     }
   };
 
-  const scrollToMessage = (messageId) => {
-    const ref = messageRefs.current[messageId];
-    if (ref) {
-      ref.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    }
-  };
+
 
   const goToNextResult = () => {
     if (searchResults.length === 0) return;
