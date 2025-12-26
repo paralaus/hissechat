@@ -660,7 +660,8 @@ const MessageBubble = ({message, isOwn, onReply, allMessages, searchQuery, isHig
                   {poll.options.map((option, index) => {
                     const isSelected = myVote?.optionIndex === index;
                     const percentage = getPercentage(index);
-                    const showResults = hasVoted || !poll.isActive;
+                    // Show results if voted, poll inactive, or showResults is not explicitly false (default true)
+                    const showResults = hasVoted || !poll.isActive || poll.showResults !== false;
                     
                     return (
                       <Box
@@ -691,15 +692,31 @@ const MessageBubble = ({message, isOwn, onReply, allMessages, searchQuery, isHig
                             transition="width 0.5s"
                           />
                         )}
-                        <HStack position="relative" justify="space-between">
-                          <HStack spacing="2">
+                        <HStack position="relative" justify="space-between" align="center">
+                          <HStack spacing="2" flex="1">
                             {isSelected && <Icon as={FiCheck} color={isOwn ? 'white' : 'purple.600'} />}
-                            <Text fontSize="sm" color={isOwn ? 'white' : 'gray.700'}>{option.text}</Text>
+                            <VStack align="start" spacing="0">
+                              <Text fontSize="sm" color={isOwn ? 'white' : 'gray.700'}>{option.text}</Text>
+                              {showResults && (
+                                <Text fontSize="xs" color={isOwn ? 'purple.100' : 'gray.500'}>
+                                  {option.voteCount || 0} oy
+                                </Text>
+                              )}
+                            </VStack>
                           </HStack>
                           {showResults && (
-                            <Text fontSize="sm" fontWeight="bold" color={isOwn ? 'white' : 'purple.600'}>
-                              {percentage}%
-                            </Text>
+                            <Box
+                              bg={isOwn ? 'whiteAlpha.300' : 'purple.100'}
+                              px="2"
+                              py="1"
+                              borderRadius="md"
+                              minW="50px"
+                              textAlign="center"
+                            >
+                              <Text fontSize="sm" fontWeight="bold" color={isOwn ? 'white' : 'purple.600'}>
+                                {percentage}%
+                              </Text>
+                            </Box>
                           )}
                         </HStack>
                       </Box>
