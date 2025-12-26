@@ -1461,8 +1461,61 @@ const ChannelChat = () => {
       const failCount = results.filter(r => r.status === 'rejected').length;
 
       if (successCount > 0) {
-        queryClient.invalidateQueries(['channel-messages', channelId]);
-        // Also invalidate channel lists to update "last message" preview
+        // First invalidate to fetch new messages
+        await queryClient.invalidateQueries(['channel-messages', channelId]);
+        
+        // Find the new last message from the updated cache
+        const updatedMessagesData = queryClient.getQueryData(['channel-messages', channelId]);
+        let newLastMessageText = 'Mesaj yok';
+        let newLastMessageDate = null;
+
+        if (updatedMessagesData?.pages?.[0]?.results) {
+          // Find first valid message (not deleted)
+          const validMessage = updatedMessagesData.pages[0].results.find(m => 
+            !m.deletedAt && !m.isDeleted && (m.text || m.image || m.video || m.audio || m.file || m.conference || m.poll)
+          );
+
+          if (validMessage) {
+            newLastMessageDate = validMessage.createdAt;
+            if (validMessage.text) newLastMessageText = validMessage.text;
+            else if (validMessage.image) newLastMessageText = '📷 Görsel';
+            else if (validMessage.video) newLastMessageText = '🎬 Video';
+            else if (validMessage.audio) newLastMessageText = '🎵 Ses';
+            else if (validMessage.file) newLastMessageText = '📄 Dosya';
+            else if (validMessage.conference) newLastMessageText = '🎥 Video Görüşme';
+            else if (validMessage.poll) newLastMessageText = '📊 Anket';
+          }
+        }
+
+        // Helper function to update channel in list
+        const updateChannelList = (queryKey) => {
+          queryClient.setQueryData(queryKey, (oldData) => {
+            if (!oldData || !oldData.pages) return oldData;
+            
+            return {
+              ...oldData,
+              pages: oldData.pages.map(page => ({
+                ...page,
+                results: page.results.map(c => {
+                  if (c.id === channelId || c._id === channelId) {
+                    return {
+                      ...c,
+                      lastMessage: newLastMessageText,
+                      lastMessageAt: newLastMessageDate || c.createdAt // Fallback to channel creation if no msg
+                    };
+                  }
+                  return c;
+                })
+              }))
+            };
+          });
+        };
+
+        // Manually update channel lists with new last message info
+        updateChannelList(['all-channels-messaging']);
+        updateChannelList(['vip-channels-messaging']);
+        
+        // Still invalidate to be safe (eventual consistency)
         queryClient.invalidateQueries(['all-channels-messaging']);
         queryClient.invalidateQueries(['vip-channels-messaging']);
         
