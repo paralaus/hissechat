@@ -225,10 +225,6 @@ const MessageBubble = ({message, isOwn, onReply, onForward, onReplyClick, allMes
                      message.conference || 
                      message.poll;
 
-  if (!message.isBlocked && (message.deletedAt || message.isDeleted || !hasContent)) {
-    return null;
-  }
-
   // Handle click in select mode
   const handleClick = () => {
     if (isSelectMode && onSelect) {
@@ -263,6 +259,10 @@ const MessageBubble = ({message, isOwn, onReply, onForward, onReplyClick, allMes
     
     return null;
   }, [message.replyTo, message.parent, allMessages]);
+
+  if (!message.isBlocked && (message.deletedAt || message.isDeleted || !hasContent)) {
+    return null;
+  }
 
   // Blocked message rendering
   if (message.isBlocked) {
