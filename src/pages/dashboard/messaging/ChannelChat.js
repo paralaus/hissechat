@@ -906,8 +906,24 @@ const ChannelChat = () => {
   const allMessages = React.useMemo(() => {
     if (!messagesData?.pages) return [];
     const msgs = messagesData.pages.flatMap(page => page.results || []);
+    
+    // Filter out deleted or empty messages
+    const validMsgs = msgs.filter(m => {
+      // If explicitly marked as deleted
+      if (m.deletedAt || m.isDeleted) return false;
+      
+      // If it has content, keep it
+      if (m.text && m.text.trim().length > 0) return true;
+      if (m.image || m.video || m.audio || m.file) return true;
+      if (m.conference || m.poll) return true;
+      if (m.isBlocked) return true; // Keep blocked messages visible
+      
+      // Otherwise it's empty/deleted
+      return false;
+    });
+
     // Messages come in desc order (newest first), reverse for display (oldest at top)
-    return [...msgs].reverse();
+    return [...validMsgs].reverse();
   }, [messagesData]);
 
   // Scroll to bottom only on initial load or new message sent
