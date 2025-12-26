@@ -110,12 +110,12 @@ const ForwardMessageModal = ({ isOpen, onClose, messageToForward }) => {
     enabled: isOpen, // Only fetch when modal is open
   });
 
-  const channels = data?.pages.flatMap(page => page.channels) || [];
+  const channels = data?.pages.flatMap(page => page.channels || []) || [];
   
   // Filter client-side if API search is not available/reliable for this specific modal use case
-  const filteredChannels = searchQuery 
-    ? channels.filter(c => c.name.toLowerCase().includes(searchQuery.toLowerCase()))
-    : channels;
+  const filteredChannels = (searchQuery 
+    ? channels.filter(c => c && c.name && c.name.toLowerCase().includes(searchQuery.toLowerCase()))
+    : channels).filter(c => c && (c.id || c._id)); // Ensure valid channels only
 
   const handleSend = async () => {
     if (!selectedChannel || !messageToForward) return;
