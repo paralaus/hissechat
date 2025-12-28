@@ -9,30 +9,6 @@ import {useMutation, useQueryClient} from '@tanstack/react-query';
 import {FiStar} from 'react-icons/fi';
 
 const fetchData = async options => {
-  // Backend doesn't support isPrivileged filter, so we filter client-side
-  if (options.isPrivileged) {
-    const { isPrivileged, ...apiOptions } = options;
-    // Fetch a large batch to filter client-side
-    const response = await api.getUsers({ ...apiOptions, limit: 1000, page: 1 });
-    
-    const allUsers = response.data.results || [];
-    const filteredUsers = allUsers.filter(u => u.isPrivileged);
-    
-    // Manual pagination
-    const page = options.page || 1;
-    const limit = options.limit || 10;
-    const startIndex = (page - 1) * limit;
-    const endIndex = startIndex + limit;
-    
-    return {
-      results: filteredUsers.slice(startIndex, endIndex),
-      page: page,
-      limit: limit,
-      totalPages: Math.ceil(filteredUsers.length / limit),
-      totalResults: filteredUsers.length,
-    };
-  }
-
   const response = await api.getUsers(options);
   return response.data;
 };
