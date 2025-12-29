@@ -246,6 +246,27 @@ const Channels = () => {
     initialPageParam: 1,
   });
 
+  const {
+    data: cryptoPages,
+    isLoading: isLoadingCrypto,
+    fetchNextPage: fetchNextCrypto,
+    hasNextPage: hasNextCrypto,
+    isFetchingNextPage: isFetchingNextCrypto,
+  } = useInfiniteQuery({
+    queryKey: ['crypto-markets'],
+    queryFn: async ({ pageParam = 1 }) => {
+      const res = await api.getMarkets({ type: 'crypto', limit: PAGE_SIZE, page: pageParam });
+      return res.data;
+    },
+    getNextPageParam: (lastPage) => {
+      if (lastPage.page < lastPage.totalPages) {
+        return lastPage.page + 1;
+      }
+      return undefined;
+    },
+    initialPageParam: 1,
+  });
+
   // Fetch Funds
   const {
     data: fundPages,
@@ -284,6 +305,11 @@ const Channels = () => {
     return viopPages.pages.flatMap(page => page.results || []);
   }, [viopPages]);
 
+  const cryptoMarketsData = React.useMemo(() => {
+    if (!cryptoPages?.pages) return [];
+    return cryptoPages.pages.flatMap(page => page.results || []);
+  }, [cryptoPages]);
+
   const fundsData = React.useMemo(() => {
     if (!fundPages?.pages) return [];
     return fundPages.pages.flatMap(page => page.results || []);
@@ -309,6 +335,24 @@ const Channels = () => {
     });
   }, [viopMarketsData, allChannelsData]);
 
+  const mergedCryptoChannels = React.useMemo(() => {
+    return cryptoMarketsData.map(market => {
+      const existingChannel = allChannelsData.find(c => c.marketCode === market.code);
+      if (existingChannel) return existingChannel;
+      return {
+        id: null,
+        name: market.name,
+        marketCode: market.code,
+        type: 'market',
+        thumbnail: market.logo || null,
+        lastMessage: 'Kanalı başlatmak için tıklayın',
+        lastMessageAt: null,
+        messageCount: 0,
+        isVirtual: true,
+      };
+    });
+  }, [cryptoMarketsData, allChannelsData]);
+
   // Merge Funds with existing channels
   const mergedFundChannels = React.useMemo(() => {
     return fundsData.map(fund => {
@@ -333,6 +377,7 @@ const Channels = () => {
   const totalAllChannels = allChannelsPages?.pages?.[0]?.totalResults || 0;
   const totalVipChannels = vipChannelsPages?.pages?.[0]?.totalResults || 0;
   const totalViopResults = viopPages?.pages?.[0]?.totalResults || 0;
+  const totalCryptoResults = cryptoPages?.pages?.[0]?.totalResults || 0;
   const totalFundResults = fundPages?.pages?.[0]?.totalResults || 0;
 
   const handleChannelClick = async (channel) => {
@@ -402,19 +447,49 @@ const Channels = () => {
 
   // Separate channels by type and sort by message count
   // We use the fetched and merged lists for VIOP and Funds now
-  const isCrypto = (c) => c.type === 'market' && (c.category === 'kripto' || c.marketCode?.endsWith('USDT') || c.marketCode?.endsWith('USD') || c.name?.toUpperCase().includes('KRİPTO'));
+  const isCrypto = (c) => c.type === 'market' && c.category === 'kripto';
   // Note: isViop check is less critical for the tab now as we use direct fetch, but good for "Others" exclusion
   const isViop = (c) => c.type === 'market' && (c.marketCode?.startsWith('F_') || c.name?.toUpperCase().includes('VİOP') || c.marketCode?.includes('VIOP'));
   const isFund = (c) => c.type === 'fund';
   const isStock = (c) => c.type === 'market' && !isViop(c) && !isCrypto(c);
 
   const stockChannels = filterAndSortChannels(allChannelsData?.filter(isStock));
-  const cryptoChannels = filterAndSortChannels(allChannelsData?.filter(isCrypto));
+  const cryptoChannels = filterAndSortChannels(mergedCryptoChannels);
   const viopChannels = filterAndSortChannels(mergedViopChannels); // Use merged list
   const fundChannels = filterAndSortChannels(mergedFundChannels); // Use merged list
   const vipChannels = filterAndSortChannels(vipChannelsData);
   const otherChannels = filterAndSortChannels(allChannelsData?.filter(c => c.type !== 'market' && c.type !== 'vip' && c.type !== 'fund'));
-  const allFiltered = filterAndSortChannels(allChannelsData);
+  const allCombined = React.useMemo(() => {
+    const map = new Map();
+    const add = (c) => {
+      const key =
+        c.id
+          ? `id:${c.id}`
+          : c.type === 'market' && c.marketCode
+          ? `market:${c.marketCode}`
+          : c.type === 'fund' && c.fundCode
+          ? `fund:${c.fundCode}`
+          : `name:${c.name || ''}`;
+      if (!map.has(key)) map.set(key, c);
+    };
+    (allChannelsData || []).forEach(add);
+    (mergedViopChannels || []).forEach(add);
+    (mergedFundChannels || []).forEach(add);
+    (mergedCryptoChannels || []).forEach(add);
+    return Array.from(map.values());
+  }, [allChannelsData, mergedViopChannels, mergedFundChannels, mergedCryptoChannels]);
+  const allFiltered = filterAndSortChannels(allCombined);
+
+  const isLoadingAllCombined = isLoadingAll || isLoadingViop || isLoadingFunds || isLoadingCrypto;
+  const hasNextAllCombined = hasNextAllChannels || hasNextViop || hasNextFunds || hasNextCrypto;
+  const isFetchingNextAllCombined =
+    isFetchingNextAllChannels || isFetchingNextViop || isFetchingNextFunds || isFetchingNextCrypto;
+  const fetchNextAllCombined = () => {
+    if (hasNextAllChannels) fetchNextAllChannels();
+    if (hasNextViop) fetchNextViop();
+    if (hasNextFunds) fetchNextFunds();
+    if (hasNextCrypto) fetchNextCrypto();
+  };
 
   return (
     <Page>
@@ -468,7 +543,7 @@ const Channels = () => {
             <Tab>
               <HStack spacing="2">
                 <Icon as={FiMessageCircle} />
-                <Text>Tümü ({totalAllChannels || allFiltered?.length || 0})</Text>
+                <Text>Tümü ({allCombined?.length || totalAllChannels || 0})</Text>
               </HStack>
             </Tab>
             <Tab>
@@ -480,7 +555,7 @@ const Channels = () => {
             <Tab>
               <HStack spacing="2">
                 <Icon as={FiCpu} />
-                <Text>Kripto ({cryptoChannels?.length || 0})</Text>
+                <Text>Kripto ({totalCryptoResults || cryptoChannels?.length || 0})</Text>
               </HStack>
             </Tab>
             <Tab>
@@ -508,13 +583,13 @@ const Channels = () => {
             <TabPanel p="0">
               <ChannelList
                 channels={allFiltered}
-                isLoading={isLoadingAll}
+                isLoading={isLoadingAllCombined}
                 onChannelClick={handleChannelClick}
                 emptyMessage="Kanal bulunamadı"
-                hasNextPage={hasNextAllChannels}
-                isFetchingNextPage={isFetchingNextAllChannels}
-                onLoadMore={fetchNextAllChannels}
-                totalCount={totalAllChannels}
+                hasNextPage={hasNextAllCombined}
+                isFetchingNextPage={isFetchingNextAllCombined}
+                onLoadMore={fetchNextAllCombined}
+                totalCount={allCombined?.length || 0}
               />
             </TabPanel>
 
@@ -536,13 +611,13 @@ const Channels = () => {
             <TabPanel p="0">
               <ChannelList
                 channels={cryptoChannels}
-                isLoading={isLoadingAll}
+                isLoading={isLoadingCrypto}
                 onChannelClick={handleChannelClick}
                 emptyMessage="Kripto kanalı bulunamadı"
-                hasNextPage={hasNextAllChannels}
-                isFetchingNextPage={isFetchingNextAllChannels}
-                onLoadMore={fetchNextAllChannels}
-                totalCount={cryptoChannels?.length}
+                hasNextPage={hasNextCrypto}
+                isFetchingNextPage={isFetchingNextCrypto}
+                onLoadMore={fetchNextCrypto}
+                totalCount={totalCryptoResults}
               />
             </TabPanel>
 
@@ -595,4 +670,3 @@ const Channels = () => {
 };
 
 export default Channels;
-
