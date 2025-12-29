@@ -23,7 +23,7 @@ import {
 import {useInfiniteQuery} from '@tanstack/react-query';
 import {api} from '../../../api';
 import {Page} from '../../../components';
-import {FiSearch, FiMessageCircle, FiTrendingUp, FiStar, FiFilter, FiChevronDown} from 'react-icons/fi';
+import {FiSearch, FiMessageCircle, FiTrendingUp, FiStar, FiFilter, FiChevronDown, FiPieChart, FiActivity} from 'react-icons/fi';
 import {getCombinedLogoUrl} from '../../../utils/image';
 import {formatDistanceToNow} from 'date-fns';
 import {tr} from 'date-fns/locale';
@@ -287,9 +287,13 @@ const Channels = () => {
   };
 
   // Separate channels by type and sort by message count
-  const marketChannels = filterAndSortChannels(allChannelsData?.filter(c => c.type === 'market'));
+  const isViop = (c) => c.type === 'market' && (c.marketCode?.startsWith('F_') || c.name?.toUpperCase().includes('VİOP') || c.marketCode?.includes('VIOP'));
+  
+  const marketChannels = filterAndSortChannels(allChannelsData?.filter(c => c.type === 'market' && !isViop(c)));
+  const viopChannels = filterAndSortChannels(allChannelsData?.filter(c => isViop(c)));
+  const fundChannels = filterAndSortChannels(allChannelsData?.filter(c => c.type === 'fund'));
   const vipChannels = filterAndSortChannels(vipChannelsData);
-  const otherChannels = filterAndSortChannels(allChannelsData?.filter(c => c.type !== 'market' && c.type !== 'vip'));
+  const otherChannels = filterAndSortChannels(allChannelsData?.filter(c => c.type !== 'market' && c.type !== 'vip' && c.type !== 'fund'));
   const allFiltered = filterAndSortChannels(allChannelsData);
 
   return (
@@ -355,6 +359,18 @@ const Channels = () => {
             </Tab>
             <Tab>
               <HStack spacing="2">
+                <Icon as={FiActivity} />
+                <Text>VİOP ({viopChannels?.length || 0})</Text>
+              </HStack>
+            </Tab>
+            <Tab>
+              <HStack spacing="2">
+                <Icon as={FiPieChart} />
+                <Text>Fonlar ({fundChannels?.length || 0})</Text>
+              </HStack>
+            </Tab>
+            <Tab>
+              <HStack spacing="2">
                 <Icon as={FiStar} />
                 <Text>VIP ({totalVipChannels || vipChannels?.length || 0})</Text>
               </HStack>
@@ -387,6 +403,34 @@ const Channels = () => {
                 isFetchingNextPage={isFetchingNextAllChannels}
                 onLoadMore={fetchNextAllChannels}
                 totalCount={marketChannels?.length}
+              />
+            </TabPanel>
+
+            {/* VİOP Channels */}
+            <TabPanel p="0">
+              <ChannelList
+                channels={viopChannels}
+                isLoading={isLoadingAll}
+                onChannelClick={handleChannelClick}
+                emptyMessage="VİOP kanalı bulunamadı"
+                hasNextPage={hasNextAllChannels}
+                isFetchingNextPage={isFetchingNextAllChannels}
+                onLoadMore={fetchNextAllChannels}
+                totalCount={viopChannels?.length}
+              />
+            </TabPanel>
+
+            {/* Fund Channels */}
+            <TabPanel p="0">
+              <ChannelList
+                channels={fundChannels}
+                isLoading={isLoadingAll}
+                onChannelClick={handleChannelClick}
+                emptyMessage="Fon kanalı bulunamadı"
+                hasNextPage={hasNextAllChannels}
+                isFetchingNextPage={isFetchingNextAllChannels}
+                onLoadMore={fetchNextAllChannels}
+                totalCount={fundChannels?.length}
               />
             </TabPanel>
 
