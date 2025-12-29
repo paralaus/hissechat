@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   Modal,
   ModalOverlay,
@@ -18,10 +18,23 @@ import {
   Icon,
   Box,
   Button,
-  useToast
+  useToast,
+  Tabs,
+  TabList,
+  Tab,
+  TabPanels,
+  TabPanel,
 } from '@chakra-ui/react';
-import { useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { FiSearch, FiChevronDown, FiSend } from 'react-icons/fi';
+import { useInfiniteQuery } from '@tanstack/react-query';
+import { 
+  FiSearch, 
+  FiSend, 
+  FiMessageCircle, 
+  FiTrendingUp, 
+  FiPieChart, 
+  FiActivity, 
+  FiCpu 
+} from 'react-icons/fi';
 import { formatDistanceToNow } from 'date-fns';
 import { tr } from 'date-fns/locale';
 import { api } from '../../api'; // Adjust path as needed
@@ -30,10 +43,6 @@ import { getCombinedLogoUrl } from '../../utils/image'; // Adjust path as needed
 const PAGE_SIZE = 50;
 
 const ChannelItem = ({ channel, onSelect, isSelected }) => {
-  const lastMessageTime = channel.lastMessageAt 
-    ? formatDistanceToNow(new Date(channel.lastMessageAt), {addSuffix: true, locale: tr})
-    : '';
-
   return (
     <Box
       onClick={() => onSelect(channel)}
@@ -47,12 +56,14 @@ const ChannelItem = ({ channel, onSelect, isSelected }) => {
       _hover={{
         bg: 'gray.50',
       }}
+      mb="2"
     >
       <HStack spacing="3">
         <Avatar
           size="sm"
           name={channel.name}
           src={getCombinedLogoUrl(channel.thumbnail)}
+          bg={channel.type === 'vip' ? 'purple.100' : channel.type === 'market' ? 'green.100' : 'blue.100'}
         />
         <Box flex="1" minW="0">
           <HStack justify="space-between" align="start">
@@ -64,7 +75,16 @@ const ChannelItem = ({ channel, onSelect, isSelected }) => {
                 {channel.type === 'vip' && (
                   <Badge colorScheme="purple" size="xs">VIP</Badge>
                 )}
+                {channel.type === 'market' && (
+                  <Badge colorScheme="green" size="xs">Market</Badge>
+                )}
+                {channel.type === 'fund' && (
+                  <Badge colorScheme="orange" size="xs">Fon</Badge>
+                )}
               </HStack>
+              {channel.isVirtual && (
+                <Text fontSize="xs" color="gray.400">Başlatmak için seçin</Text>
+              )}
             </VStack>
             {isSelected && <Icon as={FiSend} color="blue.500" />}
           </HStack>
@@ -74,64 +94,260 @@ const ChannelItem = ({ channel, onSelect, isSelected }) => {
   );
 };
 
+const ChannelList = ({ channels, isLoading, hasNextPage, fetchNextPage, isFetchingNextPage, onSelect, selectedChannel, emptyMessage }) => {
+  if (isLoading && (!channels || channels.length === 0)) {
+    return (
+      <Box textAlign="center" py="4">
+        <Spinner size="sm" />
+      </Box>
+    );
+  }
+
+  if (!channels || channels.length === 0) {
+    return (
+      <Text textAlign="center" color="gray.500" fontSize="sm" py="4">
+        {emptyMessage || 'Kanal bulunamadı'}
+      </Text>
+    );
+  }
+
+  return (
+    <VStack spacing="0" align="stretch" maxH="400px" overflowY="auto" pb="2">
+      {channels.map((channel) => {
+        // Unique key generation
+        const key = channel.id || (channel.type === 'market' ? channel.marketCode : channel.fundCode) || channel.name;
+        return (
+          <ChannelItem
+            key={key}
+            channel={channel}
+            isSelected={selectedChannel && (
+              (channel.id && selectedChannel.id === channel.id) ||
+              (!channel.id && channel.marketCode && selectedChannel.marketCode === channel.marketCode) ||
+              (!channel.id && channel.fundCode && selectedChannel.fundCode === channel.fundCode)
+            )}
+            onSelect={onSelect}
+          />
+        );
+      })}
+      
+      {hasNextPage && (
+        <Button
+          size="xs"
+          variant="ghost"
+          onClick={() => fetchNextPage()}
+          isLoading={isFetchingNextPage}
+          w="full"
+          mt="2"
+        >
+          Daha fazla yükle
+        </Button>
+      )}
+    </VStack>
+  );
+};
+
 const ForwardMessageModal = ({ isOpen, onClose, messageToForward }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedChannel, setSelectedChannel] = useState(null);
   const [isSending, setIsSending] = useState(false);
   const toast = useToast();
-  const queryClient = useQueryClient();
 
-  // Fetch channels
+  // --- 1. Fetch All Channels ---
   const {
-    data,
-    isLoading,
-    fetchNextPage,
-    hasNextPage,
-    isFetchingNextPage,
+    data: allChannelsPages,
+    isLoading: isLoadingAll,
+    fetchNextPage: fetchNextAllChannels,
+    hasNextPage: hasNextAllChannels,
+    isFetchingNextPage: isFetchingNextAllChannels,
   } = useInfiniteQuery({
     queryKey: ['channels-for-forward', searchQuery],
     queryFn: async ({ pageParam = 1 }) => {
-      // Assuming api.getAllChannels supports search query if not it will just return all
-      // You might need to implement search endpoint or filter client side if API doesn't support
-      const params = { 
-        limit: PAGE_SIZE, 
-        page: pageParam,
-        // search: searchQuery // Add if API supports it
-      };
-      
-      // If we have a search query, let's try to search in all channels endpoint if supported
-      // Or we can rely on client side filtering as we do below
       // API doesn't support search param for this endpoint yet, so we filter client side
-      /*
-      if (searchQuery) {
-          params.search = searchQuery;
-      }
-      */
-
+      const params = { limit: PAGE_SIZE, page: pageParam };
       const res = await api.getAllChannels(params);
       return res.data;
     },
-    getNextPageParam: (lastPage) => {
-      if (lastPage.page < lastPage.totalPages) {
-        return lastPage.page + 1;
-      }
-      return undefined;
-    },
-    enabled: isOpen, // Only fetch when modal is open
+    getNextPageParam: (lastPage) => (lastPage.page < lastPage.totalPages ? lastPage.page + 1 : undefined),
+    enabled: isOpen,
   });
 
-  const channels = data?.pages.flatMap(page => page.channels || page.results || []) || [];
-  
-  // Filter client-side if API search is not available/reliable for this specific modal use case
-  const filteredChannels = (searchQuery 
-    ? channels.filter(c => c && c.name && c.name.toLowerCase().includes(searchQuery.toLowerCase()))
-    : channels).filter(c => c && (c.id || c._id)); // Ensure valid channels only
+  // --- 2. Fetch VIP Channels ---
+  const {
+    data: vipChannelsPages,
+    isLoading: isLoadingVip,
+    fetchNextPage: fetchNextVipChannels,
+    hasNextPage: hasNextVipChannels,
+    isFetchingNextPage: isFetchingNextVipChannels,
+  } = useInfiniteQuery({
+    queryKey: ['vip-channels-forward'],
+    queryFn: async ({ pageParam = 1 }) => {
+      const res = await api.getVipChannels({ limit: PAGE_SIZE, page: pageParam });
+      return res.data;
+    },
+    getNextPageParam: (lastPage) => (lastPage.page < lastPage.totalPages ? lastPage.page + 1 : undefined),
+    enabled: isOpen,
+  });
+
+  // --- 3. Fetch VİOP ---
+  const {
+    data: viopPages,
+    isLoading: isLoadingViop,
+    fetchNextPage: fetchNextViop,
+    hasNextPage: hasNextViop,
+    isFetchingNextPage: isFetchingNextViop,
+  } = useInfiniteQuery({
+    queryKey: ['viop-markets-forward'],
+    queryFn: async ({ pageParam = 1 }) => {
+      const res = await api.getMarkets({ type: 'viop', limit: PAGE_SIZE, page: pageParam });
+      return res.data;
+    },
+    getNextPageParam: (lastPage) => (lastPage.page < lastPage.totalPages ? lastPage.page + 1 : undefined),
+    enabled: isOpen,
+  });
+
+  // --- 4. Fetch Crypto ---
+  const {
+    data: cryptoPages,
+    isLoading: isLoadingCrypto,
+    fetchNextPage: fetchNextCrypto,
+    hasNextPage: hasNextCrypto,
+    isFetchingNextPage: isFetchingNextCrypto,
+  } = useInfiniteQuery({
+    queryKey: ['crypto-markets-forward'],
+    queryFn: async ({ pageParam = 1 }) => {
+      const res = await api.getMarkets({ type: 'crypto', limit: PAGE_SIZE, page: pageParam });
+      return res.data;
+    },
+    getNextPageParam: (lastPage) => (lastPage.page < lastPage.totalPages ? lastPage.page + 1 : undefined),
+    enabled: isOpen,
+  });
+
+  // --- 5. Fetch Stocks ---
+  const {
+    data: stockPages,
+    isLoading: isLoadingStock,
+    fetchNextPage: fetchNextStock,
+    hasNextPage: hasNextStock,
+    isFetchingNextPage: isFetchingNextStock,
+  } = useInfiniteQuery({
+    queryKey: ['stock-markets-forward'],
+    queryFn: async ({ pageParam = 1 }) => {
+      const res = await api.getMarkets({ type: 'stock', limit: PAGE_SIZE, page: pageParam });
+      return res.data;
+    },
+    getNextPageParam: (lastPage) => (lastPage.page < lastPage.totalPages ? lastPage.page + 1 : undefined),
+    enabled: isOpen,
+  });
+
+  // --- 6. Fetch Funds ---
+  const {
+    data: fundPages,
+    isLoading: isLoadingFunds,
+    fetchNextPage: fetchNextFunds,
+    hasNextPage: hasNextFunds,
+    isFetchingNextPage: isFetchingNextFunds,
+  } = useInfiniteQuery({
+    queryKey: ['funds-list-forward'],
+    queryFn: async ({ pageParam = 1 }) => {
+      const res = await api.getFunds({ limit: PAGE_SIZE, page: pageParam });
+      return res.data;
+    },
+    getNextPageParam: (lastPage) => (lastPage.page < lastPage.totalPages ? lastPage.page + 1 : undefined),
+    enabled: isOpen,
+  });
+
+  // --- Data Processing & Merging ---
+  const flatten = (pages) => pages?.pages?.flatMap(page => page.results || page.channels || []) || [];
+
+  const allChannelsData = useMemo(() => flatten(allChannelsPages), [allChannelsPages]);
+  const vipChannelsData = useMemo(() => flatten(vipChannelsPages), [vipChannelsPages]);
+  const viopMarketsData = useMemo(() => flatten(viopPages), [viopPages]);
+  const cryptoMarketsData = useMemo(() => flatten(cryptoPages), [cryptoPages]);
+  const stockMarketsData = useMemo(() => flatten(stockPages), [stockPages]);
+  const fundsData = useMemo(() => flatten(fundPages), [fundPages]);
+
+  // Helper to merge market data with existing channels
+  const mergeChannels = (marketData, type, codeKey) => {
+    return marketData.map(item => {
+      const existingChannel = allChannelsData.find(c => c[codeKey] === item.code);
+      if (existingChannel) return existingChannel;
+      
+      return {
+        id: null,
+        name: item.name,
+        [codeKey]: item.code,
+        type: type,
+        thumbnail: item.logo || null,
+        isVirtual: true,
+      };
+    });
+  };
+
+  const mergedViopChannels = useMemo(() => mergeChannels(viopMarketsData, 'market', 'marketCode'), [viopMarketsData, allChannelsData]);
+  const mergedCryptoChannels = useMemo(() => mergeChannels(cryptoMarketsData, 'market', 'marketCode'), [cryptoMarketsData, allChannelsData]);
+  const mergedStockChannels = useMemo(() => mergeChannels(stockMarketsData, 'market', 'marketCode'), [stockMarketsData, allChannelsData]);
+  const mergedFundChannels = useMemo(() => mergeChannels(fundsData, 'fund', 'fundCode'), [fundsData, allChannelsData]);
+
+  // Combined List for "All" tab
+  const allCombined = useMemo(() => {
+    const map = new Map();
+    const add = (c) => {
+      const key = c.id ? `id:${c.id}` : c.type === 'market' ? `market:${c.marketCode}` : c.type === 'fund' ? `fund:${c.fundCode}` : `name:${c.name}`;
+      if (!map.has(key)) map.set(key, c);
+    };
+    allChannelsData.forEach(add);
+    mergedViopChannels.forEach(add);
+    mergedFundChannels.forEach(add);
+    mergedCryptoChannels.forEach(add);
+    mergedStockChannels.forEach(add);
+    return Array.from(map.values());
+  }, [allChannelsData, mergedViopChannels, mergedFundChannels, mergedCryptoChannels, mergedStockChannels]);
+
+  // Filter Logic
+  const filterChannels = (list) => {
+    if (!searchQuery) return list;
+    return list.filter(c => c.name?.toLowerCase().includes(searchQuery.toLowerCase()));
+  };
+
+  const displayedAll = filterChannels(allCombined);
+  const displayedStock = filterChannels(mergedStockChannels);
+  const displayedCrypto = filterChannels(mergedCryptoChannels);
+  const displayedViop = filterChannels(mergedViopChannels);
+  const displayedFunds = filterChannels(mergedFundChannels);
+
+  // Pagination Handlers
+  const fetchNextAllCombined = () => {
+    if (hasNextAllChannels) fetchNextAllChannels();
+    if (hasNextViop) fetchNextViop();
+    if (hasNextFunds) fetchNextFunds();
+    if (hasNextCrypto) fetchNextCrypto();
+    if (hasNextStock) fetchNextStock();
+  };
+
+  const isLoadingCombined = isLoadingAll || isLoadingViop || isLoadingFunds || isLoadingCrypto || isLoadingStock;
 
   const handleSend = async () => {
     if (!selectedChannel || !messageToForward) return;
 
     try {
       setIsSending(true);
+      let targetChannelId = selectedChannel.id || selectedChannel._id;
+
+      // Initiate virtual channel if needed
+      if (selectedChannel.isVirtual) {
+        let res;
+        if (selectedChannel.type === 'market') {
+          res = await api.initiateMarketChannel(selectedChannel.marketCode);
+        } else if (selectedChannel.type === 'fund') {
+          res = await api.initiateFundChannel(selectedChannel.fundCode);
+        }
+        
+        if (res?.data?.id) {
+          targetChannelId = res.data.id;
+        } else {
+          throw new Error('Kanal oluşturulamadı');
+        }
+      }
 
       // Prepare message content
       const messageData = {
@@ -142,7 +358,7 @@ const ForwardMessageModal = ({ isOpen, onClose, messageToForward }) => {
         file: messageToForward.file,
       };
 
-      await api.sendChannelMessage(selectedChannel.id || selectedChannel._id, messageData);
+      await api.sendChannelMessage(targetChannelId, messageData);
 
       toast({
         title: 'Mesaj iletildi',
@@ -170,7 +386,7 @@ const ForwardMessageModal = ({ isOpen, onClose, messageToForward }) => {
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} size="md" scrollBehavior="inside">
+    <Modal isOpen={isOpen} onClose={onClose} size="lg" scrollBehavior="inside">
       <ModalOverlay />
       <ModalContent>
         <ModalHeader>Mesajı İlet</ModalHeader>
@@ -196,40 +412,73 @@ const ForwardMessageModal = ({ isOpen, onClose, messageToForward }) => {
             />
           </InputGroup>
 
-          <VStack spacing="2" align="stretch" maxH="400px" overflowY="auto">
-            {isLoading ? (
-              <Box textAlign="center" py="4">
-                <Spinner size="sm" />
-              </Box>
-            ) : filteredChannels.length === 0 ? (
-              <Text textAlign="center" color="gray.500" fontSize="sm" py="4">
-                Kanal bulunamadı
-              </Text>
-            ) : (
-              <>
-                {filteredChannels.map(channel => (
-                  <ChannelItem
-                    key={channel.id}
-                    channel={channel}
-                    isSelected={selectedChannel?.id === channel.id}
-                    onSelect={setSelectedChannel}
-                  />
-                ))}
-                
-                {hasNextPage && (
-                  <Button
-                    size="xs"
-                    variant="ghost"
-                    onClick={() => fetchNextPage()}
-                    isLoading={isFetchingNextPage}
-                    w="full"
-                  >
-                    Daha fazla yükle
-                  </Button>
-                )}
-              </>
-            )}
-          </VStack>
+          <Tabs variant="soft-rounded" colorScheme="blue" size="sm" isLazy>
+            <TabList mb="3" overflowX="auto" py="1" css={{ '&::-webkit-scrollbar': { display: 'none' } }}>
+              <Tab flexShrink={0}><HStack><Icon as={FiMessageCircle} /><Text>Tümü</Text></HStack></Tab>
+              <Tab flexShrink={0}><HStack><Icon as={FiTrendingUp} /><Text>Borsa</Text></HStack></Tab>
+              <Tab flexShrink={0}><HStack><Icon as={FiCpu} /><Text>Kripto</Text></HStack></Tab>
+              <Tab flexShrink={0}><HStack><Icon as={FiActivity} /><Text>VİOP</Text></HStack></Tab>
+              <Tab flexShrink={0}><HStack><Icon as={FiPieChart} /><Text>Fonlar</Text></HStack></Tab>
+            </TabList>
+
+            <TabPanels>
+              <TabPanel px="0" py="0">
+                <ChannelList 
+                  channels={displayedAll} 
+                  isLoading={isLoadingCombined} 
+                  hasNextPage={true} // Simplified for combined
+                  fetchNextPage={fetchNextAllCombined}
+                  isFetchingNextPage={false}
+                  onSelect={setSelectedChannel}
+                  selectedChannel={selectedChannel}
+                />
+              </TabPanel>
+              <TabPanel px="0" py="0">
+                <ChannelList 
+                  channels={displayedStock} 
+                  isLoading={isLoadingStock} 
+                  hasNextPage={hasNextStock}
+                  fetchNextPage={fetchNextStock}
+                  isFetchingNextPage={isFetchingNextStock}
+                  onSelect={setSelectedChannel}
+                  selectedChannel={selectedChannel}
+                />
+              </TabPanel>
+              <TabPanel px="0" py="0">
+                <ChannelList 
+                  channels={displayedCrypto} 
+                  isLoading={isLoadingCrypto} 
+                  hasNextPage={hasNextCrypto}
+                  fetchNextPage={fetchNextCrypto}
+                  isFetchingNextPage={isFetchingNextCrypto}
+                  onSelect={setSelectedChannel}
+                  selectedChannel={selectedChannel}
+                />
+              </TabPanel>
+              <TabPanel px="0" py="0">
+                <ChannelList 
+                  channels={displayedViop} 
+                  isLoading={isLoadingViop} 
+                  hasNextPage={hasNextViop}
+                  fetchNextPage={fetchNextViop}
+                  isFetchingNextPage={isFetchingNextViop}
+                  onSelect={setSelectedChannel}
+                  selectedChannel={selectedChannel}
+                />
+              </TabPanel>
+              <TabPanel px="0" py="0">
+                <ChannelList 
+                  channels={displayedFunds} 
+                  isLoading={isLoadingFunds} 
+                  hasNextPage={hasNextFunds}
+                  fetchNextPage={fetchNextFunds}
+                  isFetchingNextPage={isFetchingNextFunds}
+                  onSelect={setSelectedChannel}
+                  selectedChannel={selectedChannel}
+                />
+              </TabPanel>
+            </TabPanels>
+          </Tabs>
 
           <Box mt="4" pt="4" borderTop="1px solid" borderColor="gray.100" display="flex" justifyContent="flex-end">
              <Button mr="3" variant="ghost" onClick={onClose}>İptal</Button>
