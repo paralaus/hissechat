@@ -998,7 +998,21 @@ const ChannelChat = () => {
 
       // Add reply reference if replying (send as object with message preview)
       if (replyTo) {
-        body.replyTo = replyTo.id || replyTo._id;
+        body.replyTo = {
+          _id: replyTo.id || replyTo._id,
+          id: replyTo.id || replyTo._id,
+          user: {
+            _id: replyTo.user?.id || replyTo.user?._id,
+            id: replyTo.user?.id || replyTo.user?._id,
+            fullname: replyTo.user?.fullname || 'Kullanıcı',
+            thumbnail: replyTo.user?.thumbnail || null,
+          },
+          text: replyTo.text || null,
+          image: replyTo.image || null,
+          video: replyTo.video || null,
+          audio: replyTo.audio || null,
+          file: replyTo.file || null,
+        };
       }
 
       // Upload media if present
