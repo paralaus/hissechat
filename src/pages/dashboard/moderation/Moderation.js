@@ -313,6 +313,33 @@ const MessageCard = ({message, onBlock, onUnblock, onBanUser, onUnbanUser, isBlo
   );
 };
 
+  // Helper to fetch all items with pagination
+  const fetchAll = async (apiFunc, params = {}) => {
+    const limit = 100; // Max limit allowed by API
+    const firstRes = await apiFunc({ ...params, limit, page: 1 });
+    
+    if (!firstRes.data) return [];
+    
+    let allResults = firstRes.data.results || [];
+    const totalPages = firstRes.data.totalPages || 1;
+    
+    if (totalPages > 1) {
+      const promises = [];
+      for (let i = 2; i <= totalPages; i++) {
+        promises.push(apiFunc({ ...params, limit, page: i }));
+      }
+      
+      const responses = await Promise.all(promises);
+      responses.forEach(res => {
+        if (res.data?.results) {
+          allResults = [...allResults, ...res.data.results];
+        }
+      });
+    }
+    
+    return allResults;
+  };
+
 const Moderation = () => {
   const toast = useToast();
   const queryClient = useQueryClient();
@@ -321,14 +348,124 @@ const Moderation = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [blockingMessageId, setBlockingMessageId] = useState(null);
 
-  // Fetch channels
-  const {data: channels = []} = useQuery({
+  // Fetch all channels for selection
+  const {data: channelsData} = useQuery({
     queryKey: ['all-channels-moderation'],
-    queryFn: async () => {
-      const res = await api.getAllChannels({limit: 1000});
-      return res.data?.results || [];
-    },
+    queryFn: () => fetchAll(api.getAllChannels),
   });
+
+  // Fetch VIP channels
+  const {data: vipChannelsData} = useQuery({
+    queryKey: ['vip-channels-moderation'],
+    queryFn: () => fetchAll(api.getVipChannels),
+  });
+
+  // Fetch VIOP Markets
+  const {data: viopMarketsData} = useQuery({
+    queryKey: ['viop-markets-moderation'],
+    queryFn: () => fetchAll(api.getMarkets, { type: 'viop' }),
+  });
+
+  // Fetch Crypto Markets
+  const {data: cryptoMarketsData} = useQuery({
+    queryKey: ['crypto-markets-moderation'],
+    queryFn: () => fetchAll(api.getMarkets, { type: 'crypto' }),
+  });
+
+  // Fetch Stock Markets
+  const {data: stockMarketsData} = useQuery({
+    queryKey: ['stock-markets-moderation'],
+    queryFn: () => fetchAll(api.getMarkets, { type: 'stock' }),
+  });
+
+  // Fetch Funds
+  const {data: fundsData} = useQuery({
+    queryKey: ['funds-list-moderation'],
+    queryFn: () => fetchAll(api.getFunds),
+  });
+
+  // Merge VİOP markets with existing channels
+  const mergedViopChannels = React.useMemo(() => {
+    if (!viopMarketsData) return [];
+    return viopMarketsData.map(market => {
+      const existingChannel = channelsData?.find(c => c.marketCode === market.code);
+      if (existingChannel) return existingChannel;
+      return {
+        id: null,
+        name: market.name,
+        marketCode: market.code,
+        type: 'market',
+        isVirtual: true,
+      };
+    });
+  }, [viopMarketsData, channelsData]);
+
+  // Merge Crypto markets with existing channels
+  const mergedCryptoChannels = React.useMemo(() => {
+    if (!cryptoMarketsData) return [];
+    return cryptoMarketsData.map(market => {
+      const existingChannel = channelsData?.find(c => c.marketCode === market.code);
+      if (existingChannel) return existingChannel;
+      return {
+        id: null,
+        name: market.name,
+        marketCode: market.code,
+        type: 'market',
+        isVirtual: true,
+      };
+    });
+  }, [cryptoMarketsData, channelsData]);
+
+  // Merge Stock markets with existing channels
+  const mergedStockChannels = React.useMemo(() => {
+    if (!stockMarketsData) return [];
+    return stockMarketsData.map(market => {
+      const existingChannel = channelsData?.find(c => c.marketCode === market.code);
+      if (existingChannel) return existingChannel;
+      return {
+        id: null,
+        name: market.name,
+        marketCode: market.code,
+        type: 'market',
+        isVirtual: true,
+      };
+    });
+  }, [stockMarketsData, channelsData]);
+
+  // Merge Funds with existing channels
+  const mergedFundChannels = React.useMemo(() => {
+    if (!fundsData) return [];
+    return fundsData.map(fund => {
+      const existingChannel = channelsData?.find(c => c.fundCode === fund.code);
+      if (existingChannel) return existingChannel;
+      return {
+        id: null,
+        name: fund.name,
+        fundCode: fund.code,
+        type: 'fund',
+        isVirtual: true,
+      };
+    });
+  }, [fundsData, channelsData]);
+
+  const marketChannels = mergedStockChannels;
+  const viopChannels = mergedViopChannels;
+  const fundChannels = mergedFundChannels;
+  const cryptoChannels = mergedCryptoChannels;
+  const vipChannels = vipChannelsData || [];
+  const otherChannels = channelsData?.filter(c => c.type !== 'market' && c.type !== 'vip' && c.type !== 'fund') || [];
+
+  // Combine all channels for dropdown
+  const allChannels = React.useMemo(() => {
+    return [
+      ...marketChannels,
+      ...viopChannels,
+      ...fundChannels,
+      ...cryptoChannels,
+      ...vipChannels,
+      ...otherChannels
+    ].filter(c => c.id); // Only show initiated channels in moderation filter
+  }, [marketChannels, viopChannels, fundChannels, cryptoChannels, vipChannels, otherChannels]);
 
   // Fetch messages for moderation
   const {data: messagesData, isLoading, refetch} = useQuery({
@@ -544,7 +681,7 @@ const Moderation = () => {
                 onChange={(e) => setSelectedChannel(e.target.value)}
                 maxW="300px"
               >
-                {channels.map(channel => (
+                {allChannels.map(channel => (
                   <option key={channel.id || channel._id} value={channel.id || channel._id}>
                     {channel.name}
                   </option>
