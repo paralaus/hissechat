@@ -267,6 +267,27 @@ const Channels = () => {
     initialPageParam: 1,
   });
 
+  const {
+    data: stockPages,
+    isLoading: isLoadingStock,
+    fetchNextPage: fetchNextStock,
+    hasNextPage: hasNextStock,
+    isFetchingNextPage: isFetchingNextStock,
+  } = useInfiniteQuery({
+    queryKey: ['stock-markets'],
+    queryFn: async ({ pageParam = 1 }) => {
+      const res = await api.getMarkets({ type: 'stock', limit: PAGE_SIZE, page: pageParam });
+      return res.data;
+    },
+    getNextPageParam: (lastPage) => {
+      if (lastPage.page < lastPage.totalPages) {
+        return lastPage.page + 1;
+      }
+      return undefined;
+    },
+    initialPageParam: 1,
+  });
+
   // Fetch Funds
   const {
     data: fundPages,
@@ -309,6 +330,11 @@ const Channels = () => {
     if (!cryptoPages?.pages) return [];
     return cryptoPages.pages.flatMap(page => page.results || []);
   }, [cryptoPages]);
+
+  const stockMarketsData = React.useMemo(() => {
+    if (!stockPages?.pages) return [];
+    return stockPages.pages.flatMap(page => page.results || []);
+  }, [stockPages]);
 
   const fundsData = React.useMemo(() => {
     if (!fundPages?.pages) return [];
@@ -353,6 +379,24 @@ const Channels = () => {
     });
   }, [cryptoMarketsData, allChannelsData]);
 
+  const mergedStockChannels = React.useMemo(() => {
+    return stockMarketsData.map(market => {
+      const existingChannel = allChannelsData.find(c => c.marketCode === market.code);
+      if (existingChannel) return existingChannel;
+      return {
+        id: null,
+        name: market.name,
+        marketCode: market.code,
+        type: 'market',
+        thumbnail: market.logo || null,
+        lastMessage: 'Kanalı başlatmak için tıklayın',
+        lastMessageAt: null,
+        messageCount: 0,
+        isVirtual: true,
+      };
+    });
+  }, [stockMarketsData, allChannelsData]);
+
   // Merge Funds with existing channels
   const mergedFundChannels = React.useMemo(() => {
     return fundsData.map(fund => {
@@ -378,7 +422,11 @@ const Channels = () => {
   const totalVipChannels = vipChannelsPages?.pages?.[0]?.totalResults || 0;
   const totalViopResults = viopPages?.pages?.[0]?.totalResults || 0;
   const totalCryptoResults = cryptoPages?.pages?.[0]?.totalResults || 0;
+  const totalStockResults = stockPages?.pages?.[0]?.totalResults || 0;
   const totalFundResults = fundPages?.pages?.[0]?.totalResults || 0;
+  const totalAllCombinedCount =
+    (allChannelsPages?.pages?.[0]?.totalResults || 0) +
+    (totalFundResults || 0);
 
   const handleChannelClick = async (channel) => {
     if (channel.id) {
@@ -453,7 +501,7 @@ const Channels = () => {
   const isFund = (c) => c.type === 'fund';
   const isStock = (c) => c.type === 'market' && !isViop(c) && !isCrypto(c);
 
-  const stockChannels = filterAndSortChannels(allChannelsData?.filter(isStock));
+  const stockChannels = filterAndSortChannels(mergedStockChannels);
   const cryptoChannels = filterAndSortChannels(mergedCryptoChannels);
   const viopChannels = filterAndSortChannels(mergedViopChannels); // Use merged list
   const fundChannels = filterAndSortChannels(mergedFundChannels); // Use merged list
@@ -481,14 +529,15 @@ const Channels = () => {
   const allFiltered = filterAndSortChannels(allCombined);
 
   const isLoadingAllCombined = isLoadingAll || isLoadingViop || isLoadingFunds || isLoadingCrypto;
-  const hasNextAllCombined = hasNextAllChannels || hasNextViop || hasNextFunds || hasNextCrypto;
+  const hasNextAllCombined = hasNextAllChannels || hasNextViop || hasNextFunds || hasNextCrypto || hasNextStock;
   const isFetchingNextAllCombined =
-    isFetchingNextAllChannels || isFetchingNextViop || isFetchingNextFunds || isFetchingNextCrypto;
+    isFetchingNextAllChannels || isFetchingNextViop || isFetchingNextFunds || isFetchingNextCrypto || isFetchingNextStock;
   const fetchNextAllCombined = () => {
     if (hasNextAllChannels) fetchNextAllChannels();
     if (hasNextViop) fetchNextViop();
     if (hasNextFunds) fetchNextFunds();
     if (hasNextCrypto) fetchNextCrypto();
+    if (hasNextStock) fetchNextStock();
   };
 
   return (
@@ -543,13 +592,13 @@ const Channels = () => {
             <Tab>
               <HStack spacing="2">
                 <Icon as={FiMessageCircle} />
-                <Text>Tümü ({allCombined?.length || totalAllChannels || 0})</Text>
+                <Text>Tümü ({totalAllCombinedCount || 0})</Text>
               </HStack>
             </Tab>
             <Tab>
               <HStack spacing="2">
                 <Icon as={FiTrendingUp} />
-                <Text>Borsa ({stockChannels?.length || 0})</Text>
+                <Text>Borsa ({totalStockResults || stockChannels?.length || 0})</Text>
               </HStack>
             </Tab>
             <Tab>
@@ -589,7 +638,7 @@ const Channels = () => {
                 hasNextPage={hasNextAllCombined}
                 isFetchingNextPage={isFetchingNextAllCombined}
                 onLoadMore={fetchNextAllCombined}
-                totalCount={allCombined?.length || 0}
+                totalCount={totalAllCombinedCount}
               />
             </TabPanel>
 
