@@ -1136,7 +1136,7 @@ const ChannelChat = () => {
           title: conferenceTitle,
           startTime,
           scheduledEndTime,
-          isActive: true, // Always active so it can be joined when time comes
+          isActive: options.type !== 'scheduled', // Scheduled ise false, instant ise true
         },
       };
 
@@ -1205,6 +1205,19 @@ const ChannelChat = () => {
     // If explicitly marked as not active and has a start time in the past
     if (conferenceData.isActive === false && conferenceData.startTime) {
       const startDate = new Date(conferenceData.startTime);
+      
+      // If end time exists and is in the future, don't consider it ended even if isActive is false
+      // This allows scheduled meetings to be "waiting to start" instead of "ended"
+      if (conferenceData.scheduledEndTime) {
+        const endDate = new Date(conferenceData.scheduledEndTime);
+        if (endDate > now) {
+          // It's not ended yet, potentially waiting to be started
+          // If start time is in the future, it will be caught by the first check
+          // If start time is in the past but not active, it might be waiting for host
+          return { status: 'unknown', message: '' }; 
+        }
+      }
+
       if (startDate < now) {
         return {
           status: 'ended',
