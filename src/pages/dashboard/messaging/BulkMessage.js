@@ -137,6 +137,34 @@ const BulkMessage = () => {
     select: (res) => res.data?.results || [],
   });
 
+  // Fetch VIOP Markets
+  const {data: viopMarketsData} = useQuery({
+    queryKey: ['viop-markets-bulk'],
+    queryFn: () => api.getMarkets({ type: 'viop', limit: 1000 }),
+    select: (res) => res.data?.results || [],
+  });
+
+  // Fetch Crypto Markets
+  const {data: cryptoMarketsData} = useQuery({
+    queryKey: ['crypto-markets-bulk'],
+    queryFn: () => api.getMarkets({ type: 'crypto', limit: 1000 }),
+    select: (res) => res.data?.results || [],
+  });
+
+  // Fetch Stock Markets
+  const {data: stockMarketsData} = useQuery({
+    queryKey: ['stock-markets-bulk'],
+    queryFn: () => api.getMarkets({ type: 'stock', limit: 1000 }),
+    select: (res) => res.data?.results || [],
+  });
+
+  // Fetch Funds
+  const {data: fundsData} = useQuery({
+    queryKey: ['funds-list-bulk'],
+    queryFn: () => api.getFunds({ limit: 1000 }),
+    select: (res) => res.data?.results || [],
+  });
+
   const {mutateAsync, isPending} = useMutation({
     mutationFn: (values) => {
       // Create new AbortController for this request
@@ -144,6 +172,68 @@ const BulkMessage = () => {
       return api.sendBulkMessage(values, { signal: abortControllerRef.current.signal });
     },
   });
+
+  // Merge VİOP markets with existing channels
+  const mergedViopChannels = React.useMemo(() => {
+    if (!viopMarketsData) return [];
+    return viopMarketsData.map(market => {
+      const existingChannel = channelsData?.find(c => c.marketCode === market.code);
+      if (existingChannel) return existingChannel;
+      return {
+        id: null,
+        name: market.name,
+        marketCode: market.code,
+        type: 'market',
+        isVirtual: true,
+      };
+    });
+  }, [viopMarketsData, channelsData]);
+
+  const mergedCryptoChannels = React.useMemo(() => {
+    if (!cryptoMarketsData) return [];
+    return cryptoMarketsData.map(market => {
+      const existingChannel = channelsData?.find(c => c.marketCode === market.code);
+      if (existingChannel) return existingChannel;
+      return {
+        id: null,
+        name: market.name,
+        marketCode: market.code,
+        type: 'market',
+        category: 'kripto',
+        isVirtual: true,
+      };
+    });
+  }, [cryptoMarketsData, channelsData]);
+
+  const mergedStockChannels = React.useMemo(() => {
+    if (!stockMarketsData) return [];
+    return stockMarketsData.map(market => {
+      const existingChannel = channelsData?.find(c => c.marketCode === market.code);
+      if (existingChannel) return existingChannel;
+      return {
+        id: null,
+        name: market.name,
+        marketCode: market.code,
+        type: 'market',
+        isVirtual: true,
+      };
+    });
+  }, [stockMarketsData, channelsData]);
+
+  const mergedFundChannels = React.useMemo(() => {
+    if (!fundsData) return [];
+    return fundsData.map(fund => {
+      const existingChannel = channelsData?.find(c => c.fundCode === fund.code);
+      if (existingChannel) return existingChannel;
+      return {
+        id: null,
+        name: fund.name,
+        fundCode: fund.code,
+        type: 'fund',
+        isVirtual: true,
+      };
+    });
+  }, [fundsData, channelsData]);
 
   // Cancel handler
   const handleCancel = () => {
@@ -169,15 +259,21 @@ const BulkMessage = () => {
     
     switch (targetType) {
       case 'all_channels':
-        return (channelsData?.length || 0) + (vipChannelsData?.length || 0);
+        const othersCount = channelsData?.filter(c => c.type !== 'market' && c.type !== 'vip' && c.type !== 'fund').length || 0;
+        return (mergedStockChannels.length) + 
+               (mergedCryptoChannels.length) + 
+               (mergedViopChannels.length) + 
+               (mergedFundChannels.length) + 
+               (vipChannelsData?.length || 0) + 
+               othersCount;
       case 'all_markets':
-        return channelsData?.filter(c => c.type === 'market').length || 0;
+        return mergedStockChannels.length + mergedCryptoChannels.length + mergedViopChannels.length;
       case 'all_vip':
         return vipChannelsData?.length || 0;
       case 'all_funds':
-        return channelsData?.filter(c => c.type === 'fund').length || 0;
+        return mergedFundChannels.length;
       case 'all_viop':
-        return channelsData?.filter(isViopChannel).length || 0;
+        return mergedViopChannels.length;
       case 'selected':
         return selectedChannels.length;
       default:
@@ -278,38 +374,22 @@ const BulkMessage = () => {
   const selectedChannels = watch('selectedChannels') || [];
 
   // Calculate target channel count
-  const getTargetCount = () => {
-    switch (targetType) {
-      case 'all_channels':
-        return (channelsData?.length || 0) + (vipChannelsData?.length || 0);
-      case 'all_markets':
-        return channelsData?.filter(c => c.type === 'market')?.length || 0;
-      case 'all_vip':
-        return vipChannelsData?.length || 0;
-      case 'all_funds':
-        return channelsData?.filter(c => c.type === 'fund')?.length || 0;
-      case 'all_viop':
-        return channelsData?.filter(isViopChannel)?.length || 0;
-      case 'selected':
-        return selectedChannels.length;
-      default:
-        return 0;
-    }
-  };
+  const getTargetCount = getTargetChannelCount;
 
   // Check if any media is selected
   const hasMedia = imageInput.objectUrl || videoInput.objectUrl || audioInput.objectUrl || fileInput.objectUrl;
 
   // Group channels by type for display
-  const isCrypto = (c) => c.type === 'market' && c.category === 'kripto';
-  const isStock = (c) => c.type === 'market' && !isViopChannel(c) && !isCrypto(c);
-  
-  const marketChannels = channelsData?.filter(c => c.type === 'market' && !isViopChannel(c)) || [];
-  const stockChannels = channelsData?.filter(isStock) || [];
-  const cryptoChannels = channelsData?.filter(isCrypto) || [];
+  const stockChannels = mergedStockChannels;
+  const cryptoChannels = mergedCryptoChannels;
   const vipChannels = vipChannelsData || [];
-  const fundChannels = channelsData?.filter(c => c.type === 'fund') || [];
-  const viopChannels = channelsData?.filter(isViopChannel) || [];
+  const fundChannels = mergedFundChannels;
+  const viopChannels = mergedViopChannels;
+  
+  // Combine for selection list
+  // Note: We might want to separate them in the UI later, but for now we group them as "Market" excluding VIOP if that was the pattern,
+  // or just put Stock and Crypto in Market.
+  const marketChannels = [...mergedStockChannels, ...mergedCryptoChannels];
   const otherChannels = channelsData?.filter(c => c.type !== 'market' && c.type !== 'vip' && c.type !== 'fund') || [];
 
   return (
@@ -339,7 +419,9 @@ const BulkMessage = () => {
               <Text>Tümü</Text>
             </HStack>
           </StatLabel>
-          <StatNumber>{(channelsData?.length || 0) + (vipChannelsData?.length || 0)}</StatNumber>
+          <StatNumber>
+            {marketChannels.length + viopChannels.length + fundChannels.length + vipChannels.length + otherChannels.length}
+          </StatNumber>
         </Stat>
 
         <Stat
@@ -629,10 +711,15 @@ const BulkMessage = () => {
                             </Text>
                             <VStack align="start" pl="4" spacing="2">
                               {marketChannels.map((channel) => (
-                                <Checkbox key={channel.id} value={channel.id}>
+                                <Checkbox 
+                                  key={channel.id || channel.marketCode || channel.name} 
+                                  value={channel.id}
+                                  isDisabled={!channel.id}
+                                >
                                   <HStack>
                                     <Text>{channel.name}</Text>
                                     <Badge size="sm" colorScheme="green">Market</Badge>
+                                    {!channel.id && <Badge size="sm" colorScheme="gray">Başlatılmadı</Badge>}
                                   </HStack>
                                 </Checkbox>
                               ))}
@@ -671,10 +758,15 @@ const BulkMessage = () => {
                             </Text>
                             <VStack align="start" pl="4" spacing="2">
                               {viopChannels.map((channel) => (
-                                <Checkbox key={channel.id} value={channel.id}>
+                                <Checkbox 
+                                  key={channel.id || channel.marketCode || channel.name} 
+                                  value={channel.id}
+                                  isDisabled={!channel.id}
+                                >
                                   <HStack>
                                     <Text>{channel.name}</Text>
                                     <Badge size="sm" colorScheme="orange">VİOP</Badge>
+                                    {!channel.id && <Badge size="sm" colorScheme="gray">Başlatılmadı</Badge>}
                                   </HStack>
                                 </Checkbox>
                               ))}
@@ -691,10 +783,15 @@ const BulkMessage = () => {
                             </Text>
                             <VStack align="start" pl="4" spacing="2">
                               {fundChannels.map((channel) => (
-                                <Checkbox key={channel.id} value={channel.id}>
+                                <Checkbox 
+                                  key={channel.id || channel.fundCode || channel.name} 
+                                  value={channel.id}
+                                  isDisabled={!channel.id}
+                                >
                                   <HStack>
                                     <Text>{channel.name}</Text>
                                     <Badge size="sm" colorScheme="blue">Fon</Badge>
+                                    {!channel.id && <Badge size="sm" colorScheme="gray">Başlatılmadı</Badge>}
                                   </HStack>
                                 </Checkbox>
                               ))}
