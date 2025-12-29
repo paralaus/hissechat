@@ -1893,7 +1893,7 @@ const ChannelChat = () => {
         ) : (
           <VStack align="stretch" spacing="0">
             {/* Loading indicator for older messages */}
-            {(isFetchingNextPage || isLoadingMore) && (
+            {isFetchingNextPage && (
               <Box textAlign="center" py="4">
                 <HStack justify="center" spacing="2">
                   <Spinner size="sm" color="blue.500" />
@@ -1903,7 +1903,7 @@ const ChannelChat = () => {
             )}
             
             {/* Load more indicator */}
-            {hasNextPage && !isFetchingNextPage && !isLoadingMore && (
+            {hasNextPage && !isFetchingNextPage && (
               <Box textAlign="center" py="3">
                 <Text fontSize="xs" color="gray.400">
                   ↑ Eski mesajları görmek için yukarı kaydırın
