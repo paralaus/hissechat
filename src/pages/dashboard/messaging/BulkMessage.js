@@ -87,6 +87,33 @@ const isViopChannel = (c) =>
    c.name?.toUpperCase().includes('VİOP') || 
    c.marketCode?.includes('VIOP'));
 
+// Helper to fetch all items with pagination
+const fetchAll = async (apiFunc, params = {}) => {
+  const limit = 100; // Max limit allowed by API
+  const firstRes = await apiFunc({ ...params, limit, page: 1 });
+  
+  if (!firstRes.data) return [];
+  
+  let allResults = firstRes.data.results || [];
+  const totalPages = firstRes.data.totalPages || 1;
+  
+  if (totalPages > 1) {
+    const promises = [];
+    for (let i = 2; i <= totalPages; i++) {
+      promises.push(apiFunc({ ...params, limit, page: i }));
+    }
+    
+    const responses = await Promise.all(promises);
+    responses.forEach(res => {
+      if (res.data?.results) {
+        allResults = [...allResults, ...res.data.results];
+      }
+    });
+  }
+  
+  return allResults;
+};
+
 const BulkMessage = () => {
   const toast = useToast();
   const [sendResult, setSendResult] = useState(null);
@@ -126,43 +153,37 @@ const BulkMessage = () => {
   // Fetch all channels for selection
   const {data: channelsData, isLoading: isLoadingChannels} = useQuery({
     queryKey: ['all-channels-for-bulk'],
-    queryFn: () => api.getAllChannels({limit: 1000}),
-    select: (res) => res.data?.results || [],
+    queryFn: () => fetchAll(api.getAllChannels),
   });
 
   // Fetch VIP channels
   const {data: vipChannelsData} = useQuery({
     queryKey: ['vip-channels-for-bulk'],
-    queryFn: () => api.getVipChannels({limit: 1000}),
-    select: (res) => res.data?.results || [],
+    queryFn: () => fetchAll(api.getVipChannels),
   });
 
   // Fetch VIOP Markets
   const {data: viopMarketsData} = useQuery({
     queryKey: ['viop-markets-bulk'],
-    queryFn: () => api.getMarkets({ type: 'viop', limit: 1000 }),
-    select: (res) => res.data?.results || [],
+    queryFn: () => fetchAll(api.getMarkets, { type: 'viop' }),
   });
 
   // Fetch Crypto Markets
   const {data: cryptoMarketsData} = useQuery({
     queryKey: ['crypto-markets-bulk'],
-    queryFn: () => api.getMarkets({ type: 'crypto', limit: 1000 }),
-    select: (res) => res.data?.results || [],
+    queryFn: () => fetchAll(api.getMarkets, { type: 'crypto' }),
   });
 
   // Fetch Stock Markets
   const {data: stockMarketsData} = useQuery({
     queryKey: ['stock-markets-bulk'],
-    queryFn: () => api.getMarkets({ type: 'stock', limit: 1000 }),
-    select: (res) => res.data?.results || [],
+    queryFn: () => fetchAll(api.getMarkets, { type: 'stock' }),
   });
 
   // Fetch Funds
   const {data: fundsData} = useQuery({
     queryKey: ['funds-list-bulk'],
-    queryFn: () => api.getFunds({ limit: 1000 }),
-    select: (res) => res.data?.results || [],
+    queryFn: () => fetchAll(api.getFunds),
   });
 
   const {mutateAsync, isPending} = useMutation({
