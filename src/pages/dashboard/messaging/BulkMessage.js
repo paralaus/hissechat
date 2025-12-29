@@ -75,6 +75,7 @@ const targetTypes = [
   {value: 'all_channels', label: 'Tüm Kanallara'},
   {value: 'all_markets', label: 'Tüm Piyasa Kanallarına'},
   {value: 'all_vip', label: 'Tüm VIP Kanallara'},
+  {value: 'all_funds', label: 'Tüm Fon Kanallarına'},
   {value: 'selected', label: 'Seçili Kanallara'},
 ];
 
@@ -159,12 +160,14 @@ const BulkMessage = () => {
     const selectedChannels = watch('selectedChannels') || [];
     
     switch (targetType) {
-      case 'all':
+      case 'all_channels':
         return (channelsData?.length || 0) + (vipChannelsData?.length || 0);
-      case 'market':
+      case 'all_markets':
         return channelsData?.filter(c => c.type === 'market').length || 0;
-      case 'vip':
+      case 'all_vip':
         return vipChannelsData?.length || 0;
+      case 'all_funds':
+        return channelsData?.filter(c => c.type === 'fund').length || 0;
       case 'selected':
         return selectedChannels.length;
       default:
@@ -252,11 +255,13 @@ const BulkMessage = () => {
   const getTargetCount = () => {
     switch (targetType) {
       case 'all_channels':
-        return channelsData?.length || 0;
+        return (channelsData?.length || 0) + (vipChannelsData?.length || 0);
       case 'all_markets':
         return channelsData?.filter(c => c.type === 'market')?.length || 0;
       case 'all_vip':
         return vipChannelsData?.length || 0;
+      case 'all_funds':
+        return channelsData?.filter(c => c.type === 'fund')?.length || 0;
       case 'selected':
         return selectedChannels.length;
       default:
@@ -270,7 +275,8 @@ const BulkMessage = () => {
   // Group channels by type for display
   const marketChannels = channelsData?.filter(c => c.type === 'market') || [];
   const vipChannels = vipChannelsData || [];
-  const otherChannels = channelsData?.filter(c => c.type !== 'market' && c.type !== 'vip') || [];
+  const fundChannels = channelsData?.filter(c => c.type === 'fund') || [];
+  const otherChannels = channelsData?.filter(c => c.type !== 'market' && c.type !== 'vip' && c.type !== 'fund') || [];
 
   return (
     <Page>
@@ -557,6 +563,26 @@ const BulkMessage = () => {
                                   <HStack>
                                     <Text>{channel.name}</Text>
                                     <Badge size="sm" colorScheme="purple">VIP</Badge>
+                                  </HStack>
+                                </Checkbox>
+                              ))}
+                            </VStack>
+                          </Box>
+                        )}
+
+                        <Divider />
+
+                        {fundChannels.length > 0 && (
+                          <Box w="100%">
+                            <Text fontWeight="bold" mb="2" color="gray.600">
+                              🪙 Fon Kanalları ({fundChannels.length})
+                            </Text>
+                            <VStack align="start" pl="4" spacing="2">
+                              {fundChannels.map((channel) => (
+                                <Checkbox key={channel.id} value={channel.id}>
+                                  <HStack>
+                                    <Text>{channel.name}</Text>
+                                    <Badge size="sm" colorScheme="blue">Fon</Badge>
                                   </HStack>
                                 </Checkbox>
                               ))}
