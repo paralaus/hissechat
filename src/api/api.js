@@ -91,6 +91,14 @@ export const getMarketDetails = async params => {
   return apiClient.get('/market-details', {params});
 };
 
+export const getMarkets = async params => {
+  return apiClient.get('/markets', {params});
+};
+
+export const getFunds = async params => {
+  return apiClient.get('/funds', {params});
+};
+
 export const getMarketDetail = async code => {
   return apiClient.get(`/market-details/${code}`);
 };
@@ -149,6 +157,14 @@ export const uploadImage = async file => {
 
 export const createVipChannel = async body => {
   return apiClient.post('/channels/vip', body);
+};
+
+export const initiateMarketChannel = async marketCode => {
+  return apiClient.post('/channels/initiate/market', { marketCode });
+};
+
+export const initiateFundChannel = async fundCode => {
+  return apiClient.post('/channels/initiate/fund', { fundCode });
 };
 
 export const getVipChannels = async params => {

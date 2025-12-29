@@ -23,7 +23,7 @@ import {
 import {useInfiniteQuery} from '@tanstack/react-query';
 import {api} from '../../../api';
 import {Page} from '../../../components';
-import {FiSearch, FiMessageCircle, FiTrendingUp, FiStar, FiFilter, FiChevronDown, FiPieChart, FiActivity} from 'react-icons/fi';
+import {FiSearch, FiMessageCircle, FiTrendingUp, FiStar, FiFilter, FiChevronDown, FiPieChart, FiActivity, FiCpu} from 'react-icons/fi';
 import {getCombinedLogoUrl} from '../../../utils/image';
 import {formatDistanceToNow} from 'date-fns';
 import {tr} from 'date-fns/locale';
@@ -224,6 +224,50 @@ const Channels = () => {
     initialPageParam: 1,
   });
 
+  // Fetch VİOP Markets
+  const {
+    data: viopPages,
+    isLoading: isLoadingViop,
+    fetchNextPage: fetchNextViop,
+    hasNextPage: hasNextViop,
+    isFetchingNextPage: isFetchingNextViop,
+  } = useInfiniteQuery({
+    queryKey: ['viop-markets'],
+    queryFn: async ({ pageParam = 1 }) => {
+      const res = await api.getMarkets({ type: 'viop', limit: PAGE_SIZE, page: pageParam });
+      return res.data;
+    },
+    getNextPageParam: (lastPage) => {
+      if (lastPage.page < lastPage.totalPages) {
+        return lastPage.page + 1;
+      }
+      return undefined;
+    },
+    initialPageParam: 1,
+  });
+
+  // Fetch Funds
+  const {
+    data: fundPages,
+    isLoading: isLoadingFunds,
+    fetchNextPage: fetchNextFunds,
+    hasNextPage: hasNextFunds,
+    isFetchingNextPage: isFetchingNextFunds,
+  } = useInfiniteQuery({
+    queryKey: ['funds-list'],
+    queryFn: async ({ pageParam = 1 }) => {
+      const res = await api.getFunds({ limit: PAGE_SIZE, page: pageParam });
+      return res.data;
+    },
+    getNextPageParam: (lastPage) => {
+      if (lastPage.page < lastPage.totalPages) {
+        return lastPage.page + 1;
+      }
+      return undefined;
+    },
+    initialPageParam: 1,
+  });
+
   // Flatten paginated data
   const allChannelsData = React.useMemo(() => {
     if (!allChannelsPages?.pages) return [];
@@ -235,12 +279,82 @@ const Channels = () => {
     return vipChannelsPages.pages.flatMap(page => page.results || []);
   }, [vipChannelsPages]);
 
+  const viopMarketsData = React.useMemo(() => {
+    if (!viopPages?.pages) return [];
+    return viopPages.pages.flatMap(page => page.results || []);
+  }, [viopPages]);
+
+  const fundsData = React.useMemo(() => {
+    if (!fundPages?.pages) return [];
+    return fundPages.pages.flatMap(page => page.results || []);
+  }, [fundPages]);
+
+  // Merge VİOP markets with existing channels
+  const mergedViopChannels = React.useMemo(() => {
+    return viopMarketsData.map(market => {
+      const existingChannel = allChannelsData.find(c => c.marketCode === market.code);
+      if (existingChannel) return existingChannel;
+      
+      return {
+        id: null, // No channel ID yet
+        name: market.name,
+        marketCode: market.code,
+        type: 'market',
+        thumbnail: null, // Market might not have thumbnail in this response
+        lastMessage: 'Kanalı başlatmak için tıklayın',
+        lastMessageAt: null,
+        messageCount: 0,
+        isVirtual: true, // Flag to indicate this needs initiation
+      };
+    });
+  }, [viopMarketsData, allChannelsData]);
+
+  // Merge Funds with existing channels
+  const mergedFundChannels = React.useMemo(() => {
+    return fundsData.map(fund => {
+      const existingChannel = allChannelsData.find(c => c.fundCode === fund.code);
+      if (existingChannel) return existingChannel;
+      
+      return {
+        id: null,
+        name: fund.name,
+        fundCode: fund.code,
+        type: 'fund',
+        thumbnail: null,
+        lastMessage: 'Kanalı başlatmak için tıklayın',
+        lastMessageAt: null,
+        messageCount: 0,
+        isVirtual: true,
+      };
+    });
+  }, [fundsData, allChannelsData]);
+
   // Get total counts
   const totalAllChannels = allChannelsPages?.pages?.[0]?.totalResults || 0;
   const totalVipChannels = vipChannelsPages?.pages?.[0]?.totalResults || 0;
+  const totalViopResults = viopPages?.pages?.[0]?.totalResults || 0;
+  const totalFundResults = fundPages?.pages?.[0]?.totalResults || 0;
 
-  const handleChannelClick = (channel) => {
-    navigate(`/dashboard/messaging/channels/${channel.id}`);
+  const handleChannelClick = async (channel) => {
+    if (channel.id) {
+      navigate(`/dashboard/messaging/channels/${channel.id}`);
+    } else if (channel.isVirtual) {
+      try {
+        let res;
+        if (channel.type === 'market') {
+          res = await api.initiateMarketChannel(channel.marketCode);
+        } else if (channel.type === 'fund') {
+          res = await api.initiateFundChannel(channel.fundCode);
+        }
+        
+        if (res?.data?.id) {
+          navigate(`/dashboard/messaging/channels/${res.data.id}`);
+        }
+      } catch (error) {
+        console.error('Failed to initiate channel:', error);
+        // You might want to show a toast here
+      }
+    }
   };
 
   // Filter and sort channels based on search query and selected sort option
@@ -287,11 +401,17 @@ const Channels = () => {
   };
 
   // Separate channels by type and sort by message count
+  // We use the fetched and merged lists for VIOP and Funds now
+  const isCrypto = (c) => c.type === 'market' && (c.category === 'kripto' || c.marketCode?.endsWith('USDT') || c.marketCode?.endsWith('USD') || c.name?.toUpperCase().includes('KRİPTO'));
+  // Note: isViop check is less critical for the tab now as we use direct fetch, but good for "Others" exclusion
   const isViop = (c) => c.type === 'market' && (c.marketCode?.startsWith('F_') || c.name?.toUpperCase().includes('VİOP') || c.marketCode?.includes('VIOP'));
-  
-  const marketChannels = filterAndSortChannels(allChannelsData?.filter(c => c.type === 'market' && !isViop(c)));
-  const viopChannels = filterAndSortChannels(allChannelsData?.filter(c => isViop(c)));
-  const fundChannels = filterAndSortChannels(allChannelsData?.filter(c => c.type === 'fund'));
+  const isFund = (c) => c.type === 'fund';
+  const isStock = (c) => c.type === 'market' && !isViop(c) && !isCrypto(c);
+
+  const stockChannels = filterAndSortChannels(allChannelsData?.filter(isStock));
+  const cryptoChannels = filterAndSortChannels(allChannelsData?.filter(isCrypto));
+  const viopChannels = filterAndSortChannels(mergedViopChannels); // Use merged list
+  const fundChannels = filterAndSortChannels(mergedFundChannels); // Use merged list
   const vipChannels = filterAndSortChannels(vipChannelsData);
   const otherChannels = filterAndSortChannels(allChannelsData?.filter(c => c.type !== 'market' && c.type !== 'vip' && c.type !== 'fund'));
   const allFiltered = filterAndSortChannels(allChannelsData);
@@ -354,19 +474,25 @@ const Channels = () => {
             <Tab>
               <HStack spacing="2">
                 <Icon as={FiTrendingUp} />
-                <Text>Piyasalar ({marketChannels?.length || 0})</Text>
+                <Text>Borsa ({stockChannels?.length || 0})</Text>
+              </HStack>
+            </Tab>
+            <Tab>
+              <HStack spacing="2">
+                <Icon as={FiCpu} />
+                <Text>Kripto ({cryptoChannels?.length || 0})</Text>
               </HStack>
             </Tab>
             <Tab>
               <HStack spacing="2">
                 <Icon as={FiActivity} />
-                <Text>VİOP ({viopChannels?.length || 0})</Text>
+                <Text>VİOP ({totalViopResults || viopChannels?.length || 0})</Text>
               </HStack>
             </Tab>
             <Tab>
               <HStack spacing="2">
                 <Icon as={FiPieChart} />
-                <Text>Fonlar ({fundChannels?.length || 0})</Text>
+                <Text>Fonlar ({totalFundResults || fundChannels?.length || 0})</Text>
               </HStack>
             </Tab>
             <Tab>
@@ -392,17 +518,31 @@ const Channels = () => {
               />
             </TabPanel>
 
-            {/* Market Channels */}
+            {/* Stock Channels */}
             <TabPanel p="0">
               <ChannelList
-                channels={marketChannels}
+                channels={stockChannels}
                 isLoading={isLoadingAll}
                 onChannelClick={handleChannelClick}
-                emptyMessage="Piyasa kanalı bulunamadı"
+                emptyMessage="Borsa kanalı bulunamadı"
                 hasNextPage={hasNextAllChannels}
                 isFetchingNextPage={isFetchingNextAllChannels}
                 onLoadMore={fetchNextAllChannels}
-                totalCount={marketChannels?.length}
+                totalCount={stockChannels?.length}
+              />
+            </TabPanel>
+
+            {/* Crypto Channels */}
+            <TabPanel p="0">
+              <ChannelList
+                channels={cryptoChannels}
+                isLoading={isLoadingAll}
+                onChannelClick={handleChannelClick}
+                emptyMessage="Kripto kanalı bulunamadı"
+                hasNextPage={hasNextAllChannels}
+                isFetchingNextPage={isFetchingNextAllChannels}
+                onLoadMore={fetchNextAllChannels}
+                totalCount={cryptoChannels?.length}
               />
             </TabPanel>
 
@@ -410,13 +550,13 @@ const Channels = () => {
             <TabPanel p="0">
               <ChannelList
                 channels={viopChannels}
-                isLoading={isLoadingAll}
+                isLoading={isLoadingViop}
                 onChannelClick={handleChannelClick}
                 emptyMessage="VİOP kanalı bulunamadı"
-                hasNextPage={hasNextAllChannels}
-                isFetchingNextPage={isFetchingNextAllChannels}
-                onLoadMore={fetchNextAllChannels}
-                totalCount={viopChannels?.length}
+                hasNextPage={hasNextViop}
+                isFetchingNextPage={isFetchingNextViop}
+                onLoadMore={fetchNextViop}
+                totalCount={totalViopResults}
               />
             </TabPanel>
 
@@ -424,13 +564,13 @@ const Channels = () => {
             <TabPanel p="0">
               <ChannelList
                 channels={fundChannels}
-                isLoading={isLoadingAll}
+                isLoading={isLoadingFunds}
                 onChannelClick={handleChannelClick}
                 emptyMessage="Fon kanalı bulunamadı"
-                hasNextPage={hasNextAllChannels}
-                isFetchingNextPage={isFetchingNextAllChannels}
-                onLoadMore={fetchNextAllChannels}
-                totalCount={fundChannels?.length}
+                hasNextPage={hasNextFunds}
+                isFetchingNextPage={isFetchingNextFunds}
+                onLoadMore={fetchNextFunds}
+                totalCount={totalFundResults}
               />
             </TabPanel>
 
