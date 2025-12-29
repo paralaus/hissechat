@@ -425,8 +425,11 @@ const Channels = () => {
   const totalStockResults = stockPages?.pages?.[0]?.totalResults || 0;
   const totalFundResults = fundPages?.pages?.[0]?.total || 0;
   const totalAllCombinedCount =
-    (allChannelsPages?.pages?.[0]?.totalResults || 0) +
-    (totalFundResults || 0);
+    (totalStockResults || 0) +
+    (totalCryptoResults || 0) +
+    (totalViopResults || 0) +
+    (totalFundResults || 0) +
+    (totalVipChannels || 0);
 
   const handleChannelClick = async (channel) => {
     if (channel.id) {
@@ -646,13 +649,13 @@ const Channels = () => {
             <TabPanel p="0">
               <ChannelList
                 channels={stockChannels}
-                isLoading={isLoadingAll}
+                isLoading={isLoadingStock}
                 onChannelClick={handleChannelClick}
                 emptyMessage="Borsa kanalı bulunamadı"
-                hasNextPage={hasNextAllChannels}
-                isFetchingNextPage={isFetchingNextAllChannels}
-                onLoadMore={fetchNextAllChannels}
-                totalCount={stockChannels?.length}
+                hasNextPage={hasNextStock}
+                isFetchingNextPage={isFetchingNextStock}
+                onLoadMore={fetchNextStock}
+                totalCount={totalStockResults}
               />
             </TabPanel>
 
