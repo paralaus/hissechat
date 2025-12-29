@@ -423,7 +423,7 @@ const Channels = () => {
   const totalViopResults = viopPages?.pages?.[0]?.totalResults || 0;
   const totalCryptoResults = cryptoPages?.pages?.[0]?.totalResults || 0;
   const totalStockResults = stockPages?.pages?.[0]?.totalResults || 0;
-  const totalFundResults = fundPages?.pages?.[0]?.totalResults || 0;
+  const totalFundResults = fundPages?.pages?.[0]?.total || 0;
   const totalAllCombinedCount =
     (allChannelsPages?.pages?.[0]?.totalResults || 0) +
     (totalFundResults || 0);
