@@ -72,6 +72,7 @@ import useFileInput from '../../../hooks/useFileInput';
 import {getErrorMessage} from '../../../utils/string';
 import VideoConference from '../../../components/conference/VideoConference';
 import ForwardMessageModal from '../../../components/modals/ForwardMessageModal';
+import CreateConferenceModal from '../../../components/modals/CreateConferenceModal';
 
 // Media Preview Modal Component
 const MediaPreviewModal = ({isOpen, onClose, mediaType, mediaUrl, fileName}) => {
@@ -188,23 +189,61 @@ const MediaPreviewModal = ({isOpen, onClose, mediaType, mediaUrl, fileName}) => 
   );
 };
 
-// Helper function to highlight search text
+// Helper function to highlight search text and linkify URLs
 const HighlightText = ({text, searchQuery}) => {
-  if (!searchQuery || !text) return <>{text}</>;
-  
-  const parts = text.split(new RegExp(`(${searchQuery})`, 'gi'));
-  
+  if (!text) return null;
+
+  const urlRegex = /(https?:\/\/[^\s]+|www\.[^\s]+)/g;
+  const parts = text.split(urlRegex);
+
   return (
     <>
-      {parts.map((part, index) => 
-        part.toLowerCase() === searchQuery.toLowerCase() ? (
-          <Text as="mark" key={index} bg="yellow.300" color="gray.800" px="0.5" borderRadius="sm">
-            {part}
-          </Text>
-        ) : (
-          <React.Fragment key={index}>{part}</React.Fragment>
-        )
-      )}
+      {parts.map((part, i) => {
+        if (part.match(urlRegex)) {
+          const href = part.startsWith('www.') ? `https://${part}` : part;
+          return (
+            <a 
+              key={i} 
+              href={href} 
+              target="_blank" 
+              rel="noopener noreferrer" 
+              style={{ color: '#3182ce', textDecoration: 'underline' }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              {searchQuery ? (
+                 part.split(new RegExp(`(${searchQuery})`, 'gi')).map((subPart, subIndex) => 
+                   subPart.toLowerCase() === searchQuery.toLowerCase() ? (
+                     <Text as="mark" key={subIndex} bg="yellow.300" color="gray.800" px="0.5" borderRadius="sm">
+                       {subPart}
+                     </Text>
+                   ) : (
+                     <React.Fragment key={subIndex}>{subPart}</React.Fragment>
+                   )
+                 )
+              ) : part}
+            </a>
+          );
+        }
+
+        if (searchQuery) {
+          const subParts = part.split(new RegExp(`(${searchQuery})`, 'gi'));
+          return (
+            <React.Fragment key={i}>
+              {subParts.map((subPart, subIndex) => 
+                subPart.toLowerCase() === searchQuery.toLowerCase() ? (
+                  <Text as="mark" key={subIndex} bg="yellow.300" color="gray.800" px="0.5" borderRadius="sm">
+                    {subPart}
+                  </Text>
+                ) : (
+                  <React.Fragment key={subIndex}>{subPart}</React.Fragment>
+                )
+              )}
+            </React.Fragment>
+          );
+        }
+        
+        return <React.Fragment key={i}>{part}</React.Fragment>;
+      })}
     </>
   );
 };
@@ -512,7 +551,7 @@ const MessageBubble = ({message, isOwn, onReply, onForward, onReplyClick, allMes
               
               if (message.conference.startTime) {
                 const startDate = new Date(message.conference.startTime);
-                if (startDate > now && !message.conference.isActive) {
+                if (startDate > now) {
                   confStatus = 'upcoming';
                 }
               }
@@ -818,7 +857,6 @@ const ChannelChat = () => {
   const [messageText, setMessageText] = useState('');
   const [isSending, setIsSending] = useState(false);
   const [replyTo, setReplyTo] = useState(null);
-  const [isLoadingMore, setIsLoadingMore] = useState(false);
   const previousScrollHeight = useRef(0);
   
   // Search state
@@ -834,6 +872,7 @@ const ChannelChat = () => {
   // Video call modal state
   const {isOpen: isVideoCallOpen, onOpen: onVideoCallOpen, onClose: onVideoCallClose} = useDisclosure();
   const [currentConferenceData, setCurrentConferenceData] = useState(null);
+  const [createConferenceModalOpen, setCreateConferenceModalOpen] = useState(false);
 
   // Emoji picker state
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
@@ -901,6 +940,7 @@ const ChannelChat = () => {
   const sendMessageMutation = useMutation({
     mutationFn: (body) => api.sendChannelMessage(channelId, body),
     onSuccess: () => {
+      shouldScrollToBottomRef.current = true;
       queryClient.invalidateQueries(['channel-messages', channelId]);
       setMessageText('');
       setReplyTo(null);
@@ -908,10 +948,6 @@ const ChannelChat = () => {
       videoInput.reset();
       audioInput.reset();
       fileInput.reset();
-      // Scroll to bottom after sending
-      setTimeout(() => {
-        messagesEndRef.current?.scrollIntoView({behavior: 'smooth'});
-      }, 100);
     },
   });
 
@@ -941,33 +977,38 @@ const ChannelChat = () => {
 
   // Scroll to bottom only on initial load or new message sent
   const [hasInitialScroll, setHasInitialScroll] = useState(false);
+  const shouldScrollToBottomRef = useRef(false);
   
   useEffect(() => {
-    if (allMessages.length > 0 && !hasInitialScroll) {
+    if (shouldScrollToBottomRef.current) {
+      messagesEndRef.current?.scrollIntoView({behavior: 'smooth'});
+      shouldScrollToBottomRef.current = false;
+    } else if (allMessages.length > 0 && !hasInitialScroll) {
       messagesEndRef.current?.scrollIntoView({behavior: 'auto'});
       setHasInitialScroll(true);
     }
   }, [allMessages, hasInitialScroll]);
 
   // Maintain scroll position when loading older messages
-  useEffect(() => {
-    if (messagesContainerRef.current && previousScrollHeight.current > 0 && !isLoadingMore) {
+  React.useLayoutEffect(() => {
+    if (messagesContainerRef.current && previousScrollHeight.current > 0 && !isFetchingNextPage) {
       const newScrollHeight = messagesContainerRef.current.scrollHeight;
       const scrollDiff = newScrollHeight - previousScrollHeight.current;
-      messagesContainerRef.current.scrollTop = scrollDiff;
+      
+      if (scrollDiff > 0) {
+        messagesContainerRef.current.scrollTop = scrollDiff;
+      }
       previousScrollHeight.current = 0;
     }
-  }, [allMessages, isLoadingMore]);
+  }, [allMessages, isFetchingNextPage]);
 
   // Handle scroll to load more messages
   const handleScroll = async (e) => {
     const container = e.target;
-    // If scrolled near top (within 50px) and there are more pages
-    if (container.scrollTop < 50 && hasNextPage && !isFetchingNextPage && !isLoadingMore) {
-      setIsLoadingMore(true);
+    // If scrolled near top (within 100px) and there are more pages
+    if (container.scrollTop < 100 && hasNextPage && !isFetchingNextPage) {
       previousScrollHeight.current = container.scrollHeight;
       await fetchNextPage();
-      setIsLoadingMore(false);
     }
   };
 
@@ -1060,7 +1101,7 @@ const ChannelChat = () => {
   };
 
   // Create and send conference message
-  const handleCreateConference = async () => {
+  const handleCreateConference = async (options = {}) => {
     try {
       setIsSending(true);
       
@@ -1070,8 +1111,16 @@ const ChannelChat = () => {
       // Generate unique room ID
       const roomId = `hissechat-${channelId}-${Date.now()}`;
       const conferenceTitle = `${channel?.name || 'Kanal'} Video Görüşmesi`;
-      const startTime = new Date().toISOString();
-      const scheduledEndTime = new Date(Date.now() + 60 * 60 * 1000).toISOString(); // 1 hour later
+      
+      let startTime = new Date().toISOString();
+      let scheduledEndTime = new Date(Date.now() + 60 * 60 * 1000).toISOString(); // 1 hour later
+      
+      // Handle scheduled conference
+      if (options.type === 'scheduled' && options.startTime) {
+        startTime = options.startTime;
+        // End time is 1 hour after start time by default
+        scheduledEndTime = new Date(new Date(startTime).getTime() + 60 * 60 * 1000).toISOString();
+      }
       
       // Create conference in backend
       await api.createConference({
@@ -1087,22 +1136,25 @@ const ChannelChat = () => {
           title: conferenceTitle,
           startTime,
           scheduledEndTime,
-          isActive: true,
+          isActive: true, // Always active so it can be joined when time comes
         },
       };
 
       await sendMessageMutation.mutateAsync(conferenceBody);
       
-      // Set conference data and open modal
-      setCurrentConferenceData({
-        roomId,
-        title: conferenceTitle,
-        channelId,
-      });
-      onVideoCallOpen();
+      // Only open video call immediately if it's an instant meeting
+      if (options.type !== 'scheduled') {
+        // Set conference data and open modal
+        setCurrentConferenceData({
+          roomId,
+          title: conferenceTitle,
+          channelId,
+        });
+        onVideoCallOpen();
+      }
       
       toast({
-        title: 'Video görüşme başlatıldı',
+        title: options.type === 'scheduled' ? 'Video görüşme planlandı' : 'Video görüşme başlatıldı',
         description: 'Kanal üyelerine bildirim gönderildi',
         status: 'success',
         position: 'top',
@@ -1125,7 +1177,7 @@ const ChannelChat = () => {
     // If startTime exists and is in the future
     if (conferenceData.startTime) {
       const startDate = new Date(conferenceData.startTime);
-      if (startDate > now && !conferenceData.isActive) {
+      if (startDate > now) {
         return {
           status: 'upcoming',
           message: `Bu konferans henüz başlamadı.\nBaşlama zamanı: ${startDate.toLocaleString('tr-TR', { 
@@ -1266,7 +1318,7 @@ const ChannelChat = () => {
         // Check if conference hasn't started yet
         if (backendConference.startTime) {
           const startDate = new Date(backendConference.startTime);
-          if (startDate > now && !backendConference.isActive) {
+          if (startDate > now) {
             toast({
               title: '⏰ Henüz Başlamadı',
               description: `Bu konferans henüz başlamadı.\nBaşlama zamanı: ${startDate.toLocaleString('tr-TR', { 
@@ -1723,7 +1775,7 @@ const ChannelChat = () => {
                     icon={<FiVideo />}
                     variant="ghost"
                     colorScheme="green"
-                    onClick={handleCreateConference}
+                    onClick={() => setCreateConferenceModalOpen(true)}
                     isLoading={isSending}
                     aria-label="Video Görüşme"
                   />
@@ -2093,6 +2145,14 @@ const ChannelChat = () => {
           setMessageToForward(null);
         }}
         messageToForward={messageToForward}
+      />
+
+      {/* Create Conference Modal */}
+      <CreateConferenceModal
+        isOpen={createConferenceModalOpen}
+        onClose={() => setCreateConferenceModalOpen(false)}
+        onCreate={handleCreateConference}
+        isLoading={isSending}
       />
 
       {/* Media Preview Modal */}
