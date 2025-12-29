@@ -47,7 +47,7 @@ import * as yup from 'yup';
 import {api} from '../../../api';
 import {getErrorMessage} from '../../../utils/string';
 import {Page} from '../../../components';
-import {FiSend, FiMessageCircle, FiUsers, FiTrendingUp, FiImage, FiVideo, FiMusic, FiUpload, FiX, FiFile, FiSmile} from 'react-icons/fi';
+import {FiSend, FiMessageCircle, FiUsers, FiTrendingUp, FiImage, FiVideo, FiMusic, FiUpload, FiX, FiFile, FiSmile, FiActivity, FiCpu, FiPieChart, FiStar} from 'react-icons/fi';
 import useFileInput from '../../../hooks/useFileInput';
 import EmojiPicker from 'emoji-picker-react';
 
@@ -76,8 +76,16 @@ const targetTypes = [
   {value: 'all_markets', label: 'Tüm Piyasa Kanallarına'},
   {value: 'all_vip', label: 'Tüm VIP Kanallara'},
   {value: 'all_funds', label: 'Tüm Fon Kanallarına'},
+  {value: 'all_viop', label: 'Tüm VİOP Kanallarına'},
   {value: 'selected', label: 'Seçili Kanallara'},
 ];
+
+// Helper to identify VIOP channels
+const isViopChannel = (c) => 
+  c.type === 'market' && 
+  (c.marketCode?.startsWith('F_') || 
+   c.name?.toUpperCase().includes('VİOP') || 
+   c.marketCode?.includes('VIOP'));
 
 const BulkMessage = () => {
   const toast = useToast();
@@ -168,6 +176,8 @@ const BulkMessage = () => {
         return vipChannelsData?.length || 0;
       case 'all_funds':
         return channelsData?.filter(c => c.type === 'fund').length || 0;
+      case 'all_viop':
+        return channelsData?.filter(isViopChannel).length || 0;
       case 'selected':
         return selectedChannels.length;
       default:
@@ -205,7 +215,23 @@ const BulkMessage = () => {
       setIsUploading(false);
       setIsSending(true);
 
-      const {data} = await mutateAsync(values);
+      // Transform all_funds and all_viop to selected list if backend doesn't support them natively
+      // We assume backend might only know about market/vip/all.
+      let submissionValues = { ...values };
+      
+      if (values.targetType === 'all_funds') {
+        submissionValues.targetType = 'selected';
+        submissionValues.selectedChannels = channelsData
+          .filter(c => c.type === 'fund')
+          .map(c => c.id);
+      } else if (values.targetType === 'all_viop') {
+        submissionValues.targetType = 'selected';
+        submissionValues.selectedChannels = channelsData
+          .filter(isViopChannel)
+          .map(c => c.id);
+      }
+
+      const {data} = await mutateAsync(submissionValues);
       
       setIsSending(false);
       
@@ -262,6 +288,8 @@ const BulkMessage = () => {
         return vipChannelsData?.length || 0;
       case 'all_funds':
         return channelsData?.filter(c => c.type === 'fund')?.length || 0;
+      case 'all_viop':
+        return channelsData?.filter(isViopChannel)?.length || 0;
       case 'selected':
         return selectedChannels.length;
       default:
@@ -273,9 +301,15 @@ const BulkMessage = () => {
   const hasMedia = imageInput.objectUrl || videoInput.objectUrl || audioInput.objectUrl || fileInput.objectUrl;
 
   // Group channels by type for display
-  const marketChannels = channelsData?.filter(c => c.type === 'market') || [];
+  const isCrypto = (c) => c.type === 'market' && c.category === 'kripto';
+  const isStock = (c) => c.type === 'market' && !isViopChannel(c) && !isCrypto(c);
+  
+  const marketChannels = channelsData?.filter(c => c.type === 'market' && !isViopChannel(c)) || [];
+  const stockChannels = channelsData?.filter(isStock) || [];
+  const cryptoChannels = channelsData?.filter(isCrypto) || [];
   const vipChannels = vipChannelsData || [];
   const fundChannels = channelsData?.filter(c => c.type === 'fund') || [];
+  const viopChannels = channelsData?.filter(isViopChannel) || [];
   const otherChannels = channelsData?.filter(c => c.type !== 'market' && c.type !== 'vip' && c.type !== 'fund') || [];
 
   return (
@@ -290,50 +324,107 @@ const BulkMessage = () => {
       </Box>
 
       {/* Statistics */}
-      <StatGroup mb="6">
+      <StatGroup mb="6" display="flex" flexWrap="wrap" gap="4">
         <Stat
           bg="white"
           p="4"
           borderRadius="lg"
           boxShadow="sm"
-          mr="4"
+          minW="150px"
+          flex="1"
         >
           <StatLabel color="gray.500">
             <HStack>
               <Icon as={FiMessageCircle} />
-              <Text>Toplam Kanal</Text>
+              <Text>Tümü</Text>
             </HStack>
           </StatLabel>
-          <StatNumber>{channelsData?.length || 0}</StatNumber>
+          <StatNumber>{(channelsData?.length || 0) + (vipChannelsData?.length || 0)}</StatNumber>
         </Stat>
+
         <Stat
           bg="white"
           p="4"
           borderRadius="lg"
           boxShadow="sm"
-          mr="4"
+          minW="150px"
+          flex="1"
+        >
+          <StatLabel color="gray.500">
+            <HStack>
+              <Icon as={FiStar} />
+              <Text>VIP</Text>
+            </HStack>
+          </StatLabel>
+          <StatNumber>{vipChannels.length}</StatNumber>
+        </Stat>
+
+        <Stat
+          bg="white"
+          p="4"
+          borderRadius="lg"
+          boxShadow="sm"
+          minW="150px"
+          flex="1"
+        >
+          <StatLabel color="gray.500">
+            <HStack>
+              <Icon as={FiActivity} />
+              <Text>VİOP</Text>
+            </HStack>
+          </StatLabel>
+          <StatNumber>{viopChannels.length}</StatNumber>
+        </Stat>
+
+        <Stat
+          bg="white"
+          p="4"
+          borderRadius="lg"
+          boxShadow="sm"
+          minW="150px"
+          flex="1"
+        >
+          <StatLabel color="gray.500">
+            <HStack>
+              <Icon as={FiCpu} />
+              <Text>Kripto</Text>
+            </HStack>
+          </StatLabel>
+          <StatNumber>{cryptoChannels.length}</StatNumber>
+        </Stat>
+
+        <Stat
+          bg="white"
+          p="4"
+          borderRadius="lg"
+          boxShadow="sm"
+          minW="150px"
+          flex="1"
         >
           <StatLabel color="gray.500">
             <HStack>
               <Icon as={FiTrendingUp} />
-              <Text>Piyasa Kanalları</Text>
+              <Text>Borsa</Text>
             </HStack>
           </StatLabel>
-          <StatNumber>{marketChannels.length}</StatNumber>
+          <StatNumber>{stockChannels.length}</StatNumber>
         </Stat>
+
         <Stat
           bg="white"
           p="4"
           borderRadius="lg"
           boxShadow="sm"
+          minW="150px"
+          flex="1"
         >
           <StatLabel color="gray.500">
             <HStack>
-              <Icon as={FiUsers} />
-              <Text>VIP Kanallar</Text>
+              <Icon as={FiPieChart} />
+              <Text>Fonlar</Text>
             </HStack>
           </StatLabel>
-          <StatNumber>{vipChannels.length}</StatNumber>
+          <StatNumber>{fundChannels.length}</StatNumber>
         </Stat>
       </StatGroup>
 
@@ -563,6 +654,27 @@ const BulkMessage = () => {
                                   <HStack>
                                     <Text>{channel.name}</Text>
                                     <Badge size="sm" colorScheme="purple">VIP</Badge>
+                                  </HStack>
+                                </Checkbox>
+                              ))}
+                            </VStack>
+                          </Box>
+                        )}
+
+                        <Divider />
+
+                        {/* VIOP Channels */}
+                        {viopChannels.length > 0 && (
+                          <Box w="100%">
+                            <Text fontWeight="bold" mb="2" color="gray.600">
+                              📉 VİOP Kanalları ({viopChannels.length})
+                            </Text>
+                            <VStack align="start" pl="4" spacing="2">
+                              {viopChannels.map((channel) => (
+                                <Checkbox key={channel.id} value={channel.id}>
+                                  <HStack>
+                                    <Text>{channel.name}</Text>
+                                    <Badge size="sm" colorScheme="orange">VİOP</Badge>
                                   </HStack>
                                 </Checkbox>
                               ))}
