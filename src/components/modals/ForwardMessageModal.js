@@ -27,7 +27,7 @@ import { tr } from 'date-fns/locale';
 import { api } from '../../api'; // Adjust path as needed
 import { getCombinedLogoUrl } from '../../utils/image'; // Adjust path as needed
 
-const PAGE_SIZE = 20;
+const PAGE_SIZE = 50;
 
 const ChannelItem = ({ channel, onSelect, isSelected }) => {
   const lastMessageTime = channel.lastMessageAt 
@@ -101,9 +101,12 @@ const ForwardMessageModal = ({ isOpen, onClose, messageToForward }) => {
       
       // If we have a search query, let's try to search in all channels endpoint if supported
       // Or we can rely on client side filtering as we do below
+      // API doesn't support search param for this endpoint yet, so we filter client side
+      /*
       if (searchQuery) {
           params.search = searchQuery;
       }
+      */
 
       const res = await api.getAllChannels(params);
       return res.data;
