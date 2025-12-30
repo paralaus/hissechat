@@ -334,12 +334,47 @@ export const deleteChannelMessage = async (channelId, messageId) => {
   return apiClient.delete(`/channels/${channelId}/messages/${messageId}`);
 };
 
+export const deleteChannelMessageForUser = async (channelId, messageId) => {
+  return apiClient.delete(`/channels/${channelId}/messages/${messageId}/for-user`);
+};
+
 export const deleteChannelMessages = async (channelId, messageIds) => {
   // Delete multiple messages sequentially
   const results = await Promise.allSettled(
     messageIds.map(messageId => apiClient.delete(`/channels/${channelId}/messages/${messageId}`))
   );
   return results;
+};
+
+// Pinned Messages
+export const getPinnedMessages = async (channelId) => {
+  const id = encodeURIComponent(channelId);
+  return apiClient.get(`/pinned-messages/${id}`);
+};
+
+export const pinMessage = async ({channelId, messageId, durationMs}) => {
+  const body = { channelId, messageId };
+  if (durationMs && durationMs > 0) body.durationMs = durationMs;
+  return apiClient.post('/pinned-messages', body);
+};
+
+export const unpinMessage = async (pinId) => {
+  const id = encodeURIComponent(pinId);
+  return apiClient.delete(`/pinned-messages/unpin/${id}`);
+};
+
+// Archives
+export const archiveMessage = async ({ messageId, channelId }) => {
+  return apiClient.post('/archives', { messageId, channelId });
+};
+
+export const getArchivedMessages = async params => {
+  return apiClient.get('/archives', { params });
+};
+
+export const deleteArchivedMessage = async archiveId => {
+  const id = encodeURIComponent(archiveId);
+  return apiClient.delete(`/archives/${id}`);
 };
 
 // Conference

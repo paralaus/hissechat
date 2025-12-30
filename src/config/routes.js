@@ -101,4 +101,7 @@ export const routes = {
   moderation: {
     path: '/dashboard/moderation',
   },
+  archivedMessages: {
+    path: '/dashboard/messaging/archives',
+  },
 };

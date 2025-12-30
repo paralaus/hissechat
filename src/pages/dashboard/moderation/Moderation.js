@@ -1,4 +1,4 @@
-import React, {useState} from 'react';
+import React, {useState, useEffect} from 'react';
 import {
   Box,
   VStack,
@@ -57,6 +57,7 @@ import {getCombinedLogoUrl} from '../../../utils/image';
 import {format} from 'date-fns';
 import {add} from 'date-fns';
 import {tr} from 'date-fns/locale';
+import { useLocation } from 'react-router-dom';
 
 const MessageCard = ({message, onBlock, onUnblock, onBanUser, onUnbanUser, isBlocking, isBanning, isUnbanning}) => {
   const {isOpen, onOpen, onClose} = useDisclosure();
@@ -343,8 +344,14 @@ const MessageCard = ({message, onBlock, onUnblock, onBanUser, onUnbanUser, isBlo
 const Moderation = () => {
   const toast = useToast();
   const queryClient = useQueryClient();
+  const location = useLocation();
   const [selectedChannel, setSelectedChannel] = useState('');
-  const [filterType, setFilterType] = useState('profanity'); // 'all', 'flagged', 'blocked', 'profanity'
+  const [filterType, setFilterType] = useState(() => {
+    const params = new URLSearchParams(location.search);
+    const initial = params.get('filter');
+    const allowed = ['all', 'flagged', 'blocked', 'profanity'];
+    return allowed.includes(initial) ? initial : 'profanity';
+  }); // 'all', 'flagged', 'blocked', 'profanity'
   const [searchTerm, setSearchTerm] = useState('');
   const [blockingMessageId, setBlockingMessageId] = useState(null);
 
@@ -492,6 +499,29 @@ const Moderation = () => {
       return res.data;
     },
   });
+
+  // Sync filterType with query string changes
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const qFilter = params.get('filter');
+    const allowed = ['all', 'flagged', 'blocked', 'profanity'];
+    if (allowed.includes(qFilter) && qFilter !== filterType) {
+      setFilterType(qFilter);
+    }
+  }, [location.search, filterType]);
+
+  // Pre-fill selectedChannel and searchTerm from query params
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const chId = params.get('channelId');
+    const q = params.get('q');
+    if (chId && chId !== selectedChannel) {
+      setSelectedChannel(chId);
+    }
+    if (q && q !== searchTerm) {
+      setSearchTerm(q);
+    }
+  }, [location.search, selectedChannel, searchTerm]);
 
   const messages = messagesData?.results || [];
 
@@ -763,4 +793,3 @@ const Moderation = () => {
 };
 
 export default Moderation;
-

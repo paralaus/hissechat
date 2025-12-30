@@ -1,5 +1,5 @@
 import React, {useState, useRef, useEffect} from 'react';
-import {useParams, useNavigate} from 'react-router-dom';
+import {useParams, useNavigate, useLocation} from 'react-router-dom';
 import {
   Box,
   VStack,
@@ -25,6 +25,8 @@ import {
   Modal,
   ModalOverlay,
   ModalContent,
+  ModalHeader,
+  ModalFooter,
   ModalBody,
   ModalCloseButton,
   useDisclosure,
@@ -33,11 +35,20 @@ import {
   PopoverContent,
   PopoverBody,
   Button,
+  RadioGroup,
+  Radio,
+  Checkbox,
+  FormControl,
+  FormLabel,
+  Textarea,
+  Select,
   useToast,
 } from '@chakra-ui/react';
 import {useQuery, useMutation, useQueryClient, useInfiniteQuery} from '@tanstack/react-query';
 import {api} from '../../../api';
 import {Page} from '../../../components';
+import JSZip from 'jszip';
+import { saveAs } from 'file-saver';
 import {
   FiSend,
   FiArrowLeft,
@@ -63,6 +74,13 @@ import {
   FiSquare,
   FiShield,
   FiShare2,
+  FiLink,
+  FiMoreVertical,
+  FiCopy,
+  FiMapPin,
+  FiArchive,
+  FiFilter,
+  FiMessageSquare,
 } from 'react-icons/fi';
 import EmojiPicker from 'emoji-picker-react';
 import {getCombinedLogoUrl} from '../../../utils/image';
@@ -73,6 +91,7 @@ import {getErrorMessage} from '../../../utils/string';
 import VideoConference from '../../../components/conference/VideoConference';
 import ForwardMessageModal from '../../../components/modals/ForwardMessageModal';
 import CreateConferenceModal from '../../../components/modals/CreateConferenceModal';
+import { routes } from '../../../config/routes';
 
 // Media Preview Modal Component
 const MediaPreviewModal = ({isOpen, onClose, mediaType, mediaUrl, fileName}) => {
@@ -248,7 +267,7 @@ const HighlightText = ({text, searchQuery}) => {
   );
 };
 
-const MessageBubble = ({message, isOwn, onReply, onForward, onReplyClick, allMessages, searchQuery, isHighlighted, messageRef, onMediaClick, onJoinConference, onVotePoll, onClosePoll, currentUserId, isSelectMode, isSelected, onSelect}) => {
+const MessageBubble = ({message, isOwn, onReply, onForward, onCopyLink, onOpenLink, onCopyText, onQuoteText, onArchive, onArchiveAndPin, onOpenModeration, onBlock, onUnblock, onDelete, onTogglePin, onReplyClick, allMessages, searchQuery, isHighlighted, messageRef, onMediaClick, onJoinConference, onVotePoll, onClosePoll, currentUserId, isSelectMode, isSelected, onSelect, isPinned}) => {
   const time = message.createdAt 
     ? format(new Date(message.createdAt), 'HH:mm', {locale: tr})
     : '';
@@ -390,22 +409,61 @@ const MessageBubble = ({message, isOwn, onReply, onForward, onReplyClick, allMes
         {/* Reply button for own messages (left side) */}
         {isOwn && (
           <VStack spacing={0} opacity="0" _groupHover={{opacity: 1}}>
-            <IconButton
-              icon={<FiCornerUpLeft />}
-              size="xs"
-              variant="ghost"
-              onClick={() => onReply(message)}
-              aria-label="Cevapla"
-              title="Cevapla"
-            />
-            <IconButton
-              icon={<FiShare2 />}
-              size="xs"
-              variant="ghost"
-              onClick={() => onForward && onForward(message)}
-              aria-label="İlet"
-              title="İlet"
-            />
+            <Menu placement="bottom-end">
+              <MenuButton
+                as={IconButton}
+                icon={<FiMoreVertical />}
+                size="xs"
+                variant="ghost"
+                aria-label="İşlemler"
+              />
+              <MenuList>
+                <MenuItem icon={<FiCornerUpLeft />} onClick={() => onReply(message)}>
+                  Cevapla
+                </MenuItem>
+                <MenuItem icon={<FiShare2 />} onClick={() => onForward && onForward(message)}>
+                  İlet
+                </MenuItem>
+                <MenuItem icon={<FiLink />} onClick={() => onCopyLink && onCopyLink(message)}>
+                  Bağlantıyı kopyala
+                </MenuItem>
+                {message.text && (
+                  <MenuItem icon={<FiCopy />} onClick={() => onCopyText && onCopyText(message)}>
+                    Metni kopyala
+                  </MenuItem>
+                )}
+                <MenuItem icon={<FiMessageSquare />} onClick={() => onQuoteText && onQuoteText(message)}>
+                  Mesajı alıntıla
+                </MenuItem>
+                <MenuItem icon={<FiExternalLink />} onClick={() => onOpenLink && onOpenLink(message)}>
+                  Yeni sekmede aç
+                </MenuItem>
+                <MenuItem icon={<FiShield />} onClick={() => onOpenModeration && onOpenModeration(message)}>
+                  Moderasyonda aç
+                </MenuItem>
+                <MenuItem icon={<FiArchive />} onClick={() => onArchive && onArchive(message)}>
+                  Arşivle
+                </MenuItem>
+                <MenuItem icon={<FiMapPin />} onClick={() => onArchiveAndPin && onArchiveAndPin(message)}>
+                  Arşivle ve sabitle
+                </MenuItem>
+                {!message.isBlocked ? (
+                  <MenuItem icon={<FiShield />} onClick={() => onBlock && onBlock(message)}>
+                    Engelle
+                  </MenuItem>
+                ) : (
+                  <MenuItem icon={<FiCheck />} onClick={() => onUnblock && onUnblock(message)}>
+                    Engeli kaldır
+                  </MenuItem>
+                )}
+                <MenuItem icon={<FiMapPin />} onClick={() => onTogglePin && onTogglePin(message)}>
+                  {isPinned ? 'Sabitlemeyi kaldır' : 'Sabitle'}
+                </MenuItem>
+                <MenuItem icon={<FiTrash2 />} onClick={() => onDelete && onDelete(message)}>
+                  Sil
+                </MenuItem>
+              </MenuList>
+            </Menu>
           </VStack>
         )}
         
@@ -822,22 +880,61 @@ const MessageBubble = ({message, isOwn, onReply, onForward, onReplyClick, allMes
         {/* Reply button for other's messages (right side) */}
         {!isOwn && (
           <VStack spacing={0} opacity="0" _groupHover={{opacity: 1}}>
-            <IconButton
-              icon={<FiCornerUpLeft />}
-              size="xs"
-              variant="ghost"
-              onClick={() => onReply(message)}
-              aria-label="Cevapla"
-              title="Cevapla"
-            />
-            <IconButton
-              icon={<FiShare2 />}
-              size="xs"
-              variant="ghost"
-              onClick={() => onForward && onForward(message)}
-              aria-label="İlet"
-              title="İlet"
-            />
+            <Menu placement="bottom-end">
+              <MenuButton
+                as={IconButton}
+                icon={<FiMoreVertical />}
+                size="xs"
+                variant="ghost"
+                aria-label="İşlemler"
+              />
+              <MenuList>
+                <MenuItem icon={<FiCornerUpLeft />} onClick={() => onReply(message)}>
+                  Cevapla
+                </MenuItem>
+                <MenuItem icon={<FiShare2 />} onClick={() => onForward && onForward(message)}>
+                  İlet
+                </MenuItem>
+                <MenuItem icon={<FiLink />} onClick={() => onCopyLink && onCopyLink(message)}>
+                  Bağlantıyı kopyala
+                </MenuItem>
+                {message.text && (
+                  <MenuItem icon={<FiCopy />} onClick={() => onCopyText && onCopyText(message)}>
+                    Metni kopyala
+                  </MenuItem>
+                )}
+                <MenuItem icon={<FiMessageSquare />} onClick={() => onQuoteText && onQuoteText(message)}>
+                  Mesajı alıntıla
+                </MenuItem>
+                <MenuItem icon={<FiExternalLink />} onClick={() => onOpenLink && onOpenLink(message)}>
+                  Yeni sekmede aç
+                </MenuItem>
+                <MenuItem icon={<FiShield />} onClick={() => onOpenModeration && onOpenModeration(message)}>
+                  Moderasyonda aç
+                </MenuItem>
+                <MenuItem icon={<FiArchive />} onClick={() => onArchive && onArchive(message)}>
+                  Arşivle
+                </MenuItem>
+                <MenuItem icon={<FiMapPin />} onClick={() => onArchiveAndPin && onArchiveAndPin(message)}>
+                  Arşivle ve sabitle
+                </MenuItem>
+                {!message.isBlocked ? (
+                  <MenuItem icon={<FiShield />} onClick={() => onBlock && onBlock(message)}>
+                    Engelle
+                  </MenuItem>
+                ) : (
+                  <MenuItem icon={<FiCheck />} onClick={() => onUnblock && onUnblock(message)}>
+                    Engeli kaldır
+                  </MenuItem>
+                )}
+                <MenuItem icon={<FiMapPin />} onClick={() => onTogglePin && onTogglePin(message)}>
+                  {isPinned ? 'Sabitlemeyi kaldır' : 'Sabitle'}
+                </MenuItem>
+                <MenuItem icon={<FiTrash2 />} onClick={() => onDelete && onDelete(message)}>
+                  Sil
+                </MenuItem>
+              </MenuList>
+            </Menu>
           </VStack>
         )}
       </HStack>
@@ -853,6 +950,7 @@ const ChannelChat = () => {
   const messagesEndRef = useRef(null);
   const messagesContainerRef = useRef(null);
   const inputRef = useRef(null);
+  const conferenceScrollDoneRef = useRef(false);
   const messageRefs = useRef({});
   const [messageText, setMessageText] = useState('');
   const [isSending, setIsSending] = useState(false);
@@ -891,7 +989,40 @@ const ChannelChat = () => {
   // Multi-select delete state
   const [isSelectMode, setIsSelectMode] = useState(false);
   const [selectedMessageIds, setSelectedMessageIds] = useState(new Set());
+  const [isArchiving, setIsArchiving] = useState(false);
+  const [isPinning, setIsPinning] = useState(false);
+  const [isUnpinning, setIsUnpinning] = useState(false);
+  const [isBlockingSelected, setIsBlockingSelected] = useState(false);
+  const [isUnblockingSelected, setIsUnblockingSelected] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isArchivingDeleting, setIsArchivingDeleting] = useState(false);
+  const [shownArchiveDeleteHint, setShownArchiveDeleteHint] = useState(false);
+  const bulkPinModal = useDisclosure();
+  const [bulkPinDuration, setBulkPinDuration] = useState('unlimited');
+  const [bulkArchiveAndPin, setBulkArchiveAndPin] = useState(false);
+  const [customDurationValue, setCustomDurationValue] = useState(24);
+  const [customDurationUnit, setCustomDurationUnit] = useState('hours');
+  const singlePinModal = useDisclosure();
+  const [singlePinTarget, setSinglePinTarget] = useState(null);
+  const [singlePinDuration, setSinglePinDuration] = useState('unlimited');
+  const [singleCustomDurationValue, setSingleCustomDurationValue] = useState(24);
+  const [singleCustomDurationUnit, setSingleCustomDurationUnit] = useState('hours');
+  const [singleArchiveBeforePin, setSingleArchiveBeforePin] = useState(false);
+  const bulkBlockModal = useDisclosure();
+  const [bulkBlockReason, setBulkBlockReason] = useState('');
+  const bulkUnblockModal = useDisclosure();
+  const bulkForwardModal = useDisclosure();
+  const [forwardSelectedChannelIds, setForwardSelectedChannelIds] = useState([]);
+  const [forwardIncludeLinks, setForwardIncludeLinks] = useState(true);
+  const [isForwarding, setIsForwarding] = useState(false);
+  const [forwardSearchQuery, setForwardSearchQuery] = useState('');
+
+  const blockModal = useDisclosure();
+  const [blockReason, setBlockReason] = useState('');
+  const [messageToBlock, setMessageToBlock] = useState(null);
+  const deleteModal = useDisclosure();
+  const [messageToDelete, setMessageToDelete] = useState(null);
+  const [deleteScope, setDeleteScope] = useState('all');
 
   // File inputs
   const imageInput = useFileInput({accept: 'image/*'});
@@ -1082,6 +1213,348 @@ const ChannelChat = () => {
     setForwardModalOpen(true);
   };
 
+  const buildDeepLink = (message) => {
+    const base = `${window.location.origin}${routes.channelChat.getPath(channelId)}`;
+    const params = new URLSearchParams();
+    if (message?.conference?.roomId) {
+      params.set('conference', 'active');
+      params.set('roomId', message.conference.roomId);
+    } else {
+      params.set('messageId', message.id || message._id);
+    }
+    return `${base}?${params.toString()}`;
+  };
+
+  const handleCopyLink = async (message) => {
+    try {
+      const url = buildDeepLink(message);
+      await navigator.clipboard.writeText(url);
+      toast({
+        title: 'Bağlantı kopyalandı',
+        status: 'success',
+        position: 'top',
+        duration: 1500,
+      });
+    } catch (error) {
+      toast({
+        title: 'Bağlantı kopyalanamadı',
+        status: 'error',
+        position: 'top',
+      });
+    }
+  };
+
+  const handleOpenLink = (message) => {
+    const url = buildDeepLink(message);
+    window.open(url, '_blank');
+  };
+
+  const handleOpenModeration = (message) => {
+    const params = new URLSearchParams();
+    params.set('filter', 'all');
+    params.set('channelId', channelId);
+    if (message?.text) {
+      params.set('q', message.text.slice(0, 100));
+    }
+    const url = `${window.location.origin}${routes.moderation.path}?${params.toString()}`;
+    window.open(url, '_blank');
+  };
+
+  const handleCopyText = async (message) => {
+    if (!message?.text) return;
+    try {
+      await navigator.clipboard.writeText(message.text);
+      toast({
+        title: 'Metin kopyalandı',
+        status: 'success',
+        duration: 1500,
+        position: 'top',
+      });
+    } catch {
+      toast({
+        title: 'Metin kopyalanamadı',
+        status: 'error',
+        duration: 2000,
+        position: 'top',
+      });
+    }
+  };
+
+  const handleQuoteText = (message) => {
+    const displayName = message?.user?.username || message?.user?.fullname || 'Kullanıcı';
+    const maxLen = 200;
+    let content = '';
+    if (message?.text && message.text.trim()) {
+      const raw = message.text.trim();
+      content = raw.length > maxLen ? `${raw.slice(0, maxLen)}…` : raw;
+    } else if (message?.conference?.roomId) {
+      content = 'Video görüşmesi';
+    } else if (message?.image) {
+      content = 'Görsel';
+    } else if (message?.video) {
+      content = 'Video';
+    } else if (message?.audio) {
+      content = 'Ses';
+    } else if (message?.file) {
+      content = 'Dosya';
+    } else if (message?.poll) {
+      content = `Anket: ${message?.poll?.question || ''}`.trim();
+    } else {
+      content = 'Mesaj';
+    }
+    const quoted = content
+      .split('\n')
+      .map(line => `> ${line}`)
+      .join('\n');
+    const mentionLine = `@${displayName}\n`;
+    const link = buildDeepLink(message);
+    const linkLine = `Bağlantı: ${link}\n`;
+    const timeLine = message?.createdAt ? `Tarih: ${format(new Date(message.createdAt), 'dd MMM yyyy HH:mm', { locale: tr })}\n` : '';
+    setMessageText(prev => (prev ? `${prev}\n${mentionLine}${quoted}\n${timeLine}${linkLine}` : `${mentionLine}${quoted}\n${timeLine}${linkLine}`));
+    setReplyTo(message);
+    inputRef.current?.focus();
+  };
+
+  const blockMutation = useMutation({
+    mutationFn: ({ messageId, reason }) => api.blockMessage(messageId, reason),
+    onSuccess: () => {
+      toast({
+        title: 'Mesaj engellendi',
+        status: 'success',
+        duration: 2000,
+        position: 'top',
+      });
+      queryClient.invalidateQueries(['channel-messages', channelId]);
+      setMessageToBlock(null);
+      setBlockReason('');
+      blockModal.onClose();
+    },
+    onError: (error) => {
+      toast({
+        title: 'Hata',
+        description: error?.response?.data?.message || 'Mesaj engellenemedi',
+        status: 'error',
+        duration: 3000,
+        position: 'top',
+      });
+    },
+  });
+
+  const unblockMutation = useMutation({
+    mutationFn: (messageId) => api.unblockMessage(messageId),
+    onSuccess: () => {
+      toast({
+        title: 'Engel kaldırıldı',
+        status: 'success',
+        duration: 2000,
+        position: 'top',
+      });
+      queryClient.invalidateQueries(['channel-messages', channelId]);
+    },
+    onError: (error) => {
+      toast({
+        title: 'Hata',
+        description: error?.response?.data?.message || 'Engel kaldırılamadı',
+        status: 'error',
+        duration: 3000,
+        position: 'top',
+      });
+    },
+  });
+
+  const handleBlockMessage = (message) => {
+    setMessageToBlock(message);
+    setBlockReason('');
+    blockModal.onOpen();
+  };
+
+  const handleConfirmBlock = async () => {
+    if (!messageToBlock) return;
+    const id = messageToBlock.id || messageToBlock._id;
+    await blockMutation.mutateAsync({ messageId: id, reason: blockReason });
+  };
+
+  const handleUnblockMessage = async (message) => {
+    const id = message.id || message._id;
+    await unblockMutation.mutateAsync(id);
+  };
+
+  const handleDeleteMessageOpen = (message) => {
+    setMessageToDelete(message);
+    setDeleteScope('all');
+    deleteModal.onOpen();
+  };
+
+  const handleConfirmDeleteMessage = async () => {
+    if (!messageToDelete) return;
+    try {
+      const id = messageToDelete.id || messageToDelete._id;
+      if (archiveBeforeDelete && deleteScope === 'all') {
+        try {
+          await api.archiveMessage({ messageId: id, channelId });
+        } catch (e) {
+          // Ignore archive error but inform user
+          toast({
+            title: 'Arşivleme başarısız',
+            description: e?.response?.data?.message || 'Mesaj arşivlenemedi, yine de siliniyor',
+            status: 'warning',
+            duration: 2500,
+            position: 'top',
+          });
+        }
+      }
+      if (deleteScope === 'me') {
+        await api.deleteChannelMessageForUser(channelId, id);
+      } else {
+        await api.deleteChannelMessage(channelId, id);
+      }
+      toast({
+        title: deleteScope === 'me' ? 'Mesaj sizin için silindi' : 'Mesaj silindi',
+        status: 'success',
+        duration: 2000,
+        position: 'top',
+      });
+      queryClient.invalidateQueries(['channel-messages', channelId]);
+      deleteModal.onClose();
+      setMessageToDelete(null);
+    } catch (error) {
+      toast({
+        title: 'Hata',
+        description: error?.response?.data?.message || 'Mesaj silinemedi',
+        status: 'error',
+        duration: 3000,
+        position: 'top',
+      });
+    }
+  };
+  const [archiveBeforeDelete, setArchiveBeforeDelete] = useState(false);
+
+  const pinnedModal = useDisclosure();
+  const [pinnedIndex, setPinnedIndex] = useState(0);
+
+  const { data: pinnedData } = useQuery({
+    queryKey: ['pinned-messages', channelId],
+    queryFn: () => api.getPinnedMessages(channelId),
+    enabled: !!channelId,
+  });
+  const pinnedMessages = Array.isArray(pinnedData?.data)
+    ? pinnedData.data
+    : (Array.isArray(pinnedData) ? pinnedData : []);
+  const pinnedIds = new Set(
+    (pinnedMessages || []).map(pm => pm?.messageId || pm?.message?.id || pm?.id)
+  );
+
+  const pinMutation = useMutation({
+    mutationFn: (messageId) => api.pinMessage({ channelId, messageId }),
+    onSuccess: () => {
+      toast({ title: 'Mesaj sabitlendi', status: 'success', duration: 1500, position: 'top' });
+      queryClient.invalidateQueries(['pinned-messages', channelId]);
+    },
+    onError: (error) => {
+      toast({
+        title: 'Hata',
+        description: error?.response?.data?.message || 'Mesaj sabitlenemedi',
+        status: 'error',
+        duration: 3000,
+        position: 'top',
+      });
+    },
+  });
+
+  const unpinMutation = useMutation({
+    mutationFn: (pinId) => api.unpinMessage(pinId),
+    onSuccess: () => {
+      toast({ title: 'Sabitleme kaldırıldı', status: 'success', duration: 1500, position: 'top' });
+      queryClient.invalidateQueries(['pinned-messages', channelId]);
+    },
+    onError: (error) => {
+      toast({
+        title: 'Hata',
+        description: error?.response?.data?.message || 'Sabitleme kaldırılamadı',
+        status: 'error',
+        duration: 3000,
+        position: 'top',
+      });
+    },
+  });
+
+  const pinWithDurationMutation = useMutation({
+    mutationFn: ({ messageId, durationMs }) => api.pinMessage({ channelId, messageId, durationMs }),
+    onSuccess: () => {
+      toast({ title: 'Mesaj sabitlendi', status: 'success', duration: 1500, position: 'top' });
+      queryClient.invalidateQueries(['pinned-messages', channelId]);
+    },
+    onError: (error) => {
+      toast({
+        title: 'Hata',
+        description: error?.response?.data?.message || 'Mesaj sabitlenemedi',
+        status: 'error',
+        duration: 3000,
+        position: 'top',
+      });
+    },
+  });
+
+  const handleTogglePinMessage = async (message) => {
+    const id = message.id || message._id;
+    const existing = (pinnedMessages || []).find(
+      pm => (pm?.messageId === id) || (pm?.message?.id === id) || (pm?.id === id)
+    );
+    if (existing) {
+      const pinId = existing?._id || existing?.id;
+      if (pinId) {
+        await unpinMutation.mutateAsync(pinId);
+      }
+    } else {
+      setSinglePinTarget(message);
+      setSinglePinDuration('unlimited');
+      setSingleCustomDurationValue(24);
+      setSingleCustomDurationUnit('hours');
+      singlePinModal.onOpen();
+    }
+  };
+
+  const handleOpenPinnedModal = () => {
+    setPinnedIndex(0);
+    pinnedModal.onOpen();
+  };
+
+  const handleNavigatePinned = (direction) => {
+    if (!pinnedMessages?.length) return;
+    if (direction === 'prev') {
+      setPinnedIndex((prev) => Math.max(0, prev - 1));
+    } else {
+      setPinnedIndex((prev) => Math.min(pinnedMessages.length - 1, prev + 1));
+    }
+  };
+
+  const handleArchiveAndPin = async (message) => {
+    const id = message.id || message._id;
+    try {
+      await api.archiveMessage({ messageId: id, channelId });
+    } catch (e) {
+      toast({
+        title: 'Arşivleme başarısız',
+        description: e?.response?.data?.message || 'Mesaj arşivlenemedi, sabitleme deneniyor',
+        status: 'warning',
+        duration: 2500,
+        position: 'top',
+      });
+    }
+    try {
+      await pinMutation.mutateAsync(id);
+    } catch (e) {
+      toast({
+        title: 'Sabitleme başarısız',
+        description: e?.response?.data?.message || 'Mesaj sabitlenemedi',
+        status: 'error',
+        duration: 3000,
+        position: 'top',
+      });
+    }
+  };
+
+
   const scrollToMessage = (messageId) => {
     const ref = messageRefs.current[messageId];
     if (ref) {
@@ -1228,6 +1701,45 @@ const ChannelChat = () => {
     
     return { status: 'unknown', message: '' }; // Need to check backend
   };
+
+  const location = useLocation();
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const conf = params.get('conference');
+    const roomIdParam = params.get('roomId');
+    const messageIdParam = params.get('messageId');
+    if (!conferenceScrollDoneRef.current && allMessages.length > 0) {
+      if (messageIdParam) {
+        const exactMsg = allMessages.find(m => (m.id === messageIdParam || m._id === messageIdParam));
+        if (exactMsg) {
+          scrollToMessage(exactMsg.id || exactMsg._id);
+          conferenceScrollDoneRef.current = true;
+          return;
+        }
+      }
+      if (conf === 'active') {
+      if (roomIdParam) {
+        const exact = allMessages.find(m => m.conference?.roomId === roomIdParam);
+        if (exact) {
+          scrollToMessage(exact.id || exact._id);
+          conferenceScrollDoneRef.current = true;
+          return;
+        }
+      }
+      const candidates = allMessages.filter(m => m.conference?.roomId);
+      for (let i = candidates.length - 1; i >= 0; i--) {
+        const m = candidates[i];
+        const status = getConferenceStatusFromMessage(m.conference).status;
+        if (status === 'active' || status === 'unknown') {
+          scrollToMessage(m.id || m._id);
+          conferenceScrollDoneRef.current = true;
+          break;
+        }
+      }
+      }
+    }
+  }, [location.search, allMessages]);
 
   // Join existing conference from message
   const handleJoinConference = async (conferenceData) => {
@@ -1480,6 +1992,213 @@ const ChannelChat = () => {
     });
   };
 
+  const handleArchiveSelected = async () => {
+    if (selectedMessageIds.size === 0) return;
+    try {
+      setIsArchiving(true);
+      const ids = Array.from(selectedMessageIds);
+      const results = await Promise.allSettled(
+        ids.map(id => api.archiveMessage({ messageId: id, channelId }))
+      );
+      const failed = results.filter(r => r.status === 'rejected').length;
+      toast({
+        title: failed === 0 ? 'Mesajlar arşivlendi' : `Bazı mesajlar arşivlenemedi (${failed})`,
+        status: failed === 0 ? 'success' : 'warning',
+        duration: 2500,
+        position: 'top',
+      });
+    } catch (e) {
+      toast({
+        title: 'Hata',
+        description: e?.response?.data?.message || 'Mesajlar arşivlenemedi',
+        status: 'error',
+        duration: 3000,
+        position: 'top',
+      });
+    } finally {
+      setIsArchiving(false);
+    }
+  };
+
+  const handleBlockSelected = async () => {
+    if (!anyUnblockedSelected) return;
+    try {
+      setIsBlockingSelected(true);
+      const ids = messages
+        .filter(m => {
+          const id = m.id || m._id;
+          return selectedMessageIds.has(id) && !m.isBlocked;
+        })
+        .map(m => m.id || m._id);
+      const results = await Promise.allSettled(
+        ids.map(id => api.blockMessage(id, bulkBlockReason))
+      );
+      const failed = results.filter(r => r.status === 'rejected').length;
+      toast({
+        title: failed === 0 ? 'Mesajlar engellendi' : `Bazı mesajlar engellenemedi (${failed})`,
+        status: failed === 0 ? 'success' : 'warning',
+        duration: 2500,
+        position: 'top',
+      });
+      queryClient.invalidateQueries(['channel-messages', channelId]);
+    } catch (e) {
+      toast({
+        title: 'Hata',
+        description: e?.response?.data?.message || 'Mesajlar engellenemedi',
+        status: 'error',
+        duration: 3000,
+        position: 'top',
+      });
+    } finally {
+      setIsBlockingSelected(false);
+      bulkBlockModal.onClose();
+      setBulkBlockReason('');
+    }
+  };
+
+  const handleUnblockSelected = async () => {
+    if (!anyBlockedSelected) return;
+    try {
+      setIsUnblockingSelected(true);
+      const ids = messages
+        .filter(m => {
+          const id = m.id || m._id;
+          return selectedMessageIds.has(id) && m.isBlocked;
+        })
+        .map(m => m.id || m._id);
+      const results = await Promise.allSettled(
+        ids.map(id => api.unblockMessage(id))
+      );
+      const failed = results.filter(r => r.status === 'rejected').length;
+      toast({
+        title: failed === 0 ? 'Mesajların engeli kaldırıldı' : `Bazılarının engeli kaldırılamadı (${failed})`,
+        status: failed === 0 ? 'success' : 'warning',
+        duration: 2500,
+        position: 'top',
+      });
+      queryClient.invalidateQueries(['channel-messages', channelId]);
+    } catch (e) {
+      toast({
+        title: 'Hata',
+        description: e?.response?.data?.message || 'Engeller kaldırılamadı',
+        status: 'error',
+        duration: 3000,
+        position: 'top',
+      });
+    } finally {
+      setIsUnblockingSelected(false);
+    }
+  };
+  const handlePinSelected = async (durationMs) => {
+    if (selectedMessageIds.size === 0) return;
+    try {
+      setIsPinning(true);
+      const ids = Array.from(selectedMessageIds);
+      const results = await Promise.allSettled(
+        ids.map(id => api.pinMessage({ channelId, messageId: id, durationMs }))
+      );
+      const failed = results.filter(r => r.status === 'rejected').length;
+      toast({
+        title: failed === 0 ? 'Mesajlar sabitlendi' : `Bazı mesajlar sabitlenemedi (${failed})`,
+        status: failed === 0 ? 'success' : 'warning',
+        duration: 2500,
+        position: 'top',
+      });
+      queryClient.invalidateQueries(['pinned-messages', channelId]);
+    } catch (e) {
+      toast({
+        title: 'Hata',
+        description: e?.response?.data?.message || 'Mesajlar sabitlenemedi',
+        status: 'error',
+        duration: 3000,
+        position: 'top',
+      });
+    } finally {
+      setIsPinning(false);
+    }
+  };
+
+  const handleUnpinSelected = async () => {
+    if (selectedMessageIds.size === 0) return;
+    try {
+      setIsUnpinning(true);
+      const map = new Map();
+      (pinnedMessages || []).forEach(pm => {
+        const mid = pm?.messageId || pm?.message?.id || pm?.id;
+        const pid = pm?._id || pm?.id;
+        if (mid && pid) {
+          map.set(mid, pid);
+        }
+      });
+      const pinIds = Array.from(selectedMessageIds)
+        .map(id => map.get(id))
+        .filter(Boolean);
+      const uniquePinIds = Array.from(new Set(pinIds));
+      if (uniquePinIds.length === 0) {
+        toast({
+          title: 'Seçilen mesajlar sabitli değil',
+          status: 'info',
+          duration: 2000,
+          position: 'top',
+        });
+        return;
+      }
+      const results = await Promise.allSettled(
+        uniquePinIds.map(pid => api.unpinMessage(pid))
+      );
+      const failed = results.filter(r => r.status === 'rejected').length;
+      toast({
+        title: failed === 0 ? 'Sabitlemeler kaldırıldı' : `Bazı sabitlemeler kaldırılamadı (${failed})`,
+        status: failed === 0 ? 'success' : 'warning',
+        duration: 2500,
+        position: 'top',
+      });
+      queryClient.invalidateQueries(['pinned-messages', channelId]);
+    } catch (e) {
+      toast({
+        title: 'Hata',
+        description: e?.response?.data?.message || 'Sabitlemeler kaldırılamadı',
+        status: 'error',
+        duration: 3000,
+        position: 'top',
+      });
+    } finally {
+      setIsUnpinning(false);
+    }
+  };
+  const handleArchiveAndPinSelected = async (durationMs) => {
+    if (selectedMessageIds.size === 0) return;
+    try {
+      setIsPinning(true);
+      const ids = Array.from(selectedMessageIds);
+      const results = await Promise.allSettled(
+        ids.map(async id => {
+          try {
+            await api.archiveMessage({ messageId: id, channelId });
+          } catch {}
+          await api.pinMessage({ channelId, messageId: id, durationMs });
+        })
+      );
+      const failed = results.filter(r => r.status === 'rejected').length;
+      toast({
+        title: failed === 0 ? 'Mesajlar arşivlendi ve sabitlendi' : `Bazı mesajlar sabitlenemedi (${failed})`,
+        status: failed === 0 ? 'success' : 'warning',
+        duration: 2500,
+        position: 'top',
+      });
+      queryClient.invalidateQueries(['pinned-messages', channelId]);
+    } catch (e) {
+      toast({
+        title: 'Hata',
+        description: e?.response?.data?.message || 'İşlem tamamlanamadı',
+        status: 'error',
+        duration: 3000,
+        position: 'top',
+      });
+    } finally {
+      setIsPinning(false);
+    }
+  };
   const selectAllMessages = () => {
     const allIds = new Set(allMessages.map(m => m.id || m._id));
     setSelectedMessageIds(allIds);
@@ -1603,6 +2322,103 @@ const ChannelChat = () => {
     }
   };
 
+  const handleArchiveAndDeleteSelected = async () => {
+    if (selectedMessageIds.size === 0) {
+      toast({
+        title: 'Mesaj seçilmedi',
+        description: 'Silmek için en az bir mesaj seçin',
+        status: 'warning',
+        position: 'top',
+      });
+      return;
+    }
+    const confirmDelete = window.confirm(
+      `${selectedMessageIds.size} mesaj arşivlenip silinecek. Emin misiniz?`
+    );
+    if (!confirmDelete) return;
+    setIsArchivingDeleting(true);
+    try {
+      const messageIdsArray = Array.from(selectedMessageIds);
+      await Promise.allSettled(
+        messageIdsArray.map(id => api.archiveMessage({ messageId: id, channelId }))
+      );
+      const results = await api.deleteChannelMessages(channelId, messageIdsArray);
+      const successCount = results.filter(r => r.status === 'fulfilled').length;
+      const failCount = results.filter(r => r.status === 'rejected').length;
+      if (successCount > 0) {
+        await queryClient.invalidateQueries(['channel-messages', channelId]);
+        const updatedMessagesData = queryClient.getQueryData(['channel-messages', channelId]);
+        let newLastMessageText = 'Mesaj yok';
+        let newLastMessageDate = null;
+        if (updatedMessagesData?.pages?.[0]?.results) {
+          const validMessage = updatedMessagesData.pages[0].results.find(m => 
+            !m.deletedAt && !m.isDeleted && (m.text || m.image || m.video || m.audio || m.file || m.conference || m.poll)
+          );
+          if (validMessage) {
+            newLastMessageDate = validMessage.createdAt;
+            if (validMessage.text) newLastMessageText = validMessage.text;
+            else if (validMessage.image) newLastMessageText = '📷 Görsel';
+            else if (validMessage.video) newLastMessageText = '🎬 Video';
+            else if (validMessage.audio) newLastMessageText = '🎵 Ses';
+            else if (validMessage.file) newLastMessageText = '📄 Dosya';
+            else if (validMessage.conference) newLastMessageText = '🎥 Video Görüşme';
+            else if (validMessage.poll) newLastMessageText = '📊 Anket';
+          }
+        }
+        const updateChannelList = (queryKey) => {
+          queryClient.setQueryData(queryKey, (oldData) => {
+            if (!oldData || !oldData.pages) return oldData;
+            return {
+              ...oldData,
+              pages: oldData.pages.map(page => ({
+                ...page,
+                results: page.results.map(c => {
+                  if (c.id === channelId || c._id === channelId) {
+                    return {
+                      ...c,
+                      lastMessage: newLastMessageText,
+                      lastMessageAt: newLastMessageDate || c.createdAt,
+                    };
+                  }
+                  return c;
+                })
+              }))
+            };
+          });
+        };
+        updateChannelList(['all-channels-messaging']);
+        updateChannelList(['vip-channels-messaging']);
+        queryClient.invalidateQueries(['all-channels-messaging']);
+        queryClient.invalidateQueries(['vip-channels-messaging']);
+        toast({
+          title: 'Mesajlar arşivlenip silindi',
+          description: `${successCount} mesaj silindi${failCount > 0 ? `, ${failCount} mesaj silinemedi` : ''}`,
+          status: 'success',
+          position: 'top',
+          duration: 3000,
+        });
+      } else {
+        toast({
+          title: 'Silme başarısız',
+          description: 'Mesajlar silinemedi',
+          status: 'error',
+          position: 'top',
+        });
+      }
+      setSelectedMessageIds(new Set());
+      setIsSelectMode(false);
+    } catch (error) {
+      toast({
+        title: 'Silme hatası',
+        description: error?.response?.data?.message || 'Bir hata oluştu',
+        status: 'error',
+        position: 'top',
+      });
+    } finally {
+      setIsArchivingDeleting(false);
+    }
+  };
+
   // Search functions
   const handleSearch = (query) => {
     setSearchQuery(query);
@@ -1676,7 +2492,478 @@ const ChannelChat = () => {
 
   // Use the already processed allMessages
   const messages = allMessages;
+  const anyBlockedSelected = React.useMemo(() => {
+    if (selectedMessageIds.size === 0) return false;
+    return messages.some(m => {
+      const id = m.id || m._id;
+      return selectedMessageIds.has(id) && m.isBlocked;
+    });
+  }, [selectedMessageIds, messages]);
+  const anyUnblockedSelected = React.useMemo(() => {
+    if (selectedMessageIds.size === 0) return false;
+    return messages.some(m => {
+      const id = m.id || m._id;
+      return selectedMessageIds.has(id) && !m.isBlocked;
+    });
+  }, [selectedMessageIds, messages]);
+  const selectedBlockedCount = React.useMemo(() => {
+    if (selectedMessageIds.size === 0) return 0;
+    let c = 0;
+    messages.forEach(m => {
+      const id = m.id || m._id;
+      if (selectedMessageIds.has(id) && m.isBlocked) c++;
+    });
+    return c;
+  }, [selectedMessageIds, messages]);
+  const selectedUnblockedCount = React.useMemo(() => {
+    if (selectedMessageIds.size === 0) return 0;
+    let c = 0;
+    messages.forEach(m => {
+      const id = m.id || m._id;
+      if (selectedMessageIds.has(id) && !m.isBlocked) c++;
+    });
+    return c;
+  }, [selectedMessageIds, messages]);
 
+  const selectOnlyBlocked = () => {
+    const next = new Set();
+    messages.forEach(m => {
+      const id = m.id || m._id;
+      if (m.isBlocked) next.add(id);
+    });
+    setSelectedMessageIds(next);
+    setIsSelectMode(true);
+  };
+
+  const selectOnlyUnblocked = () => {
+    const next = new Set();
+    messages.forEach(m => {
+      const id = m.id || m._id;
+      if (!m.isBlocked) next.add(id);
+    });
+    setSelectedMessageIds(next);
+    setIsSelectMode(true);
+  };
+  const selectOnlyMedia = () => {
+    const next = new Set();
+    messages.forEach(m => {
+      const id = m.id || m._id;
+      if (m.image || m.video || m.audio || m.file) next.add(id);
+    });
+    setSelectedMessageIds(next);
+    setIsSelectMode(true);
+    toast({ title: 'Medyalı mesajlar seçildi', status: 'info', position: 'top', duration: 1000 });
+  };
+  const selectOnlyText = () => {
+    const next = new Set();
+    messages.forEach(m => {
+      const id = m.id || m._id;
+      if (m.text && !m.image && !m.video && !m.audio && !m.file) next.add(id);
+    });
+    setSelectedMessageIds(next);
+    setIsSelectMode(true);
+    toast({ title: 'Metin mesajlar seçildi', status: 'info', position: 'top', duration: 1000 });
+  };
+  const selectOnlyImages = () => {
+    const next = new Set();
+    messages.forEach(m => {
+      const id = m.id || m._id;
+      if (m.image) next.add(id);
+    });
+    setSelectedMessageIds(next);
+    setIsSelectMode(true);
+    toast({ title: 'Görseller seçildi', status: 'info', position: 'top', duration: 1000 });
+  };
+  const selectOnlyVideos = () => {
+    const next = new Set();
+    messages.forEach(m => {
+      const id = m.id || m._id;
+      if (m.video) next.add(id);
+    });
+    setSelectedMessageIds(next);
+    setIsSelectMode(true);
+    toast({ title: 'Videolar seçildi', status: 'info', position: 'top', duration: 1000 });
+  };
+  const selectOnlyAudios = () => {
+    const next = new Set();
+    messages.forEach(m => {
+      const id = m.id || m._id;
+      if (m.audio) next.add(id);
+    });
+    setSelectedMessageIds(next);
+    setIsSelectMode(true);
+    toast({ title: 'Ses dosyaları seçildi', status: 'info', position: 'top', duration: 1000 });
+  };
+  const selectOnlyFiles = () => {
+    const next = new Set();
+    messages.forEach(m => {
+      const id = m.id || m._id;
+      if (m.file) next.add(id);
+    });
+    setSelectedMessageIds(next);
+    setIsSelectMode(true);
+    toast({ title: 'Dosyalar seçildi', status: 'info', position: 'top', duration: 1000 });
+  };
+  const handleDownloadSelectedMedia = async () => {
+    if (selectedMessageIds.size === 0) return;
+    const mediaMessages = messages.filter(m => {
+      const id = m.id || m._id;
+      return selectedMessageIds.has(id) && (m.image || m.video || m.audio || m.file);
+    });
+
+    if (mediaMessages.length === 0) {
+      toast({ title: 'Medya yok', description: 'Seçilenlerde indirilecek medya bulunamadı', status: 'info', position: 'top' });
+      return;
+    }
+
+    toast({ title: 'İndirme başlıyor', description: `${mediaMessages.length} dosya indirilecek`, status: 'info', position: 'top' });
+
+    for (const m of mediaMessages) {
+      const url = m.image || m.video || m.audio || m.file;
+      if (!url) continue;
+      
+      try {
+        const user = m.user?.fullname || 'Bilinmeyen Kullanıcı';
+        const date = m.createdAt ? format(new Date(m.createdAt), 'yyyy-MM-dd HH-mm', { locale: tr }) : 'Tarihsiz';
+        const ext = url.split('.').pop().split('?')[0] || 'dat';
+        const safeUser = user.replace(/[^a-z0-9ğüşıöçĞÜŞİÖÇ ]/gi, '_');
+        const fileName = `${safeUser} - ${date}.${ext}`;
+
+        const response = await fetch(url);
+        const blob = await response.blob();
+        saveAs(blob, fileName);
+        
+        // Delay to prevent browser blocking
+        await new Promise(r => setTimeout(r, 500));
+      } catch (e) {
+        console.error('Download error:', e);
+        // Fallback to direct link
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = 'download';
+        link.target = '_blank';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      }
+    }
+  };
+
+  const handleDownloadSelectedMediaZip = async () => {
+    if (selectedMessageIds.size === 0) return;
+    const mediaMessages = messages.filter(m => {
+      const id = m.id || m._id;
+      return selectedMessageIds.has(id) && (m.image || m.video || m.audio || m.file);
+    });
+
+    if (mediaMessages.length === 0) {
+      toast({ title: 'Medya yok', description: 'Seçilenlerde indirilecek medya bulunamadı', status: 'info', position: 'top' });
+      return;
+    }
+
+    const toastId = toast({ title: 'ZIP hazırlanıyor...', status: 'info', position: 'top', duration: null });
+    
+    try {
+      const zip = new JSZip();
+      
+      await Promise.all(mediaMessages.map(async (m) => {
+        const url = m.image || m.video || m.audio || m.file;
+        if (!url) return;
+
+        try {
+          const user = m.user?.fullname || 'Bilinmeyen Kullanıcı';
+          const date = m.createdAt ? format(new Date(m.createdAt), 'yyyy-MM-dd HH-mm', { locale: tr }) : 'Tarihsiz';
+          const ext = url.split('.').pop().split('?')[0] || 'dat';
+          const safeUser = user.replace(/[^a-z0-9ğüşıöçĞÜŞİÖÇ ]/gi, '_');
+          // Add random string to avoid duplicates
+          const uniqueSuffix = Math.random().toString(36).substring(7);
+          const fileName = `${safeUser} - ${date}-${uniqueSuffix}.${ext}`;
+          
+          const response = await fetch(url);
+          const blob = await response.blob();
+          zip.file(fileName, blob);
+        } catch (e) {
+          console.error('Failed to fetch file for ZIP:', url, e);
+        }
+      }));
+
+      const content = await zip.generateAsync({ type: 'blob' });
+      const timestamp = format(new Date(), 'yyyy-MM-dd HH-mm', { locale: tr });
+      saveAs(content, `Medya Arsivi - ${timestamp}.zip`);
+      
+      toast.update(toastId, { title: 'ZIP indirildi', status: 'success', duration: 2000 });
+    } catch (e) {
+      console.error('ZIP error:', e);
+      toast.update(toastId, { title: 'ZIP oluşturulamadı', status: 'error', duration: 2000 });
+    }
+  };
+  const handleOpenSelectedMedia = () => {
+    if (selectedMessageIds.size === 0) return;
+    const medias = messages.filter(m => {
+      const id = m.id || m._id;
+      return selectedMessageIds.has(id) && (m.image || m.video || m.audio || m.file);
+    });
+    if (medias.length === 0) {
+      toast({ title: 'Medya yok', description: 'Seçilenlerde medya bulunamadı', status: 'info', position: 'top' });
+      return;
+    }
+    medias.forEach(m => {
+      const url = m.image || m.video || m.audio || m.file;
+      if (url) window.open(url, '_blank');
+    });
+    toast({ title: 'Medyalar açılıyor', status: 'success', position: 'top', duration: 1200 });
+  };
+  const fetchAll = async (apiFunc, params = {}) => {
+    const limit = 100;
+    const firstRes = await apiFunc({ ...params, limit, page: 1 });
+    if (!firstRes.data) return [];
+    let allResults = firstRes.data.results || [];
+    const totalPages = firstRes.data.totalPages || 1;
+    if (totalPages > 1) {
+      const promises = [];
+      for (let i = 2; i <= totalPages; i++) {
+        promises.push(apiFunc({ ...params, limit, page: i }));
+      }
+      const responses = await Promise.all(promises);
+      responses.forEach(res => {
+        if (res.data?.results) {
+          allResults = [...allResults, ...res.data.results];
+        }
+      });
+    }
+    return allResults;
+  };
+  const { data: forwardChannelsData = [], isLoading: isLoadingForwardChannels } = useQuery({
+    queryKey: ['all-channels-for-forward'],
+    queryFn: () => fetchAll(api.getAllChannels),
+  });
+  const filteredForwardChannels = React.useMemo(() => {
+    if (!forwardSearchQuery.trim()) return forwardChannelsData;
+    const q = forwardSearchQuery.toLowerCase();
+    return forwardChannelsData.filter(ch => {
+      const name = (ch.name || ch.marketCode || ch.fundCode || '').toLowerCase();
+      return name.includes(q);
+    });
+  }, [forwardChannelsData, forwardSearchQuery]);
+  const toggleForwardChannel = (channelId) => {
+    setForwardSelectedChannelIds(prev => {
+      const next = new Set(prev);
+      if (next.has(channelId)) next.delete(channelId);
+      else next.add(channelId);
+      return Array.from(next);
+    });
+  };
+  const makeForwardContent = () => {
+    const lines = messages
+      .filter(m => {
+        const id = m.id || m._id;
+        return selectedMessageIds.has(id) && (m.text || m.image || m.video || m.audio || m.file);
+      })
+      .map(m => {
+        const author = m.user?.fullname || 'Kullanıcı';
+        const time = m.createdAt ? format(new Date(m.createdAt), 'dd MMM yyyy HH:mm', { locale: tr }) : '';
+        const kind = m.image ? '📷 Görsel' : m.video ? '🎬 Video' : m.audio ? '🎵 Ses' : m.file ? '📄 Dosya' : '📝 Metin';
+        const text = m.text ? m.text : '';
+        return `${author} • ${time} • ${kind}${text ? `: ${text}` : ''}`;
+      });
+    if (forwardIncludeLinks) {
+      const linkLines = messages
+        .filter(m => {
+          const id = m.id || m._id;
+          return selectedMessageIds.has(id);
+        })
+        .map(m => {
+          const mid = m.id || m._id;
+          return `${window.location.origin}${routes.channelChat.getPath(channelId)}?messageId=${encodeURIComponent(mid)}`;
+        });
+      if (linkLines.length > 0) {
+        lines.push('', ...linkLines);
+      }
+    }
+    return lines.join('\n');
+  };
+  const { mutateAsync: forwardMutateAsync, isPending: isForwardPending } = useMutation({
+    mutationFn: (values) => api.sendBulkMessage(values),
+  });
+  const handleForwardSelected = async () => {
+    if (forwardSelectedChannelIds.length === 0 || selectedMessageIds.size === 0) {
+      toast({ title: 'Seçim eksik', description: 'Kanal ve mesaj seçmelisiniz', status: 'warning', position: 'top' });
+      return;
+    }
+    try {
+      setIsForwarding(true);
+      const message = makeForwardContent();
+      const body = {
+        targetType: 'selected',
+        selectedChannels: forwardSelectedChannelIds,
+        message,
+      };
+      await forwardMutateAsync(body);
+      toast({ title: 'Mesajlar iletildi', status: 'success', position: 'top', duration: 2000 });
+      bulkForwardModal.onClose();
+      setForwardSelectedChannelIds([]);
+      setForwardSearchQuery('');
+    } catch (e) {
+      toast({
+        title: 'İletme başarısız',
+        description: e?.response?.data?.message || 'Mesajlar iletilemedi',
+        status: 'error',
+        position: 'top',
+      });
+    } finally {
+      setIsForwarding(false);
+    }
+  };
+  const handleCopySelectedTexts = async () => {
+    if (selectedMessageIds.size === 0) return;
+    const lines = messages
+      .filter(m => {
+        const id = m.id || m._id;
+        return selectedMessageIds.has(id) && m.text;
+      })
+      .map(m => {
+        const author = m.user?.fullname || 'Kullanıcı';
+        const time = m.createdAt ? format(new Date(m.createdAt), 'dd MMM yyyy HH:mm', { locale: tr }) : '';
+        return `${author} • ${time}: ${m.text}`;
+      });
+    if (lines.length === 0) {
+      toast({ title: 'Metin yok', description: 'Seçilenlerde metin içeriği bulunamadı', status: 'info', position: 'top' });
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(lines.join('\n'));
+      toast({ title: 'Kopyalandı', status: 'success', position: 'top', duration: 1200 });
+    } catch {
+      toast({ title: 'Kopyalanamadı', status: 'error', position: 'top' });
+    }
+  };
+  const handleCopySelectedLinks = async () => {
+    if (selectedMessageIds.size === 0) return;
+    const lines = messages
+      .filter(m => {
+        const id = m.id || m._id;
+        return selectedMessageIds.has(id) && id;
+      })
+      .map(m => {
+        const mid = m.id || m._id;
+        const url = `${window.location.origin}${routes.channelChat.getPath(channelId)}?messageId=${encodeURIComponent(mid)}`;
+        return url;
+      });
+    if (lines.length === 0) {
+      toast({ title: 'Bağlantı yok', description: 'Seçilenlerde bağlantı üretilemedi', status: 'info', position: 'top' });
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(lines.join('\n'));
+      toast({ title: 'Bağlantılar kopyalandı', status: 'success', position: 'top', duration: 1200 });
+    } catch {
+      toast({ title: 'Kopyalanamadı', status: 'error', position: 'top' });
+    }
+  };
+
+  useEffect(() => {
+    const handler = (e) => {
+      // Ctrl + A : select all
+      if (e.ctrlKey && !e.shiftKey && e.key.toLowerCase() === 'a') {
+        e.preventDefault();
+        setIsSelectMode(true);
+        selectAllMessages();
+        toast({ title: 'Tüm mesajlar seçildi', status: 'info', position: 'top', duration: 1000 });
+        return;
+      }
+      // Ctrl + Shift + B : select blocked
+      if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 'b') {
+        e.preventDefault();
+        selectOnlyBlocked();
+        toast({ title: 'Engelli mesajlar seçildi', status: 'info', position: 'top', duration: 1000 });
+        return;
+      }
+      // Ctrl + Shift + N : select unblocked (normal)
+      if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 'n') {
+        e.preventDefault();
+        selectOnlyUnblocked();
+        toast({ title: 'Normal mesajlar seçildi', status: 'info', position: 'top', duration: 1000 });
+        return;
+      }
+      // Esc : exit select mode
+      if (e.key === 'Escape') {
+        if (isSelectMode) {
+          setIsSelectMode(false);
+          setSelectedMessageIds(new Set());
+          toast({ title: 'Seçim modu kapatıldı', status: 'info', position: 'top', duration: 1000 });
+        }
+        return;
+      }
+      if (isSelectMode && selectedMessageIds.size > 0) {
+        const archiveDeleteShortcut =
+          (e.key === 'Delete' && e.shiftKey) ||
+          (e.key === 'Backspace' && e.shiftKey);
+        if (archiveDeleteShortcut) {
+          e.preventDefault();
+          if (!shownArchiveDeleteHint) {
+            toast({
+              title: 'Kısayol: Shift+Delete',
+              description: 'Seçilenleri arşivle ve sil',
+              status: 'info',
+              position: 'top',
+              duration: 1500,
+            });
+            setShownArchiveDeleteHint(true);
+          }
+          handleArchiveAndDeleteSelected();
+          return;
+        }
+        if (e.ctrlKey && e.key.toLowerCase() === 'c') {
+          e.preventDefault();
+          handleCopySelectedTexts();
+          return;
+        }
+        if (e.ctrlKey && e.key.toLowerCase() === 'l') {
+          e.preventDefault();
+          handleCopySelectedLinks();
+          return;
+        }
+        if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 'm') {
+          e.preventDefault();
+          selectOnlyMedia();
+          return;
+        }
+        if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 't') {
+          e.preventDefault();
+          selectOnlyText();
+          return;
+        }
+        if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 'f') {
+          e.preventDefault();
+          bulkForwardModal.onOpen();
+          toast({ title: 'İlet', description: 'Hedef kanalları seç', status: 'info', position: 'top', duration: 1000 });
+          return;
+        }
+        if (e.key.toLowerCase() === 'p' && e.ctrlKey && e.shiftKey) {
+          e.preventDefault();
+          setBulkArchiveAndPin(false);
+          bulkPinModal.onOpen();
+          toast({
+            title: 'Sabitleme',
+            description: 'Süre seç',
+            status: 'info',
+            position: 'top',
+            duration: 1000,
+          });
+          return;
+        }
+      }
+      // Delete : delete selected
+      if (e.key === 'Delete' && !e.shiftKey && isSelectMode && selectedMessageIds.size > 0) {
+        e.preventDefault();
+        handleDeleteSelected();
+        return;
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isSelectMode, selectedMessageIds, messages]);
   if (isLoadingChannel) {
     return (
       <Page>
@@ -1720,30 +3007,52 @@ const ChannelChat = () => {
             </VStack>
           </HStack>
           <HStack spacing="2">
+            <Tooltip label="Arşivlenmiş Mesajlar">
+              <IconButton
+                icon={<FiArchive />}
+                variant="ghost"
+                onClick={() => {
+                  const url = `${routes.archivedMessages.path}?channelId=${encodeURIComponent(channelId)}`;
+                  navigate(url);
+                }}
+                aria-label="Arşivlenmiş Mesajlar"
+              />
+            </Tooltip>
             {/* Select Mode Controls */}
             {isSelectMode ? (
               <>
                 <Badge colorScheme="blue" fontSize="sm" px="2" py="1">
                   {selectedMessageIds.size} seçili
                 </Badge>
-                <Tooltip label="Tümünü Seç">
-                  <IconButton
-                    icon={<FiCheckSquare />}
-                    variant="ghost"
-                    colorScheme="blue"
-                    onClick={selectAllMessages}
-                    aria-label="Tümünü Seç"
-                  />
-                </Tooltip>
-                <Tooltip label="Seçimi Temizle">
-                  <IconButton
-                    icon={<FiSquare />}
-                    variant="ghost"
-                    onClick={clearSelection}
-                    aria-label="Seçimi Temizle"
-                  />
-                </Tooltip>
-                <Tooltip label="Seçilenleri Sil">
+                <Badge colorScheme="red" fontSize="sm" px="2" py="1">
+                  Engelli: {selectedBlockedCount}
+                </Badge>
+                <Badge colorScheme="green" fontSize="sm" px="2" py="1">
+                  Normal: {selectedUnblockedCount}
+                </Badge>
+                <Menu>
+                  <Tooltip label="Filtrele">
+                    <MenuButton
+                      as={IconButton}
+                      icon={<FiFilter />}
+                      variant="ghost"
+                      colorScheme="blue"
+                    />
+                  </Tooltip>
+                  <MenuList zIndex={10}>
+                    <MenuItem onClick={selectAllMessages} icon={<FiCheckSquare />}>Tümünü Seç</MenuItem>
+                    <MenuItem onClick={clearSelection} icon={<FiSquare />}>Seçimi Temizle</MenuItem>
+                    <MenuItem onClick={selectOnlyBlocked} color="red.500">Sadece Engelliler</MenuItem>
+                    <MenuItem onClick={selectOnlyUnblocked} color="green.500">Sadece Normaller</MenuItem>
+                    <MenuItem onClick={selectOnlyText} icon={<FiFile />}>Sadece Metinler</MenuItem>
+                    <MenuItem onClick={selectOnlyMedia} icon={<FiImage />}>Tüm Medyalar</MenuItem>
+                    <MenuItem onClick={selectOnlyImages} icon={<FiImage />}>Sadece Görseller</MenuItem>
+                    <MenuItem onClick={selectOnlyVideos} icon={<FiVideo />}>Sadece Videolar</MenuItem>
+                    <MenuItem onClick={selectOnlyAudios} icon={<FiMusic />}>Sadece Sesler</MenuItem>
+                    <MenuItem onClick={selectOnlyFiles} icon={<FiFile />}>Sadece Dosyalar</MenuItem>
+                  </MenuList>
+                </Menu>
+                <Tooltip label="Seçilenleri Sil (Delete)">
                   <IconButton
                     icon={<FiTrash2 />}
                     variant="solid"
@@ -1752,6 +3061,141 @@ const ChannelChat = () => {
                     isLoading={isDeleting}
                     isDisabled={selectedMessageIds.size === 0}
                     aria-label="Seçilenleri Sil"
+                  />
+                </Tooltip>
+                <Tooltip label="Seçilenleri Arşivle">
+                  <IconButton
+                    icon={<FiArchive />}
+                    variant="outline"
+                    colorScheme="gray"
+                    onClick={handleArchiveSelected}
+                    isLoading={isArchiving}
+                    isDisabled={selectedMessageIds.size === 0}
+                    aria-label="Seçilenleri Arşivle"
+                  />
+                </Tooltip>
+                <Tooltip label="Seçilenleri Arşivle ve Sil (Shift+Delete)">
+                  <IconButton
+                    icon={<FiTrash2 />}
+                    variant="solid"
+                    colorScheme="red"
+                    onClick={handleArchiveAndDeleteSelected}
+                    isLoading={isArchivingDeleting}
+                    isDisabled={selectedMessageIds.size === 0}
+                    aria-label="Seçilenleri Arşivle ve Sil"
+                  />
+                </Tooltip>
+                <Tooltip label="Seçilenleri Sabitle (Ctrl+Shift+P)">
+                  <IconButton
+                    icon={<FiMapPin />}
+                    variant="outline"
+                    colorScheme="yellow"
+                    onClick={bulkPinModal.onOpen}
+                    isLoading={isPinning}
+                    isDisabled={selectedMessageIds.size === 0}
+                    aria-label="Seçilenleri Sabitle"
+                  />
+                </Tooltip>
+                <Tooltip label="Seçilen Medyaları Aç">
+                  <IconButton
+                    icon={<FiExternalLink />}
+                    variant="outline"
+                    onClick={handleOpenSelectedMedia}
+                    isDisabled={selectedMessageIds.size === 0}
+                    aria-label="Seçilen Medyaları Aç"
+                  />
+                </Tooltip>
+                <Menu>
+                  <Tooltip label="Medyaları İndir">
+                    <MenuButton
+                      as={IconButton}
+                      icon={<FiDownload />}
+                      variant="outline"
+                      isDisabled={selectedMessageIds.size === 0}
+                    />
+                  </Tooltip>
+                  <MenuList zIndex={10}>
+                    <MenuItem onClick={handleDownloadSelectedMedia} icon={<FiDownload />}>
+                      Tek Tek İndir (İsimli)
+                    </MenuItem>
+                    <MenuItem onClick={handleDownloadSelectedMediaZip} icon={<FiArchive />}>
+                      Toplu İndir (ZIP)
+                    </MenuItem>
+                  </MenuList>
+                </Menu>
+                <Tooltip label="Seçilenlerin Metnini Kopyala (Ctrl+C)">
+                  <IconButton
+                    icon={<FiCopy />}
+                    variant="outline"
+                    onClick={handleCopySelectedTexts}
+                    isDisabled={selectedMessageIds.size === 0}
+                    aria-label="Seçilenlerin Metnini Kopyala"
+                  />
+                </Tooltip>
+                <Tooltip label="Seçilenlerin Bağlantısını Kopyala (Ctrl+L)">
+                  <IconButton
+                    icon={<FiLink />}
+                    variant="outline"
+                    onClick={handleCopySelectedLinks}
+                    isDisabled={selectedMessageIds.size === 0}
+                    aria-label="Seçilenlerin Bağlantısını Kopyala"
+                  />
+                </Tooltip>
+                <Tooltip label="Seçilenleri İlet (Ctrl+Shift+F)">
+                  <IconButton
+                    icon={<FiSend />}
+                    variant="outline"
+                    colorScheme="blue"
+                    onClick={bulkForwardModal.onOpen}
+                    isDisabled={selectedMessageIds.size === 0}
+                    aria-label="Seçilenleri İlet"
+                  />
+                </Tooltip>
+                <Tooltip label="Seçilenlerin Sabitlemesini Kaldır">
+                  <IconButton
+                    icon={<FiMapPin />}
+                    variant="outline"
+                    colorScheme="red"
+                    onClick={handleUnpinSelected}
+                    isLoading={isUnpinning}
+                    isDisabled={selectedMessageIds.size === 0 || Array.from(selectedMessageIds).every(id => !pinnedIds.has(id))}
+                    aria-label="Seçilenlerin Sabitlemesini Kaldır"
+                  />
+                </Tooltip>
+                <Tooltip label="Seçilenleri Engelle">
+                  <IconButton
+                    icon={<FiShield />}
+                    variant="outline"
+                    colorScheme="red"
+                    onClick={bulkBlockModal.onOpen}
+                    isLoading={isBlockingSelected}
+                    isDisabled={!anyUnblockedSelected}
+                    aria-label="Seçilenleri Engelle"
+                  />
+                </Tooltip>
+                <Tooltip label="Seçilenlerin Engelini Kaldır">
+                  <IconButton
+                    icon={<FiCheck />}
+                    variant="outline"
+                    colorScheme="green"
+                    onClick={bulkUnblockModal.onOpen}
+                    isLoading={isUnblockingSelected}
+                    isDisabled={!anyBlockedSelected}
+                    aria-label="Seçilenlerin Engelini Kaldır"
+                  />
+                </Tooltip>
+                <Tooltip label="Seçilenleri Arşivle ve Sabitle">
+                  <IconButton
+                    icon={<FiMapPin />}
+                    variant="outline"
+                    colorScheme="yellow"
+                    onClick={() => {
+                      setBulkArchiveAndPin(true);
+                      bulkPinModal.onOpen();
+                    }}
+                    isLoading={isPinning}
+                    isDisabled={selectedMessageIds.size === 0}
+                    aria-label="Seçilenleri Arşivle ve Sabitle"
                   />
                 </Tooltip>
                 <Tooltip label="Seçim Modundan Çık">
@@ -1791,6 +3235,42 @@ const ChannelChat = () => {
                     onClick={() => setCreateConferenceModalOpen(true)}
                     isLoading={isSending}
                     aria-label="Video Görüşme"
+                  />
+                </Tooltip>
+                <Tooltip label="Kanal Bağlantısını Kopyala">
+                  <IconButton
+                    icon={<FiLink />}
+                    variant="ghost"
+                    onClick={async () => {
+                      try {
+                        const url = `${window.location.origin}${routes.channelChat.getPath(channelId)}`;
+                        await navigator.clipboard.writeText(url);
+                        toast({
+                          title: 'Kanal bağlantısı kopyalandı',
+                          status: 'success',
+                          position: 'top',
+                          duration: 1500,
+                        });
+                      } catch (error) {
+                        toast({
+                          title: 'Bağlantı kopyalanamadı',
+                          status: 'error',
+                          position: 'top',
+                        });
+                      }
+                    }}
+                    aria-label="Kanal Bağlantısı"
+                  />
+                </Tooltip>
+                <Tooltip label="Kanalı yeni sekmede aç">
+                  <IconButton
+                    icon={<FiExternalLink />}
+                    variant="ghost"
+                    onClick={() => {
+                      const url = `${window.location.origin}${routes.channelChat.getPath(channelId)}`;
+                      window.open(url, '_blank');
+                    }}
+                    aria-label="Kanalı yeni sekmede aç"
                   />
                 </Tooltip>
                 <Tooltip label="Ara">
@@ -1933,6 +3413,57 @@ const ChannelChat = () => {
               </Box>
             )}
 
+            {/* Pinned banner */}
+            {(pinnedMessages && pinnedMessages.length > 0) && (
+              <Box bg="yellow.50" border="1px solid" borderColor="yellow.200" p="2" borderRadius="md" mb="2">
+                <HStack justify="space-between" align="center">
+                  <HStack spacing="2" align="center">
+                    <Icon as={FiMapPin} color="yellow.600" />
+                    <Text fontSize="sm" color="yellow.800">
+                      Sabitlenen mesajlar: {pinnedMessages.length}
+                    </Text>
+                  </HStack>
+                  <HStack spacing="2" align="center">
+                    <IconButton
+                      size="xs"
+                      variant="ghost"
+                      icon={<FiChevronUp />}
+                      aria-label="Önceki sabit"
+                      isDisabled={pinnedIndex === 0}
+                      onClick={() => handleNavigatePinned('prev')}
+                    />
+                    <Text fontSize="xs" color="yellow.800">
+                      {Math.min(pinnedIndex + 1, pinnedMessages.length)}/{pinnedMessages.length}
+                    </Text>
+                    <IconButton
+                      size="xs"
+                      variant="ghost"
+                      icon={<FiChevronDown />}
+                      aria-label="Sonraki sabit"
+                      isDisabled={pinnedIndex >= pinnedMessages.length - 1}
+                      onClick={() => handleNavigatePinned('next')}
+                    />
+                    <Button
+                      size="xs"
+                      variant="ghost"
+                      onClick={() => {
+                        const current = pinnedMessages[pinnedIndex];
+                        const mid = current?.messageId || current?.message?.id || current?.id;
+                        if (mid) scrollToMessage(mid);
+                      }}
+                    >
+                      Mesaja git
+                    </Button>
+                    <Button
+                      size="xs"
+                      onClick={handleOpenPinnedModal}
+                    >
+                      Tümünü gör
+                    </Button>
+                  </HStack>
+                </HStack>
+              </Box>
+            )}
             {messages.map((message) => {
               const messageId = message.id || message._id;
               return (
@@ -1955,6 +3486,32 @@ const ChannelChat = () => {
                   onSelect={toggleMessageSelection}
                   onReplyClick={scrollToMessage}
                   onForward={handleForward}
+                  onCopyLink={handleCopyLink}
+                  onOpenLink={handleOpenLink}
+                  onOpenModeration={handleOpenModeration}
+                  onArchive={async (msg) => {
+                    const id = msg.id || msg._id;
+                    try {
+                      await api.archiveMessage({ messageId: id, channelId });
+                      toast({ title: 'Mesaj arşivlendi', status: 'success', duration: 1500, position: 'top' });
+                    } catch (e) {
+                      toast({
+                        title: 'Hata',
+                        description: e?.response?.data?.message || 'Mesaj arşivlenemedi',
+                        status: 'error',
+                        duration: 3000,
+                        position: 'top',
+                      });
+                    }
+                  }}
+                  onArchiveAndPin={handleArchiveAndPin}
+                  onBlock={handleBlockMessage}
+                  onUnblock={handleUnblockMessage}
+                  onDelete={handleDeleteMessageOpen}
+                  onCopyText={handleCopyText}
+                  onQuoteText={handleQuoteText}
+                  onTogglePin={handleTogglePinMessage}
+                  isPinned={pinnedIds.has(messageId)}
                 />
               );
             })}
@@ -2065,6 +3622,550 @@ const ChannelChat = () => {
         </Box>
       )}
 
+      <Modal isOpen={blockModal.isOpen} onClose={blockModal.onClose} isCentered>
+        <ModalOverlay />
+        <ModalContent>
+          <ModalHeader>Mesajı Engelle</ModalHeader>
+          <ModalCloseButton />
+          <ModalBody>
+            <FormControl>
+              <FormLabel>Engelleme sebebi</FormLabel>
+              <Select
+                placeholder="Sebep seçin"
+                value={blockReason}
+                onChange={(e) => setBlockReason(e.target.value)}
+                mb="3"
+              >
+                <option value="Spam">Spam</option>
+                <option value="Uygunsuz dil">Uygunsuz dil</option>
+                <option value="Kişisel saldırı">Kişisel saldırı</option>
+                <option value="Reklam / tanıtım">Reklam / tanıtım</option>
+                <option value="Yanlış bilgi">Yanlış bilgi</option>
+              </Select>
+              <Textarea
+                value={blockReason}
+                onChange={(e) => setBlockReason(e.target.value)}
+                placeholder="Sebep"
+              />
+            </FormControl>
+          </ModalBody>
+          <ModalFooter>
+            <HStack spacing="3">
+              <Button variant="ghost" onClick={blockModal.onClose}>İptal</Button>
+              <Button colorScheme="red" onClick={handleConfirmBlock} isLoading={blockMutation.isPending} isDisabled={!blockReason || blockReason.trim().length === 0}>
+                Engelle
+              </Button>
+            </HStack>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
+
+      <Modal isOpen={singlePinModal.isOpen} onClose={singlePinModal.onClose} isCentered>
+        <ModalOverlay />
+        <ModalContent>
+          <ModalHeader>Mesajı Sabitle</ModalHeader>
+          <ModalCloseButton />
+          <ModalBody>
+            <VStack align="stretch" spacing="4">
+              {singlePinTarget && (
+                <Box bg="gray.50" p="3" borderRadius="md" border="1px solid" borderColor="gray.100">
+                  <Text fontSize="sm" fontWeight="600">{singlePinTarget.user?.fullname || 'Kullanıcı'}</Text>
+                  <Text fontSize="sm" color="gray.700" noOfLines={2}>
+                    {singlePinTarget.text || (singlePinTarget.image ? '📷 Görsel' : singlePinTarget.video ? '🎬 Video' : singlePinTarget.audio ? '🎵 Ses' : singlePinTarget.file ? '📄 Dosya' : 'Mesaj')}
+                  </Text>
+                  <Text fontSize="xs" color="gray.500">
+                    {singlePinTarget.createdAt ? format(new Date(singlePinTarget.createdAt), 'dd MMM yyyy HH:mm', { locale: tr }) : ''}
+                  </Text>
+                </Box>
+              )}
+              <FormControl>
+                <FormLabel>Sabitleme süresi</FormLabel>
+                <RadioGroup value={singlePinDuration} onChange={setSinglePinDuration}>
+                  <VStack align="start" spacing="2">
+                    <Radio value="24h">24 Saat</Radio>
+                    <Radio value="7d">7 Gün</Radio>
+                    <Radio value="unlimited">Sınırsız</Radio>
+                    <Radio value="custom">Özel</Radio>
+                  </VStack>
+                </RadioGroup>
+              </FormControl>
+              {singlePinDuration === 'custom' && (
+                <HStack spacing="3">
+                  <FormControl>
+                    <FormLabel>Süre</FormLabel>
+                    <Input
+                      type="number"
+                      min={1}
+                      value={singleCustomDurationValue}
+                      onChange={(e) => setSingleCustomDurationValue(Number(e.target.value))}
+                    />
+                  </FormControl>
+                  <FormControl>
+                    <FormLabel>Birim</FormLabel>
+                    <Select
+                      value={singleCustomDurationUnit}
+                      onChange={(e) => setSingleCustomDurationUnit(e.target.value)}
+                    >
+                      <option value="hours">Saat</option>
+                      <option value="days">Gün</option>
+                    </Select>
+                  </FormControl>
+                </HStack>
+              )}
+              <Checkbox
+                isChecked={singleArchiveBeforePin}
+                onChange={(e) => setSingleArchiveBeforePin(e.target.checked)}
+              >
+                Sabitlemeden önce arşivle
+              </Checkbox>
+            </VStack>
+          </ModalBody>
+          <ModalFooter>
+            <HStack spacing="3">
+              <Button variant="ghost" onClick={singlePinModal.onClose}>İptal</Button>
+              <Button
+                colorScheme="yellow"
+                isLoading={pinWithDurationMutation.isPending}
+                isDisabled={singlePinDuration === 'custom' && (!singleCustomDurationValue || singleCustomDurationValue <= 0)}
+                onClick={async () => {
+                  const ms = singlePinDuration === '24h'
+                    ? 24 * 60 * 60 * 1000
+                    : singlePinDuration === '7d'
+                      ? 7 * 24 * 60 * 60 * 1000
+                      : singlePinDuration === 'custom'
+                        ? (singleCustomDurationValue * (singleCustomDurationUnit === 'hours' ? 60 * 60 * 1000 : 24 * 60 * 60 * 1000))
+                        : undefined;
+                  const id = singlePinTarget?.id || singlePinTarget?._id;
+                  if (id) {
+                    if (singleArchiveBeforePin) {
+                      try {
+                        await api.archiveMessage({ messageId: id, channelId });
+                      } catch (e) {
+                        toast({
+                          title: 'Arşivleme başarısız',
+                          description: e?.response?.data?.message || 'Mesaj arşivlenemedi, sabitleme deneniyor',
+                          status: 'warning',
+                          duration: 2500,
+                          position: 'top',
+                        });
+                      }
+                    }
+                    await pinWithDurationMutation.mutateAsync({ messageId: id, durationMs: ms });
+                  }
+                  singlePinModal.onClose();
+                  setSinglePinTarget(null);
+                  setSingleArchiveBeforePin(false);
+                }}
+              >
+                Sabitle
+              </Button>
+            </HStack>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
+      <Modal isOpen={deleteModal.isOpen} onClose={deleteModal.onClose} isCentered>
+        <ModalOverlay />
+        <ModalContent>
+          <ModalHeader>Mesajı Sil</ModalHeader>
+          <ModalCloseButton />
+          <ModalBody>
+            <VStack align="stretch" spacing="3">
+              <Text>Bu mesajı silmek istediğinden emin misin?</Text>
+              {messageToDelete && (
+                <Box bg="gray.50" p="3" borderRadius="md">
+                  <HStack align="start" spacing="3">
+                    <Avatar
+                      size="sm"
+                      name={messageToDelete.user?.fullname}
+                      src={getCombinedLogoUrl(messageToDelete.user?.thumbnail)}
+                    />
+                    <VStack align="start" spacing="1" flex="1">
+                      <Text fontSize="sm" fontWeight="600">
+                        {messageToDelete.user?.fullname || 'Kullanıcı'}
+                      </Text>
+                      {messageToDelete.text ? (
+                        <Text fontSize="sm" color="gray.700" noOfLines={3}>
+                          {messageToDelete.text}
+                        </Text>
+                      ) : (
+                        <HStack spacing="3">
+                          {messageToDelete.image && (
+                            <HStack spacing="1">
+                              <Icon as={FiImage} color="gray.600" />
+                              <Text fontSize="sm" color="gray.700">Görsel</Text>
+                            </HStack>
+                          )}
+                          {messageToDelete.video && (
+                            <HStack spacing="1">
+                              <Icon as={FiVideo} color="gray.600" />
+                              <Text fontSize="sm" color="gray.700">Video</Text>
+                            </HStack>
+                          )}
+                          {messageToDelete.audio && (
+                            <HStack spacing="1">
+                              <Icon as={FiMusic} color="gray.600" />
+                              <Text fontSize="sm" color="gray.700">Ses</Text>
+                            </HStack>
+                          )}
+                          {messageToDelete.file && (
+                            <HStack spacing="1">
+                              <Icon as={FiFile} color="gray.600" />
+                              <Text fontSize="sm" color="gray.700">Dosya</Text>
+                            </HStack>
+                          )}
+                        </HStack>
+                      )}
+                      <Text fontSize="xs" color="gray.500">
+                        {messageToDelete.createdAt
+                          ? format(new Date(messageToDelete.createdAt), 'dd MMM yyyy HH:mm', { locale: tr })
+                          : ''}
+                      </Text>
+                      <HStack spacing="2" mt="2">
+                        <Tooltip label="Bağlantıyı kopyala">
+                          <IconButton
+                            icon={<FiLink />}
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => handleCopyLink(messageToDelete)}
+                            aria-label="Bağlantıyı kopyala"
+                          />
+                        </Tooltip>
+                        <Tooltip label="Yeni sekmede aç">
+                          <IconButton
+                            icon={<FiExternalLink />}
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => handleOpenLink(messageToDelete)}
+                            aria-label="Yeni sekmede aç"
+                          />
+                        </Tooltip>
+                        {messageToDelete.text && (
+                          <Tooltip label="Metni kopyala">
+                            <IconButton
+                              icon={<FiCopy />}
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => handleCopyText(messageToDelete)}
+                              aria-label="Metni kopyala"
+                            />
+                          </Tooltip>
+                        )}
+                        <Tooltip label="Mesaja git">
+                          <IconButton
+                            icon={<FiSearch />}
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => {
+                              const id = messageToDelete.id || messageToDelete._id;
+                              deleteModal.onClose();
+                              setTimeout(() => scrollToMessage(id), 200);
+                            }}
+                            aria-label="Mesaja git"
+                          />
+                        </Tooltip>
+                      </HStack>
+                      <Text fontSize="xs" color="gray.400" mt="1">
+                        ID: {messageToDelete.id || messageToDelete._id}
+                      </Text>
+                    </VStack>
+                  </HStack>
+                </Box>
+              )}
+              <Text fontSize="xs" color="red.500">Bu işlem geri alınamaz.</Text>
+              <FormControl>
+                <FormLabel>Silme kapsamı</FormLabel>
+                <RadioGroup value={deleteScope} onChange={setDeleteScope}>
+                  <HStack spacing="6">
+                    <Radio value="all">Herkes için sil</Radio>
+                    <Radio value="me">Sadece benim için sil</Radio>
+                  </HStack>
+                </RadioGroup>
+              </FormControl>
+              <Checkbox
+                isChecked={archiveBeforeDelete}
+                onChange={(e) => setArchiveBeforeDelete(e.target.checked)}
+                isDisabled={deleteScope === 'me'}
+              >
+                Silmeden önce arşivle
+              </Checkbox>
+            </VStack>
+          </ModalBody>
+          <ModalFooter>
+            <HStack spacing="3">
+              <Button variant="ghost" onClick={deleteModal.onClose}>İptal</Button>
+              <Button colorScheme="red" onClick={handleConfirmDeleteMessage}>
+                Sil
+              </Button>
+            </HStack>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
+
+      <Modal isOpen={bulkBlockModal.isOpen} onClose={bulkBlockModal.onClose} isCentered>
+        <ModalOverlay />
+        <ModalContent>
+          <ModalHeader>Seçilenleri Engelle</ModalHeader>
+        <ModalCloseButton />
+        <ModalBody>
+          <VStack align="stretch" spacing="3">
+            <Text fontSize="sm" color="gray.600">
+              Seçilen mesajlar engellenecek. Bir gerekçe belirtin.
+            </Text>
+            <FormControl>
+              <FormLabel>Gerekçe</FormLabel>
+              <Textarea
+                value={bulkBlockReason}
+                onChange={(e) => setBulkBlockReason(e.target.value)}
+                placeholder="Ör: Uygunsuz içerik, spam, vb."
+              />
+            </FormControl>
+          </VStack>
+        </ModalBody>
+        <ModalFooter>
+          <HStack spacing="3">
+            <Button variant="ghost" onClick={bulkBlockModal.onClose}>İptal</Button>
+            <Button
+              colorScheme="red"
+              isLoading={isBlockingSelected}
+              isDisabled={!bulkBlockReason || !anyUnblockedSelected}
+              onClick={handleBlockSelected}
+            >
+              Engelle
+            </Button>
+          </HStack>
+        </ModalFooter>
+        </ModalContent>
+      </Modal>
+
+      <Modal isOpen={bulkUnblockModal.isOpen} onClose={bulkUnblockModal.onClose} isCentered>
+        <ModalOverlay />
+        <ModalContent>
+          <ModalHeader>Engeli Kaldır</ModalHeader>
+          <ModalCloseButton />
+          <ModalBody>
+            <VStack align="stretch" spacing="3">
+              <Text fontSize="sm" color="gray.600">
+                {selectedBlockedCount} engelli mesajın engeli kaldırılacak. Devam etmek istiyor musun?
+              </Text>
+            </VStack>
+          </ModalBody>
+          <ModalFooter>
+            <HStack spacing="3">
+              <Button variant="ghost" onClick={bulkUnblockModal.onClose}>İptal</Button>
+              <Button
+                colorScheme="green"
+                isLoading={isUnblockingSelected}
+                isDisabled={!anyBlockedSelected}
+                onClick={async () => {
+                  await handleUnblockSelected();
+                  bulkUnblockModal.onClose();
+                }}
+              >
+                Engeli Kaldır
+              </Button>
+            </HStack>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
+
+      <Modal isOpen={bulkForwardModal.isOpen} onClose={bulkForwardModal.onClose} isCentered>
+        <ModalOverlay />
+        <ModalContent>
+          <ModalHeader>Seçilenleri İlet</ModalHeader>
+          <ModalCloseButton />
+          <ModalBody>
+            <VStack align="stretch" spacing="3">
+              <Input
+                placeholder="Kanal ara..."
+                value={forwardSearchQuery}
+                onChange={(e) => setForwardSearchQuery(e.target.value)}
+              />
+              <Box maxH="300px" overflowY="auto" border="1px solid" borderColor="gray.100" borderRadius="md" p="2">
+                {isLoadingForwardChannels ? (
+                  <Box textAlign="center" py="6">
+                    <Spinner size="md" color="blue.500" />
+                  </Box>
+                ) : filteredForwardChannels.length === 0 ? (
+                  <Text fontSize="sm" color="gray.600">Kanal bulunamadı</Text>
+                ) : (
+                  <VStack align="stretch" spacing="2">
+                    {filteredForwardChannels.map((ch) => (
+                      <HStack key={ch.id} justify="space-between">
+                        <Text fontSize="sm">{ch.name || ch.marketCode || ch.fundCode || ch.id}</Text>
+                        <Checkbox
+                          isChecked={forwardSelectedChannelIds.includes(ch.id)}
+                          onChange={() => toggleForwardChannel(ch.id)}
+                        >
+                          Seç
+                        </Checkbox>
+                      </HStack>
+                    ))}
+                  </VStack>
+                )}
+              </Box>
+              <Checkbox
+                isChecked={forwardIncludeLinks}
+                onChange={(e) => setForwardIncludeLinks(e.target.checked)}
+              >
+                Mesaj bağlantılarını ekle
+              </Checkbox>
+            </VStack>
+          </ModalBody>
+          <ModalFooter>
+            <HStack spacing="3">
+              <Button variant="ghost" onClick={bulkForwardModal.onClose}>İptal</Button>
+              <Button
+                colorScheme="blue"
+                isLoading={isForwarding || isForwardPending}
+                isDisabled={forwardSelectedChannelIds.length === 0 || selectedMessageIds.size === 0}
+                onClick={handleForwardSelected}
+              >
+                İlet ({forwardSelectedChannelIds.length})
+              </Button>
+            </HStack>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
+      <Modal isOpen={pinnedModal.isOpen} onClose={pinnedModal.onClose} isCentered size="xl">
+        <ModalOverlay />
+        <ModalContent>
+          <ModalHeader>Sabitlenen Mesajlar</ModalHeader>
+          <ModalCloseButton />
+          <ModalBody>
+            <VStack align="stretch" spacing="3">
+              {!pinnedMessages?.length && (
+                <Text fontSize="sm" color="gray.500">Sabitlenen mesaj bulunmuyor.</Text>
+              )}
+              {pinnedMessages?.map((pm) => {
+                const mid = pm?.messageId || pm?.message?.id || pm?.id;
+                const senderName = pm?.originalSender?.name || pm?.message?.user?.fullname || 'Kullanıcı';
+                const preview =
+                  pm?.messageContent?.text ||
+                  (pm?.messageContent?.image ? '📷 Görsel' :
+                   pm?.messageContent?.video ? '🎬 Video' :
+                   pm?.messageContent?.audio ? '🎵 Ses' : 'Mesaj');
+                const pinnedAt = pm?.pinnedAt || pm?.createdAt;
+                const pinId = pm?._id || pm?.id;
+                return (
+                  <Box key={mid || pinId} bg="gray.50" p="3" borderRadius="md" border="1px solid" borderColor="gray.100">
+                    <HStack justify="space-between" align="start">
+                      <VStack align="start" spacing="1" flex="1">
+                        <Text fontSize="sm" fontWeight="600">{senderName}</Text>
+                        <Text fontSize="sm" color="gray.700" noOfLines={2}>{preview}</Text>
+                        <Text fontSize="xs" color="gray.500">
+                          {pinnedAt ? format(new Date(pinnedAt), 'dd MMM yyyy HH:mm', { locale: tr }) : ''}
+                        </Text>
+                      </VStack>
+                      <HStack spacing="2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => {
+                            if (mid) {
+                              pinnedModal.onClose();
+                              setTimeout(() => scrollToMessage(mid), 200);
+                            }
+                          }}
+                        >
+                          Mesaja git
+                        </Button>
+                        {pinId && (
+                          <Button
+                            size="sm"
+                            colorScheme="red"
+                            onClick={async () => {
+                              await unpinMutation.mutateAsync(pinId);
+                            }}
+                          >
+                            Kaldır
+                          </Button>
+                        )}
+                      </HStack>
+                    </HStack>
+                  </Box>
+                );
+              })}
+            </VStack>
+          </ModalBody>
+          <ModalFooter>
+            <Button variant="ghost" onClick={pinnedModal.onClose}>Kapat</Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
+
+      <Modal isOpen={bulkPinModal.isOpen} onClose={bulkPinModal.onClose} isCentered>
+        <ModalOverlay />
+        <ModalContent>
+          <ModalHeader>Sabitleme Süresi</ModalHeader>
+          <ModalCloseButton />
+          <ModalBody>
+            <VStack align="stretch" spacing="4">
+              <FormControl>
+                <FormLabel>Seçilen mesajlar için sabitleme süresi</FormLabel>
+                <RadioGroup value={bulkPinDuration} onChange={setBulkPinDuration}>
+                  <VStack align="start" spacing="2">
+                    <Radio value="24h">24 Saat</Radio>
+                    <Radio value="7d">7 Gün</Radio>
+                    <Radio value="unlimited">Sınırsız</Radio>
+                    <Radio value="custom">Özel</Radio>
+                  </VStack>
+                </RadioGroup>
+              </FormControl>
+              {bulkPinDuration === 'custom' && (
+                <HStack spacing="3">
+                  <FormControl>
+                    <FormLabel>Süre</FormLabel>
+                    <Input
+                      type="number"
+                      min={1}
+                      value={customDurationValue}
+                      onChange={(e) => setCustomDurationValue(Number(e.target.value))}
+                    />
+                  </FormControl>
+                  <FormControl>
+                    <FormLabel>Birim</FormLabel>
+                    <Select
+                      value={customDurationUnit}
+                      onChange={(e) => setCustomDurationUnit(e.target.value)}
+                    >
+                      <option value="hours">Saat</option>
+                      <option value="days">Gün</option>
+                    </Select>
+                  </FormControl>
+                </HStack>
+              )}
+            </VStack>
+          </ModalBody>
+          <ModalFooter>
+            <HStack spacing="3">
+              <Button variant="ghost" onClick={bulkPinModal.onClose}>İptal</Button>
+              <Button
+                colorScheme="yellow"
+                isLoading={isPinning}
+                isDisabled={bulkPinDuration === 'custom' && (!customDurationValue || customDurationValue <= 0)}
+                onClick={async () => {
+                  const ms = bulkPinDuration === '24h'
+                    ? 24 * 60 * 60 * 1000
+                    : bulkPinDuration === '7d'
+                      ? 7 * 24 * 60 * 60 * 1000
+                      : bulkPinDuration === 'custom'
+                        ? (customDurationValue * (customDurationUnit === 'hours' ? 60 * 60 * 1000 : 24 * 60 * 60 * 1000))
+                        : undefined;
+                  if (bulkArchiveAndPin) {
+                    await handleArchiveAndPinSelected(ms);
+                  } else {
+                    await handlePinSelected(ms);
+                  }
+                  bulkPinModal.onClose();
+                  setBulkArchiveAndPin(false);
+                }}
+              >
+                Sabitle
+              </Button>
+            </HStack>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
       {/* Input Area */}
       <Box bg="white" p="4" borderRadius="xl" boxShadow="sm">
         <HStack spacing="3">
@@ -2302,4 +4403,3 @@ const ChannelChat = () => {
 };
 
 export default ChannelChat;
-
