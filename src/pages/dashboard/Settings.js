@@ -35,6 +35,7 @@ import useFileInput from '../../hooks/useFileInput';
 import { ReadOnlyInfo } from '../../components';
 import { useUserStore } from '../../store';
 import useBrowserNotification from '../../hooks/useBrowserNotification';
+import { playNotificationSound } from '../../utils/sound';
 
 // --- Profile Settings Component ---
 const profileSchema = yup.object({

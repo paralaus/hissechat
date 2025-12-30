@@ -40,6 +40,7 @@ import useBrowserNotification from '../../hooks/useBrowserNotification';
 import { useEffect, useRef } from 'react';
 import formatDistanceToNow from 'date-fns/formatDistanceToNow';
 import { tr } from 'date-fns/locale';
+import { playNotificationSound } from '../../utils/sound';
 
 const SIDEBAR_WIDTH = '260px';
 
