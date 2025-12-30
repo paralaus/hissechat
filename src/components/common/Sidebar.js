@@ -370,8 +370,12 @@ const MobileNav = ({ onOpen, ...rest }) => {
     // Check both root level and data property
     const data = notification.data || notification;
     
-    if (data.channelId) {
-       navigate(routes.channelChat.getPath(data.channelId));
+    // Kanal bildirimi için: data.channelId veya notification.channel (ObjectId/Obje)
+    const channelId = data.channelId || (notification.channel && (notification.channel._id || notification.channel));
+
+    if (channelId) {
+       const idStr = typeof channelId === 'object' ? channelId.toString() : channelId;
+       navigate(routes.channelChat.getPath(idStr));
     } else if (data.userId) {
        navigate(routes.editUser.getPath(data.userId));
     } else if (data.reportId) {
