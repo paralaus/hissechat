@@ -268,7 +268,7 @@ const NotificationSettings = () => {
     <VStack spacing={6} align="stretch">
       <Box>
         <Text fontSize="lg" fontWeight="bold" mb={4}>Bildirim Tercihleri</Text>
-        <VStack spacing={4} divider={<Divider />}>
+        <VStack spacing={4} divider={<Divider />} align="stretch">
           <HStack spacing={4} justify="space-between">
             <VStack align="start" spacing={0}>
               <Text fontWeight="medium">Tarayıcı Bildirimleri</Text>
