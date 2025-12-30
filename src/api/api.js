@@ -208,7 +208,7 @@ export const getNotifications = async params => {
 };
 
 export const markNotificationAsRead = async id => {
-  return apiClient.patch(`/notifications/${id}/read`);
+  return apiClient.patch(`/notifications/${id}`, { readAt: new Date() });
 };
 
 export const markAllNotificationsAsRead = async () => {
