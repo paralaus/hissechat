@@ -196,7 +196,7 @@ const ProfileSettings = ({ user }) => {
 
 // --- Notification Settings Component ---
 const NotificationSettings = () => {
-  const { permission, requestPermission } = useBrowserNotification();
+  const { permission, requestPermission, showNotification } = useBrowserNotification();
   const [soundEnabled, setSoundEnabled] = useState(true);
   const toast = useToast();
 
@@ -233,6 +233,36 @@ const NotificationSettings = () => {
     localStorage.setItem('notification_sound_enabled', isChecked);
   };
 
+  const handleTestNotification = async () => {
+    // Ses testi
+    if (soundEnabled) {
+      playNotificationSound();
+    }
+    
+    // Görsel test
+    const perm = await requestPermission();
+    if (perm === 'granted') {
+      showNotification('Test Bildirimi', {
+        body: 'Bu bir test bildirimidir. Bildirimler ve ses çalışıyor.',
+        tag: 'test-notification'
+      });
+      
+      toast({
+        title: 'Test bildirimi gönderildi',
+        status: 'info',
+        duration: 2000,
+        position: 'top',
+      });
+    } else {
+      toast({
+        title: 'Bildirim izni yok',
+        description: 'Tarayıcı ayarlarından bildirimlere izin vermelisiniz.',
+        status: 'warning',
+        position: 'top',
+      });
+    }
+  };
+
   return (
     <VStack spacing={6} align="stretch">
       <Box>
@@ -260,6 +290,12 @@ const NotificationSettings = () => {
               onChange={handleSoundChange}
             />
           </HStack>
+
+          <Box pt={2}>
+            <Button size="sm" onClick={handleTestNotification}>
+              Test Bildirimi Gönder
+            </Button>
+          </Box>
         </VStack>
       </Box>
     </VStack>

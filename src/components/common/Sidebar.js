@@ -356,7 +356,7 @@ const MobileNav = ({ onOpen, ...rest }) => {
     const latestNotification = notifications[0];
     const latestId = latestNotification.id || latestNotification._id;
 
-    // Initial load
+    // Initial load - sadece ilk yüklemede en son ID'yi kaydet, bildirim gösterme
     if (!lastNotificationIdRef.current) {
       lastNotificationIdRef.current = latestId;
       return;
@@ -364,22 +364,43 @@ const MobileNav = ({ onOpen, ...rest }) => {
 
     // New notification check
     if (latestId !== lastNotificationIdRef.current) {
+      // Find all new notifications
+      // Bildirim listesi tarihe göre sıralı varsayılıyor (en yeni en üstte)
+      const newNotifications = [];
+      
+      for (const notification of notifications) {
+        const id = notification.id || notification._id;
+        if (id === lastNotificationIdRef.current) break; // Son görülen bildirime geldik
+        newNotifications.push(notification);
+      }
+
+      // Update last seen ID immediately to prevent duplicate processing
       lastNotificationIdRef.current = latestId;
       
-      // Show browser notification if it's new and unread
-      if (!latestNotification.readAt) {
-        showNotification(latestNotification.title || 'Yeni Bildirim', {
-          body: latestNotification.body || latestNotification.message || 'Yeni bir bildiriminiz var.',
-          icon: '/logo192.png',
-          tag: `notification-${latestId}`
-        });
-
-        // Play notification sound if enabled
+      // Process new notifications (reverse to show oldest new first, or just show latest)
+      // Çok fazla bildirim varsa sadece en yenisini göster veya özet geç
+      // Amaç ses çalmak ve browser notification göstermek
+      
+      if (newNotifications.length > 0) {
+        // En az bir yeni bildirim var
         const soundEnabled = localStorage.getItem('notification_sound_enabled') === 'true';
-        if (soundEnabled) {
-          const audio = new Audio('/assets/sounds/notification.mp3');
-          audio.play().catch(() => {}); // Ignore errors (e.g. if file not found)
-        }
+        let playedSound = false;
+
+        newNotifications.forEach(notification => {
+          if (!notification.readAt) {
+             showNotification(notification.title || 'Yeni Bildirim', {
+              body: notification.body || notification.message || 'Yeni bir bildiriminiz var.',
+              icon: '/logo192.png',
+              tag: `notification-${notification.id || notification._id}`
+            });
+
+            // Play sound only once per batch to avoid noise
+            if (soundEnabled && !playedSound) {
+              playNotificationSound();
+              playedSound = true;
+            }
+          }
+        });
       }
     }
   }, [notifications, showNotification]);
