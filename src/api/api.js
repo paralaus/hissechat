@@ -199,6 +199,18 @@ export const getProduct = async id => {
   return apiClient.get(`/products/${id}`);
 };
 
+export const getNotifications = async params => {
+  return apiClient.get('/notifications', {params});
+};
+
+export const markNotificationAsRead = async id => {
+  return apiClient.patch(`/notifications/${id}/read`);
+};
+
+export const markAllNotificationsAsRead = async () => {
+  return apiClient.post('/notifications/read-all');
+};
+
 export const deleteProduct = async id => {
   return apiClient.delete(`/products/${id}`);
 };

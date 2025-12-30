@@ -20,8 +20,11 @@ import {
   MenuList,
   useToast,
   Avatar,
+  Badge,
+  Spinner,
+  Button,
 } from '@chakra-ui/react';
-import { FiMenu, FiChevronDown, FiLogOut, FiSettings } from 'react-icons/fi';
+import { FiMenu, FiChevronDown, FiLogOut, FiSettings, FiBell } from 'react-icons/fi';
 import { MdKeyboardArrowDown, MdKeyboardArrowUp } from 'react-icons/md';
 
 import { meta } from '../../config/meta';
@@ -31,6 +34,12 @@ import { trim } from '../../utils/string';
 import { useUserStore } from '../../store';
 import Cookies from 'js-cookie';
 import Breadcrumbs from './Breadcrumbs';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import * as api from '../../api/api';
+import useBrowserNotification from '../../hooks/useBrowserNotification';
+import { useEffect, useRef } from 'react';
+import formatDistanceToNow from 'date-fns/formatDistanceToNow';
+import { tr } from 'date-fns/locale';
 
 const SIDEBAR_WIDTH = '260px';
 
@@ -310,8 +319,63 @@ const MobileNav = ({ onOpen, ...rest }) => {
   const { user, setUser } = useUserStore();
   const navigate = useNavigate();
   const toast = useToast();
+  const queryClient = useQueryClient();
   const bgColor = useColorModeValue('white', 'gray.800');
   const borderColor = useColorModeValue('gray.200', 'gray.700');
+  const { showNotification } = useBrowserNotification();
+  const lastNotificationIdRef = useRef(null);
+
+  // Notifications Query
+  const { data: notificationsData, isLoading: isLoadingNotifications } = useQuery({
+    queryKey: ['notifications'],
+    queryFn: () => api.getNotifications({ limit: 10, page: 1 }),
+    refetchInterval: 10000, // Check every 10 seconds
+    refetchIntervalInBackground: true,
+  });
+
+  // Mark Read Mutation
+  const markReadMutation = useMutation({
+    mutationFn: api.markAllNotificationsAsRead,
+    onSuccess: () => {
+      queryClient.invalidateQueries(['notifications']);
+      toast({
+        title: 'Tüm bildirimler okundu',
+        status: 'success',
+        duration: 2000,
+      });
+    },
+  });
+
+  const notifications = notificationsData?.data?.results || [];
+  const unreadCount = notifications.filter(n => !n.readAt).length;
+
+  // Browser Notification Effect
+  useEffect(() => {
+    if (!notifications || notifications.length === 0) return;
+
+    const latestNotification = notifications[0];
+    const latestId = latestNotification.id || latestNotification._id;
+
+    // Initial load
+    if (!lastNotificationIdRef.current) {
+      lastNotificationIdRef.current = latestId;
+      return;
+    }
+
+    // New notification check
+    if (latestId !== lastNotificationIdRef.current) {
+      lastNotificationIdRef.current = latestId;
+      
+      // Show browser notification if it's new and unread
+      if (!latestNotification.readAt) {
+        showNotification(latestNotification.title || 'Yeni Bildirim', {
+          body: latestNotification.body || latestNotification.message || 'Yeni bir bildiriminiz var.',
+          icon: '/logo192.png',
+          tag: `notification-${latestId}`
+        });
+      }
+    }
+  }, [notifications, showNotification]);
 
   const onLogout = () => {
     setUser(null);
@@ -361,6 +425,98 @@ const MobileNav = ({ onOpen, ...rest }) => {
       </NavLink>
 
       <HStack spacing="3">
+        {/* Notifications */}
+        <Menu>
+          <MenuButton
+            as={IconButton}
+            aria-label="Bildirimler"
+            icon={
+              <Box position="relative">
+                <FiBell size={20} />
+                {unreadCount > 0 && (
+                  <Badge
+                    position="absolute"
+                    top="-2px"
+                    right="-2px"
+                    colorScheme="red"
+                    borderRadius="full"
+                    boxSize="4"
+                    fontSize="xs"
+                    display="flex"
+                    alignItems="center"
+                    justifyContent="center"
+                  >
+                    {unreadCount}
+                  </Badge>
+                )}
+              </Box>
+            }
+            variant="ghost"
+            size="md"
+          />
+          <MenuList
+            bg={bgColor}
+            borderColor={borderColor}
+            boxShadow="lg"
+            maxH="400px"
+            overflowY="auto"
+            w="350px"
+            p={0}
+          >
+            <Box p={3} borderBottomWidth="1px" borderColor={borderColor} display="flex" justifyContent="space-between" alignItems="center">
+              <Text fontWeight="bold" fontSize="sm">Bildirimler</Text>
+              {unreadCount > 0 && (
+                <Button 
+                  size="xs" 
+                  variant="ghost" 
+                  colorScheme="brand" 
+                  onClick={() => markReadMutation.mutate()}
+                  isLoading={markReadMutation.isLoading}
+                >
+                  Tümünü Okundu Say
+                </Button>
+              )}
+            </Box>
+            
+            {isLoadingNotifications ? (
+              <Box p={4} textAlign="center">
+                <Spinner size="sm" />
+              </Box>
+            ) : notifications.length === 0 ? (
+              <Box p={4} textAlign="center">
+                <Text fontSize="sm" color="gray.500">Hiç bildirim yok.</Text>
+              </Box>
+            ) : (
+              notifications.map((notification) => (
+                <MenuItem
+                  key={notification.id || notification._id}
+                  _hover={{ bg: 'gray.50' }}
+                  p={3}
+                  borderBottomWidth="1px"
+                  borderColor="gray.100"
+                >
+                  <VStack align="start" spacing={1} w="full">
+                    <HStack justify="space-between" w="full">
+                      <Text fontWeight="semibold" fontSize="sm" noOfLines={1}>
+                        {notification.title}
+                      </Text>
+                      {!notification.readAt && (
+                        <Badge colorScheme="green" variant="solid" boxSize={2} borderRadius="full" />
+                      )}
+                    </HStack>
+                    <Text fontSize="xs" color="gray.600" noOfLines={2}>
+                      {notification.body || notification.message}
+                    </Text>
+                    <Text fontSize="10px" color="gray.400" alignSelf="flex-end">
+                      {notification.createdAt && formatDistanceToNow(new Date(notification.createdAt), { addSuffix: true, locale: tr })}
+                    </Text>
+                  </VStack>
+                </MenuItem>
+              ))
+            )}
+          </MenuList>
+        </Menu>
+
         <Flex alignItems="center">
           <Menu>
             <MenuButton

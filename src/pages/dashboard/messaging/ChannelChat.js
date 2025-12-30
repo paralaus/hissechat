@@ -87,6 +87,7 @@ import {getCombinedLogoUrl} from '../../../utils/image';
 import {format} from 'date-fns';
 import {tr} from 'date-fns/locale';
 import useFileInput from '../../../hooks/useFileInput';
+import useBrowserNotification from '../../../hooks/useBrowserNotification';
 import {getErrorMessage} from '../../../utils/string';
 import VideoConference from '../../../components/conference/VideoConference';
 import ForwardMessageModal from '../../../components/modals/ForwardMessageModal';
@@ -1158,6 +1159,50 @@ const ChannelChat = () => {
   };
 
   const currentUserId = getCurrentUserId();
+
+  // Notification Hook
+  const { showNotification } = useBrowserNotification();
+  const lastNotificationMessageIdRef = useRef(null);
+
+  // Notification Effect
+  useEffect(() => {
+    if (!allMessages || allMessages.length === 0) return;
+
+    const lastMessage = allMessages[allMessages.length - 1];
+    const lastMessageId = lastMessage.id || lastMessage._id;
+
+    // Initial load sync - don't notify for existing messages
+    if (!lastNotificationMessageIdRef.current) {
+      lastNotificationMessageIdRef.current = lastMessageId;
+      return;
+    }
+
+    // New message check
+    if (lastMessageId !== lastNotificationMessageIdRef.current) {
+      lastNotificationMessageIdRef.current = lastMessageId;
+
+      const isOwn = (lastMessage.user?.id || lastMessage.user?._id || lastMessage.user) === currentUserId;
+      
+      if (!isOwn) {
+        const senderName = lastMessage.user?.username || lastMessage.user?.fullname || 'Biri';
+        let body = 'Yeni mesaj';
+        if (lastMessage.text) body = lastMessage.text;
+        else if (lastMessage.image) body = '📷 Fotoğraf gönderdi';
+        else if (lastMessage.video) body = '🎥 Video gönderdi';
+        else if (lastMessage.audio) body = '🎵 Ses gönderdi';
+        else if (lastMessage.file) body = '📁 Dosya gönderdi';
+        else if (lastMessage.conference) body = '🎥 Video görüşme';
+        else if (lastMessage.poll) body = '📊 Anket';
+
+        showNotification(senderName, {
+          body: body.length > 50 ? body.substring(0, 50) + '...' : body,
+          icon: '/logo192.png',
+          tag: `channel-${channelId}`, // Tag prevents duplicate notifications for same event
+          silent: false
+        });
+      }
+    }
+  }, [allMessages, currentUserId, channelId, showNotification]);
 
   const handleSendMessage = async () => {
     if (!messageText.trim() && !imageInput.objectUrl && !videoInput.objectUrl && !audioInput.objectUrl && !fileInput.objectUrl) {
