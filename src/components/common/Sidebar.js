@@ -331,7 +331,7 @@ const MobileNav = ({ onOpen, ...rest }) => {
   const { data: notificationsData, isLoading: isLoadingNotifications } = useQuery({
     queryKey: ['notifications'],
     queryFn: () => api.getNotifications({ limit: 10, page: 1 }),
-    refetchInterval: 10000, // Check every 10 seconds
+    refetchInterval: 5000, // Check every 5 seconds
     refetchIntervalInBackground: true,
     retry: 1,
   });
@@ -431,12 +431,18 @@ const MobileNav = ({ onOpen, ...rest }) => {
 
         newNotifications.forEach(notification => {
           if (!notification.readAt) {
-             showNotification(notification.title || 'Yeni Bildirim', {
-              body: notification.body || notification.message || 'Yeni bir bildiriminiz var.',
-              icon: '/logo192.png',
-              tag: `notification-${notification.id || notification._id}`,
-              onClick: () => handleNotificationClick(notification),
-            });
+             // Browser notification için kullanıcı etkileşimi gerekebilir, bu yüzden try-catch
+             try {
+                showNotification(notification.title || 'Yeni Bildirim', {
+                  body: notification.body || notification.message || 'Yeni bir bildiriminiz var.',
+                  icon: '/logo192.png',
+                  tag: `notification-${notification.id || notification._id}`,
+                  requireInteraction: true, // Kullanıcı kapatana kadar ekranda kalsın
+                  onClick: () => handleNotificationClick(notification),
+                });
+             } catch (e) {
+                console.error("Browser notification error:", e);
+             }
 
             // Play sound only once per batch to avoid noise
             if (soundEnabled && !playedSound) {
