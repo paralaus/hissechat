@@ -93,10 +93,14 @@ const ArchivedMessages = () => {
               width="280px"
             >
               {/* Optional: Could be populated via a query of user's channels */}
-              {Array.from(new Set(archives.map(a => a.channelId || a.channel?._id || a.channel?.id)))
-                .filter(Boolean)
-                .map((cid) => (
-                  <option key={cid} value={cid}>{cid}</option>
+              {Array.from(new Set(archives.map(a => JSON.stringify({
+                id: a.channelId || a.channel?._id || a.channel?.id,
+                name: a.channel?.name || a.channelName || a.channelId
+              }))))
+                .map(str => JSON.parse(str))
+                .filter(item => item.id)
+                .map((item) => (
+                  <option key={item.id} value={item.id}>{item.name}</option>
                 ))}
             </Select>
             <Input
