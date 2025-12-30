@@ -362,7 +362,7 @@ const MobileNav = ({ onOpen, ...rest }) => {
 
   const handleNotificationClick = (notification) => {
     // Mark as read if not already read
-    if (!notification.readAt) {
+    if (!notification.isOpened) {
       markSingleReadMutation.mutate(notification.id || notification._id);
     }
 
@@ -397,7 +397,7 @@ const MobileNav = ({ onOpen, ...rest }) => {
   };
 
   const notifications = notificationsData?.data?.results || [];
-  const unreadCount = notifications.filter(n => !n.readAt).length;
+  const unreadCount = notifications.filter(n => !n.isOpened).length;
 
   // Browser Notification Effect
   useEffect(() => {
@@ -437,7 +437,7 @@ const MobileNav = ({ onOpen, ...rest }) => {
         let playedSound = false;
 
         newNotifications.forEach(notification => {
-          if (!notification.readAt) {
+          if (!notification.isOpened) {
              // Browser notification için kullanıcı etkileşimi gerekebilir, bu yüzden try-catch
              try {
                 showNotification(notification.title || 'Yeni Bildirim', {
@@ -586,7 +586,7 @@ const MobileNav = ({ onOpen, ...rest }) => {
                       <Text fontWeight="semibold" fontSize="sm" noOfLines={1}>
                         {notification.title}
                       </Text>
-                      {!notification.readAt && (
+                      {!notification.isOpened && (
                         <Badge colorScheme="green" variant="solid" boxSize={2} borderRadius="full" />
                       )}
                     </HStack>
