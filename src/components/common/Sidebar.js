@@ -386,6 +386,8 @@ const MobileNav = ({ onOpen, ...rest }) => {
        navigate(routes.editVipApplications.getPath(data.vipApplicationId));
     } else if (data.productId) {
        navigate(routes.editProduct.getPath(data.productId));
+    } else if (data.type === 'daily_summary' || data.screen === 'StockMarket') {
+       navigate(routes.markets.path);
     }
   };
 
