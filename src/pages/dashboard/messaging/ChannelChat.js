@@ -3048,6 +3048,8 @@ const ChannelChat = () => {
                 {channel?.type === 'vip' ? 'VIP Kanal' : channel?.type === 'market' ? 'Piyasa Kanalı' : 'Kanal'}
                 {' • '}
                 {channel?.messageCount || 0} mesaj
+                {' • '}
+                {channel?.memberCount || channel?.members?.length || 0} üye
               </Text>
             </VStack>
           </HStack>
