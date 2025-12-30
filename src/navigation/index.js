@@ -50,6 +50,7 @@ import Channels from '../pages/dashboard/messaging/Channels';
 import ChannelChat from '../pages/dashboard/messaging/ChannelChat';
 import AppDistribution from '../pages/dashboard/distribution/AppDistribution';
 import Moderation from '../pages/dashboard/moderation/Moderation';
+import ArchivedMessages from '../pages/dashboard/messaging/ArchivedMessages';
 
 const rootLoader = async ({request}) => {
   const {pathname} = new URL(request.url);
@@ -339,6 +340,13 @@ const router = createBrowserRouter(
           element={<Moderation />}
           handle={{
             crumb: () => <Text>İçerik Moderasyonu</Text>,
+          }}
+        />
+        <Route
+          path="messaging/archives"
+          element={<ArchivedMessages />}
+          handle={{
+            crumb: () => <Text>Arşiv</Text>,
           }}
         />
         <Route
