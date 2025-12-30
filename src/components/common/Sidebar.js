@@ -333,6 +333,7 @@ const MobileNav = ({ onOpen, ...rest }) => {
     queryFn: () => api.getNotifications({ limit: 10, page: 1 }),
     refetchInterval: 10000, // Check every 10 seconds
     refetchIntervalInBackground: true,
+    retry: 1,
   });
 
   // Mark Read Mutation
@@ -353,6 +354,9 @@ const MobileNav = ({ onOpen, ...rest }) => {
     mutationFn: api.markNotificationAsRead,
     onSuccess: () => {
       queryClient.invalidateQueries(['notifications']);
+    },
+    onError: (error) => {
+      console.warn('Bildirim okundu olarak işaretlenemedi:', error);
     },
   });
 
