@@ -269,7 +269,7 @@ const NotificationSettings = () => {
       <Box>
         <Text fontSize="lg" fontWeight="bold" mb={4}>Bildirim Tercihleri</Text>
         <VStack spacing={4} divider={<Divider />}>
-          <HStack spacing={4} align="center" justify="space-between">
+          <HStack spacing={4} justify="space-between">
             <VStack align="start" spacing={0}>
               <Text fontWeight="medium">Tarayıcı Bildirimleri</Text>
               <Text fontSize="sm" color="gray.500">Yeni mesaj geldiğinde masaüstü bildirimi göster</Text>
@@ -281,7 +281,7 @@ const NotificationSettings = () => {
             />
           </HStack>
           
-          <HStack spacing={4} align="center" justify="space-between">
+          <HStack spacing={4} justify="space-between">
             <VStack align="start" spacing={0}>
               <Text fontWeight="medium">Bildirim Sesi</Text>
               <Text fontSize="sm" color="gray.500">Bildirim geldiğinde ses çal</Text>
