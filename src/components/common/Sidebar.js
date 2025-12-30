@@ -371,7 +371,12 @@ const MobileNav = ({ onOpen, ...rest }) => {
     const data = notification.data || notification;
     
     // Kanal bildirimi için: data.channelId veya notification.channel (ObjectId/Obje)
-    const channelId = data.channelId || (notification.channel && (notification.channel._id || notification.channel));
+    let channelId = data.channelId || (notification.channel && (notification.channel._id || notification.channel));
+
+    // Fallback: Eğer channelId yoksa ve subject varsa (eski kayıtlar veya eksik veri için)
+    if (!channelId && (notification.subjectType === 'channel' || notification.type === 'message') && notification.subject) {
+      channelId = notification.subject;
+    }
 
     if (channelId) {
        const idStr = typeof channelId === 'object' ? channelId.toString() : channelId;
