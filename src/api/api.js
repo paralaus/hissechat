@@ -36,6 +36,10 @@ export const updateUser = async (userId, body) => {
   return apiClient.patch(`/users/${userId}`, body);
 };
 
+export const changePassword = async (userId, body) => {
+  return apiClient.post(`/users/${userId}/password`, body);
+};
+
 export const createUser = async body => {
   return apiClient.post('/users', body);
 };

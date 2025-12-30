@@ -373,6 +373,13 @@ const MobileNav = ({ onOpen, ...rest }) => {
           icon: '/logo192.png',
           tag: `notification-${latestId}`
         });
+
+        // Play notification sound if enabled
+        const soundEnabled = localStorage.getItem('notification_sound_enabled') === 'true';
+        if (soundEnabled) {
+          const audio = new Audio('/assets/sounds/notification.mp3');
+          audio.play().catch(() => {}); // Ignore errors (e.g. if file not found)
+        }
       }
     }
   }, [notifications, showNotification]);
