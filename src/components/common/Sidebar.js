@@ -29,6 +29,7 @@ import { MdKeyboardArrowDown, MdKeyboardArrowUp } from 'react-icons/md';
 
 import { meta } from '../../config/meta';
 import { sidebarRoutes } from '../../config/sidebar';
+import { routes } from '../../config/routes';
 import { useLocation, NavLink, useNavigate } from 'react-router-dom';
 import { trim } from '../../utils/string';
 import { useUserStore } from '../../store';
@@ -347,6 +348,39 @@ const MobileNav = ({ onOpen, ...rest }) => {
     },
   });
 
+  // Mark Single Read Mutation
+  const markSingleReadMutation = useMutation({
+    mutationFn: api.markNotificationAsRead,
+    onSuccess: () => {
+      queryClient.invalidateQueries(['notifications']);
+    },
+  });
+
+  const handleNotificationClick = (notification) => {
+    // Mark as read if not already read
+    if (!notification.readAt) {
+      markSingleReadMutation.mutate(notification.id || notification._id);
+    }
+
+    // Determine navigation based on notification data
+    // Check both root level and data property
+    const data = notification.data || notification;
+    
+    if (data.channelId) {
+       navigate(routes.channelChat.getPath(data.channelId));
+    } else if (data.userId) {
+       navigate(routes.editUser.getPath(data.userId));
+    } else if (data.reportId) {
+       navigate(routes.reportDetail.getPath(data.reportId));
+    } else if (data.suggestionId) {
+       navigate(routes.editSuggestion.getPath(data.suggestionId));
+    } else if (data.vipApplicationId) {
+       navigate(routes.editVipApplications.getPath(data.vipApplicationId));
+    } else if (data.productId) {
+       navigate(routes.editProduct.getPath(data.productId));
+    }
+  };
+
   const notifications = notificationsData?.data?.results || [];
   const unreadCount = notifications.filter(n => !n.readAt).length;
 
@@ -392,7 +426,8 @@ const MobileNav = ({ onOpen, ...rest }) => {
              showNotification(notification.title || 'Yeni Bildirim', {
               body: notification.body || notification.message || 'Yeni bir bildiriminiz var.',
               icon: '/logo192.png',
-              tag: `notification-${notification.id || notification._id}`
+              tag: `notification-${notification.id || notification._id}`,
+              onClick: () => handleNotificationClick(notification),
             });
 
             // Play sound only once per batch to avoid noise
@@ -519,6 +554,7 @@ const MobileNav = ({ onOpen, ...rest }) => {
               notifications.map((notification) => (
                 <MenuItem
                   key={notification.id || notification._id}
+                  onClick={() => handleNotificationClick(notification)}
                   _hover={{ bg: 'gray.50' }}
                   p={3}
                   borderBottomWidth="1px"
