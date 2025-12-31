@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   Modal,
   ModalOverlay,
@@ -19,6 +19,7 @@ import {
   StatHelpText,
   StatArrow,
   Badge,
+  Button,
 } from '@chakra-ui/react';
 import {
   AreaChart,
@@ -38,6 +39,7 @@ import { tr } from 'date-fns/locale';
 const ChannelDetailsModal = ({ isOpen, onClose, channel }) => {
   const isMarket = channel?.type === 'market';
   const marketCode = channel?.marketCode;
+  const [selectedRange, setSelectedRange] = useState('1m');
 
   const { data: marketData, isLoading } = useQuery({
     queryKey: ['market-details', marketCode],
@@ -48,10 +50,19 @@ const ChannelDetailsModal = ({ isOpen, onClose, channel }) => {
   const market = marketData;
 
   const { data: chartData, isLoading: isChartLoading } = useQuery({
-    queryKey: ['market-chart', marketCode],
-    queryFn: () => api.getChartData(marketCode, market?.type || 'stock', '1m').then(res => res.data),
+    queryKey: ['market-chart', marketCode, selectedRange],
+    queryFn: () => api.getChartData(marketCode, market?.type || 'stock', selectedRange).then(res => res.data),
     enabled: !!marketCode && isOpen && isMarket && !!market,
   });
+
+  const chartRanges = [
+    { label: '1G', value: '1d' },
+    { label: '1H', value: '1w' },
+    { label: '1A', value: '1m' },
+    { label: '3A', value: '3m' },
+    { label: '1Y', value: '1y' },
+    { label: 'Tümü', value: 'max' },
+  ];
 
   const renderContent = () => {
     if (isLoading) {
@@ -113,13 +124,29 @@ const ChannelDetailsModal = ({ isOpen, onClose, channel }) => {
           </HStack>
 
           {/* Chart Section */}
-          <Box h="300px" w="100%" bg="white" borderRadius="lg" p={4} border="1px solid" borderColor="gray.200">
+          <Box h="350px" w="100%" bg="white" borderRadius="lg" p={4} border="1px solid" borderColor="gray.200">
+            {/* Range Selector */}
+            <HStack spacing={2} mb={4} justify="center">
+              {chartRanges.map((range) => (
+                <Button
+                  key={range.value}
+                  size="xs"
+                  variant={selectedRange === range.value ? "solid" : "ghost"}
+                  colorScheme={selectedRange === range.value ? (isUp ? "green" : "red") : "gray"}
+                  onClick={() => setSelectedRange(range.value)}
+                  borderRadius="full"
+                >
+                  {range.label}
+                </Button>
+              ))}
+            </HStack>
+
             {isChartLoading ? (
-              <Box display="flex" justifyContent="center" alignItems="center" h="100%">
+              <Box display="flex" justifyContent="center" alignItems="center" h="300px">
                 <Spinner size="lg" />
               </Box>
             ) : chartData?.dataPoints ? (
-              <ResponsiveContainer width="100%" height="100%">
+              <ResponsiveContainer width="100%" height="85%">
                 <AreaChart
                   data={chartData.dataPoints}
                   margin={{
