@@ -251,6 +251,12 @@ const Channels = () => {
     staleTime: 5 * 60 * 1000,
   });
 
+  const { data: privateCountData } = useQuery({
+    queryKey: ['private-channels-count'],
+    queryFn: () => api.getJoinedChannels({ limit: 1 }).then(res => res.data),
+    staleTime: 5 * 60 * 1000,
+  });
+
   // Fetch active products for prices
   const {data: productsData} = useQuery({
     queryKey: ['products'],
@@ -639,6 +645,7 @@ const Channels = () => {
   const totalCryptoResults = cryptoCountData?.totalResults || cryptoPages?.pages?.[0]?.totalResults || 0;
   const totalStockResults = stockCountData?.totalResults || stockPages?.pages?.[0]?.totalResults || 0;
   const totalFundResults = fundCountData?.total || fundPages?.pages?.[0]?.total || 0; // funds usually use 'total' instead of 'totalResults' in some APIs, checking usage
+  const totalPrivateResults = privateCountData?.totalResults || privateChannelsPages?.pages?.[0]?.totalResults || 0;
   
   // For 'All', we sum them up or use list count if available
   const totalAllChannels = allChannelsPages?.pages?.[0]?.totalResults || 0; // This is 'My Channels' count
@@ -868,7 +875,7 @@ const Channels = () => {
             <Tab>
               <HStack spacing="2">
                 <Icon as={FiUser} />
-                <Text>Kişisel ({privateChannels?.length || 0})</Text>
+                <Text>Kişisel ({totalPrivateResults || privateChannels?.length || 0})</Text>
               </HStack>
             </Tab>
           </TabList>
