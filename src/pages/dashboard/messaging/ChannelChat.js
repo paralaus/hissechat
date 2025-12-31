@@ -3415,13 +3415,65 @@ const ChannelChat = () => {
         </Collapse>
       </Box>
 
+      {/* Pinned banner - Fixed above messages */}
+      {(pinnedMessages && pinnedMessages.length > 0) && (
+        <Box bg="yellow.50" border="1px solid" borderColor="yellow.200" p="2" borderRadius="md" mb="2">
+          <HStack justify="space-between" align="center">
+            <HStack spacing="2" align="center">
+              <Icon as={FiMapPin} color="yellow.600" />
+              <Text fontSize="sm" color="yellow.800">
+                Sabitlenen mesajlar: {pinnedMessages.length}
+              </Text>
+            </HStack>
+            <HStack spacing="2" align="center">
+              <IconButton
+                size="xs"
+                variant="ghost"
+                icon={<FiChevronUp />}
+                aria-label="Önceki sabit"
+                isDisabled={pinnedIndex === 0}
+                onClick={() => handleNavigatePinned('prev')}
+              />
+              <Text fontSize="xs" color="yellow.800">
+                {Math.min(pinnedIndex + 1, pinnedMessages.length)}/{pinnedMessages.length}
+              </Text>
+              <IconButton
+                size="xs"
+                variant="ghost"
+                icon={<FiChevronDown />}
+                aria-label="Sonraki sabit"
+                isDisabled={pinnedIndex >= pinnedMessages.length - 1}
+                onClick={() => handleNavigatePinned('next')}
+              />
+              <Button
+                size="xs"
+                variant="ghost"
+                onClick={() => {
+                  const current = pinnedMessages[pinnedIndex];
+                  const mid = current?.messageId || current?.message?.id || current?.id;
+                  if (mid) scrollToMessage(mid);
+                }}
+              >
+                Mesaja git
+              </Button>
+              <Button
+                size="xs"
+                onClick={handleOpenPinnedModal}
+              >
+                Tümünü gör
+              </Button>
+            </HStack>
+          </HStack>
+        </Box>
+      )}
+
       {/* Messages */}
       <Box
         ref={messagesContainerRef}
         bg="gray.50"
         borderRadius="xl"
         p="4"
-        height="calc(100vh - 380px)"
+        height="calc(100vh - 430px)" // Adjusted height to accommodate pinned banner
         overflowY="auto"
         mb="4"
         onScroll={handleScroll}
@@ -3464,57 +3516,6 @@ const ChannelChat = () => {
               </Box>
             )}
 
-            {/* Pinned banner */}
-            {(pinnedMessages && pinnedMessages.length > 0) && (
-              <Box bg="yellow.50" border="1px solid" borderColor="yellow.200" p="2" borderRadius="md" mb="2">
-                <HStack justify="space-between" align="center">
-                  <HStack spacing="2" align="center">
-                    <Icon as={FiMapPin} color="yellow.600" />
-                    <Text fontSize="sm" color="yellow.800">
-                      Sabitlenen mesajlar: {pinnedMessages.length}
-                    </Text>
-                  </HStack>
-                  <HStack spacing="2" align="center">
-                    <IconButton
-                      size="xs"
-                      variant="ghost"
-                      icon={<FiChevronUp />}
-                      aria-label="Önceki sabit"
-                      isDisabled={pinnedIndex === 0}
-                      onClick={() => handleNavigatePinned('prev')}
-                    />
-                    <Text fontSize="xs" color="yellow.800">
-                      {Math.min(pinnedIndex + 1, pinnedMessages.length)}/{pinnedMessages.length}
-                    </Text>
-                    <IconButton
-                      size="xs"
-                      variant="ghost"
-                      icon={<FiChevronDown />}
-                      aria-label="Sonraki sabit"
-                      isDisabled={pinnedIndex >= pinnedMessages.length - 1}
-                      onClick={() => handleNavigatePinned('next')}
-                    />
-                    <Button
-                      size="xs"
-                      variant="ghost"
-                      onClick={() => {
-                        const current = pinnedMessages[pinnedIndex];
-                        const mid = current?.messageId || current?.message?.id || current?.id;
-                        if (mid) scrollToMessage(mid);
-                      }}
-                    >
-                      Mesaja git
-                    </Button>
-                    <Button
-                      size="xs"
-                      onClick={handleOpenPinnedModal}
-                    >
-                      Tümünü gör
-                    </Button>
-                  </HStack>
-                </HStack>
-              </Box>
-            )}
             {messages.map((message) => {
               const messageId = message.id || message._id;
               return (
