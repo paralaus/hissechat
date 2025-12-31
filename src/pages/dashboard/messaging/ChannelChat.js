@@ -81,6 +81,7 @@ import {
   FiArchive,
   FiFilter,
   FiMessageSquare,
+  FiHeart,
 } from 'react-icons/fi';
 import EmojiPicker from 'emoji-picker-react';
 import {getCombinedLogoUrl} from '../../../utils/image';
@@ -1387,6 +1388,24 @@ const ChannelChat = () => {
       }
 
       await sendMessageMutation.mutateAsync(body);
+    } catch (error) {
+      toast({
+        title: getErrorMessage(error),
+        status: 'error',
+        position: 'top',
+      });
+    } finally {
+      setIsSending(false);
+    }
+  };
+
+  const handleSendHeart = async () => {
+    try {
+      setIsSending(true);
+      // Send heart emoji message directly
+      await api.sendChannelMessage(channelId, { text: '❤️' });
+      shouldScrollToBottomRef.current = true;
+      queryClient.invalidateQueries(['channel-messages', channelId]);
     } catch (error) {
       toast({
         title: getErrorMessage(error),
@@ -4444,6 +4463,19 @@ const ChannelChat = () => {
             size="lg"
             flex="1"
           />
+
+          {/* Quick Like (Heart) Button */}
+          {!messageText.trim() && (
+            <IconButton
+              icon={<FiHeart fill="currentColor" />}
+              variant="ghost"
+              colorScheme="red"
+              size="lg"
+              onClick={handleSendHeart}
+              isDisabled={isSending}
+              aria-label="Beğen"
+            />
+          )}
 
           {/* Send Button */}
           <IconButton
