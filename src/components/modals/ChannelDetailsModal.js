@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import {
   Modal,
   ModalOverlay,
@@ -37,6 +37,41 @@ const ChannelDetailsModal = ({ isOpen, onClose, channel }) => {
   });
 
   const market = marketData;
+
+  useEffect(() => {
+    if (isOpen && isMarket && marketCode && !isLoading && market) {
+      const initWidget = () => {
+        if (window.TradingView && document.getElementById('tradingview_chart')) {
+          new window.TradingView.widget({
+            "autosize": true,
+            "symbol": `BIST:${marketCode}`,
+            "interval": "D",
+            "timezone": "Europe/Istanbul",
+            "theme": "light",
+            "style": "1",
+            "locale": "tr",
+            "enable_publishing": false,
+            "allow_symbol_change": false,
+            "container_id": "tradingview_chart",
+            "hide_side_toolbar": true,
+            "hide_top_toolbar": false,
+            "save_image": false
+          });
+        }
+      };
+
+      if (!window.TradingView) {
+        const script = document.createElement('script');
+        script.src = 'https://s3.tradingview.com/tv.js';
+        script.async = true;
+        script.onload = initWidget;
+        document.head.appendChild(script);
+      } else {
+        // Container render edilmesini beklemek için kısa bir gecikme
+        setTimeout(initWidget, 100);
+      }
+    }
+  }, [isOpen, isMarket, marketCode, isLoading, market]);
 
   const renderContent = () => {
     if (isLoading) {
@@ -96,6 +131,9 @@ const ChannelDetailsModal = ({ isOpen, onClose, channel }) => {
               </StatHelpText>
             </Stat>
           </HStack>
+
+          {/* Chart Section */}
+          <Box h="400px" w="100%" borderRadius="lg" overflow="hidden" border="1px solid" borderColor="gray.200" id="tradingview_chart" />
 
           {/* Info Section */}
           {market.about && (
