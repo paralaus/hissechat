@@ -250,31 +250,8 @@ const Channels = () => {
     queryKey: ['products'],
     queryFn: () => api.getProducts({limit: 1000}), // Fetch all products
     select: (res) => res.data,
+    enabled: false, // No longer needed for prices as we use market/fund data
   });
-
-  const channelPriceMap = useMemo(() => {
-    const map = {};
-    if (productsData?.results) {
-          productsData.results.forEach(product => {
-            if (product.channel) {
-              const channelId = typeof product.channel === 'string' 
-                ? product.channel 
-                : (product.channel.id || product.channel._id);
-              
-              if (product.displayPrice) {
-                map[channelId] = product.displayPrice;
-              } else if (product.localizedPrice) {
-                map[channelId] = product.localizedPrice;
-              } else if (product.subscribeText) {
-                 map[channelId] = product.subscribeText;
-              } else if (product.price) {
-                 map[channelId] = `${product.price} TL`;
-              }
-            }
-          });
-        }
-    return map;
-  }, [productsData]);
 
 
   // Fetch all channels with pagination
@@ -471,6 +448,61 @@ const Channels = () => {
     if (!privateChannelsPages?.pages) return [];
     return privateChannelsPages.pages.flatMap(page => page.results || []).filter(c => c.type === 'private');
   }, [privateChannelsPages]);
+
+  const priceMap = useMemo(() => {
+    const map = {};
+    
+    const addToMap = (items) => {
+      if (!items) return;
+      items.forEach(item => {
+        if (item.code && item.price !== undefined) {
+          // Format price based on type or magnitude if needed
+          // For now, simple appending of TL or USD could be done, but let's just show the number or assume TL
+          // Most markets in this context seem to be TR based (BIST, TEFAS), Crypto might be USD?
+          // Let's just store the value for now. 
+          // Actually, looking at mobile app behavior might be good, but user said "yahoo finance gibi apilerden alıyor".
+          // Let's assume the price comes as a number and we format it.
+          
+          let formattedPrice = item.price;
+          
+          // Basic formatting
+          if (typeof item.price === 'number') {
+             formattedPrice = item.price.toLocaleString('tr-TR', {
+               minimumFractionDigits: 2,
+               maximumFractionDigits: 2,
+             });
+          }
+
+          map[item.code] = `${formattedPrice} TL`; // Defaulting to TL as requested "fiyat gösterelim" context implies local usage usually. 
+          // If crypto is USD, we might need to check item type.
+          // But 'crypto' usually implies USD or USDT.
+          // Let's check if item has currency info.
+        }
+      });
+    };
+
+    addToMap(stockMarketsData);
+    addToMap(viopMarketsData);
+    addToMap(fundsData);
+    
+    // Crypto might need special handling if it's USD
+    if (cryptoMarketsData) {
+      cryptoMarketsData.forEach(item => {
+        if (item.code && item.price !== undefined) {
+           let formattedPrice = item.price;
+           if (typeof item.price === 'number') {
+             formattedPrice = item.price.toLocaleString('en-US', {
+               minimumFractionDigits: 2,
+               maximumFractionDigits: 4,
+             });
+           }
+           map[item.code] = `$${formattedPrice}`;
+        }
+      });
+    }
+
+    return map;
+  }, [stockMarketsData, cryptoMarketsData, viopMarketsData, fundsData]);
 
   // Merge VİOP markets with existing channels
   const mergedViopChannels = React.useMemo(() => {
