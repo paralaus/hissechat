@@ -31,6 +31,26 @@ const AllChannels = ({category}) => {
         delete marketParams.category;
 
         if (isFund) {
+          // Fix for Fund API Validation parameters
+          if (marketParams.query === '') {
+            delete marketParams.query;
+          }
+
+          // Handle sortBy (DataTable sends "field:desc", Fund API expects sortBy and sortOrder separately)
+          if (marketParams.sortBy && typeof marketParams.sortBy === 'string') {
+            const [field, order] = marketParams.sortBy.split(':');
+            const allowedSortFields = ['dailyReturn', 'weeklyReturn', 'monthlyReturn', 'yearlyReturn', 'totalValue', 'name'];
+            
+            if (allowedSortFields.includes(field)) {
+              marketParams.sortBy = field;
+              marketParams.sortOrder = order || 'desc';
+            } else {
+              // Fallback for fields not in allowed list (like createdAt)
+              marketParams.sortBy = 'dailyReturn';
+              marketParams.sortOrder = 'desc';
+            }
+          }
+
           marketsRes = await api.getFunds(marketParams);
         } else {
           marketsRes = await api.getMarkets(marketParams);
