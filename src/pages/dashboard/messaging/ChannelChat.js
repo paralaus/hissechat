@@ -2675,8 +2675,12 @@ const ChannelChat = () => {
   // Emoji handler
   const onEmojiClick = (emojiData) => {
     setMessageText((prev) => prev + emojiData.emoji);
-    setShowEmojiPicker(false);
-    inputRef.current?.focus();
+    // Use setTimeout to avoid potential DOM conflicts (InvalidNodeTypeError)
+    // when the library tries to manage focus/selection on an unmounting component
+    setTimeout(() => {
+      setShowEmojiPicker(false);
+      inputRef.current?.focus();
+    }, 0);
   };
 
   const handleKeyPress = (e) => {
