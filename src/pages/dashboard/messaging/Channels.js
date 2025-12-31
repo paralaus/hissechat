@@ -168,6 +168,7 @@ const ChannelList = ({
 
 const SORT_OPTIONS = {
   MOST_MESSAGES: 'most_messages',
+  MOST_MEMBERS: 'most_members',
   RECENT_MESSAGE: 'recent_message',
   NAME_ASC: 'name_asc',
   NAME_DESC: 'name_desc',
@@ -516,6 +517,12 @@ const Channels = () => {
           const dateA1 = a.lastMessageAt ? new Date(a.lastMessageAt).getTime() : 0;
           const dateB1 = b.lastMessageAt ? new Date(b.lastMessageAt).getTime() : 0;
           return dateB1 - dateA1;
+
+        case SORT_OPTIONS.MOST_MEMBERS:
+          // Sort by member count (highest first)
+          const memberDiff = (b.memberCount || 0) - (a.memberCount || 0);
+          if (memberDiff !== 0) return memberDiff;
+          return (b.messageCount || 0) - (a.messageCount || 0);
           
         case SORT_OPTIONS.RECENT_MESSAGE:
           // Sort by last message date (most recent first)
@@ -623,6 +630,7 @@ const Channels = () => {
             minW="180px"
           >
             <option value={SORT_OPTIONS.MOST_MESSAGES}>📊 En Çok Mesaj</option>
+            <option value={SORT_OPTIONS.MOST_MEMBERS}>👥 En Çok Üye</option>
             <option value={SORT_OPTIONS.RECENT_MESSAGE}>🕐 En Son Mesaj</option>
             <option value={SORT_OPTIONS.NAME_ASC}>🔤 İsim (A-Z)</option>
             <option value={SORT_OPTIONS.NAME_DESC}>🔤 İsim (Z-A)</option>
