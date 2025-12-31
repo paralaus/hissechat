@@ -85,7 +85,7 @@ import {
 } from 'react-icons/fi';
 import EmojiPicker from 'emoji-picker-react';
 import {getCombinedLogoUrl} from '../../../utils/image';
-import {format} from 'date-fns';
+import {format, isToday, isYesterday, isSameDay} from 'date-fns';
 import {tr} from 'date-fns/locale';
 import useFileInput from '../../../hooks/useFileInput';
 import useBrowserNotification from '../../../hooks/useBrowserNotification';
@@ -3691,58 +3691,110 @@ const ChannelChat = () => {
               </Box>
             )}
 
-            {messages.map((message) => {
-              const messageId = message.id || message._id;
-              return (
-                <MessageBubble
-                  key={messageId}
-                  message={message}
-                  isOwn={message.user?.id === currentUserId}
-                  onReply={handleReply}
-                  onReactionClick={handleReactionClick}
-                  allMessages={messages}
-                  searchQuery={searchQuery}
-                  isHighlighted={messageId === currentHighlightedId}
-                  messageRef={(el) => { messageRefs.current[messageId] = el; }}
-                  onMediaClick={handleMediaClick}
-                  onJoinConference={handleJoinConference}
-                  onVotePoll={handleVotePoll}
-                  onClosePoll={handleClosePoll}
-                  currentUserId={currentUserId}
-                  isSelectMode={isSelectMode}
-                  isSelected={selectedMessageIds.has(messageId)}
-                  onSelect={toggleMessageSelection}
-                  onReplyClick={scrollToMessage}
-                  onForward={handleForward}
-                  onCopyLink={handleCopyLink}
-                  onOpenLink={handleOpenLink}
-                  onOpenModeration={handleOpenModeration}
-                  onArchive={async (msg) => {
-                    const id = msg.id || msg._id;
-                    try {
-                      await api.archiveMessage({ messageId: id, channelId });
-                      toast({ title: 'Mesaj arşivlendi', status: 'success', duration: 1500, position: 'top' });
-                    } catch (e) {
-                      toast({
-                        title: 'Hata',
-                        description: e?.response?.data?.message || 'Mesaj arşivlenemedi',
-                        status: 'error',
-                        duration: 3000,
-                        position: 'top',
-                      });
-                    }
-                  }}
-                  onArchiveAndPin={handleArchiveAndPin}
-                  onBlock={handleBlockMessage}
-                  onUnblock={handleUnblockMessage}
-                  onDelete={handleDeleteMessageOpen}
-                  onCopyText={handleCopyText}
-                  onQuoteText={handleQuoteText}
-                  onTogglePin={handleTogglePinMessage}
-                  isPinned={pinnedIds.has(messageId)}
-                />
-              );
-            })}
+            {(() => {
+              const groups = [];
+              let currentGroup = null;
+
+              messages.forEach((message) => {
+                const messageDate = message.createdAt ? new Date(message.createdAt) : new Date();
+                
+                if (!currentGroup || !isSameDay(new Date(currentGroup.date), messageDate)) {
+                  currentGroup = {
+                    date: message.createdAt,
+                    messages: []
+                  };
+                  groups.push(currentGroup);
+                }
+                currentGroup.messages.push(message);
+              });
+
+              return groups.map((group, groupIndex) => (
+                <Box key={group.date || groupIndex}>
+                  <Box 
+                    position="sticky" 
+                    top="2" 
+                    zIndex="5" 
+                    textAlign="center" 
+                    mb="2" 
+                    mt="4"
+                    pointerEvents="none"
+                  >
+                    <Badge 
+                      bg="whiteAlpha.900" 
+                      color="gray.600" 
+                      px="3" 
+                      py="1" 
+                      borderRadius="full" 
+                      fontSize="xs"
+                      boxShadow="sm"
+                      fontWeight="medium"
+                      border="1px solid"
+                      borderColor="gray.200"
+                    >
+                      {(() => {
+                         if (!group.date) return 'Tarihsiz';
+                         const date = new Date(group.date);
+                         if (isToday(date)) return 'Bugün';
+                         if (isYesterday(date)) return 'Dün';
+                         return format(date, 'd MMMM yyyy', { locale: tr });
+                      })()}
+                    </Badge>
+                  </Box>
+                  {group.messages.map((message) => {
+                    const messageId = message.id || message._id;
+                    return (
+                      <MessageBubble
+                        key={messageId}
+                        message={message}
+                        isOwn={message.user?.id === currentUserId}
+                        onReply={handleReply}
+                        onReactionClick={handleReactionClick}
+                        allMessages={messages}
+                        searchQuery={searchQuery}
+                        isHighlighted={messageId === currentHighlightedId}
+                        messageRef={(el) => { messageRefs.current[messageId] = el; }}
+                        onMediaClick={handleMediaClick}
+                        onJoinConference={handleJoinConference}
+                        onVotePoll={handleVotePoll}
+                        onClosePoll={handleClosePoll}
+                        currentUserId={currentUserId}
+                        isSelectMode={isSelectMode}
+                        isSelected={selectedMessageIds.has(messageId)}
+                        onSelect={toggleMessageSelection}
+                        onReplyClick={scrollToMessage}
+                        onForward={handleForward}
+                        onCopyLink={handleCopyLink}
+                        onOpenLink={handleOpenLink}
+                        onOpenModeration={handleOpenModeration}
+                        onArchive={async (msg) => {
+                          const id = msg.id || msg._id;
+                          try {
+                            await api.archiveMessage({ messageId: id, channelId });
+                            toast({ title: 'Mesaj arşivlendi', status: 'success', duration: 1500, position: 'top' });
+                          } catch (e) {
+                            toast({
+                              title: 'Hata',
+                              description: e?.response?.data?.message || 'Mesaj arşivlenemedi',
+                              status: 'error',
+                              duration: 3000,
+                              position: 'top',
+                            });
+                          }
+                        }}
+                        onArchiveAndPin={handleArchiveAndPin}
+                        onBlock={handleBlockMessage}
+                        onUnblock={handleUnblockMessage}
+                        onDelete={handleDeleteMessageOpen}
+                        onCopyText={handleCopyText}
+                        onQuoteText={handleQuoteText}
+                        onTogglePin={handleTogglePinMessage}
+                        isPinned={pinnedIds.has(messageId)}
+                      />
+                    );
+                  })}
+                </Box>
+              ));
+            })()}
             <div ref={messagesEndRef} />
           </VStack>
         )}
