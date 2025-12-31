@@ -97,6 +97,7 @@ import VideoConference from '../../../components/conference/VideoConference';
 import ForwardMessageModal from '../../../components/modals/ForwardMessageModal';
 import CreateConferenceModal from '../../../components/modals/CreateConferenceModal';
 import { routes } from '../../../config/routes';
+import {useUserStore} from '../../../store';
 
 // Media Preview Modal Component
 const MediaPreviewModal = ({isOpen, onClose, mediaType, mediaUrl, fileName}) => {
@@ -1285,21 +1286,8 @@ const ChannelChat = () => {
     setShowScrollBottom(false);
   };
 
-  // Get current user ID from stored user data
-  const getCurrentUserId = () => {
-    try {
-      const userData = localStorage.getItem('user');
-      if (userData) {
-        const user = JSON.parse(userData);
-        return user.id;
-      }
-    } catch (e) {
-      console.error('Error getting user ID:', e);
-    }
-    return null;
-  };
-
-  const currentUserId = getCurrentUserId();
+  const user = useUserStore((state) => state.user);
+  const currentUserId = user?.id;
 
   // Notification Hook
   const { showNotification } = useBrowserNotification();

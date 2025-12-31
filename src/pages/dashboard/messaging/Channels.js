@@ -27,6 +27,7 @@ import {FiSearch, FiMessageCircle, FiTrendingUp, FiStar, FiFilter, FiChevronDown
 import {getCombinedLogoUrl} from '../../../utils/image';
 import {formatDistanceToNow} from 'date-fns';
 import {tr} from 'date-fns/locale';
+import {useUserStore} from '../../../store';
 
 const ChannelItem = ({channel, onClick, currentUserId}) => {
   const lastMessageTime = channel.lastMessageAt 
@@ -200,20 +201,8 @@ const Channels = () => {
   const [sortBy, setSortBy] = useState(SORT_OPTIONS.MOST_MESSAGES);
   const [tabIndex, setTabIndex] = useState(0);
 
-  // Get current user ID
-  const getCurrentUserId = () => {
-    try {
-      const userData = localStorage.getItem('user');
-      if (userData) {
-        const user = JSON.parse(userData);
-        return user.id;
-      }
-    } catch (e) {
-      console.error('Error getting user ID:', e);
-    }
-    return null;
-  };
-  const currentUserId = getCurrentUserId();
+  const user = useUserStore((state) => state.user);
+  const currentUserId = user?.id;
 
   // Counts for Tabs (Fetched separately to be always visible)
   const { data: vipCountData } = useQuery({
@@ -246,11 +235,7 @@ const Channels = () => {
     staleTime: 5 * 60 * 1000,
   });
 
-  const { data: privateCountData } = useQuery({
-    queryKey: ['private-channels-count'],
-    queryFn: () => api.getJoinedChannels({ limit: 1 }).then(res => res.data),
-    staleTime: 5 * 60 * 1000,
-  });
+
 
   // Fetch all channels with pagination
   const {
