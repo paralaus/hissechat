@@ -20,7 +20,7 @@ import {
   Select,
   Button,
 } from '@chakra-ui/react';
-import {useInfiniteQuery} from '@tanstack/react-query';
+import {useInfiniteQuery, useQuery} from '@tanstack/react-query';
 import {api} from '../../../api';
 import {Page} from '../../../components';
 import {FiSearch, FiMessageCircle, FiTrendingUp, FiStar, FiFilter, FiChevronDown, FiPieChart, FiActivity, FiCpu} from 'react-icons/fi';
@@ -180,6 +180,37 @@ const Channels = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState(SORT_OPTIONS.MOST_MESSAGES);
   const [tabIndex, setTabIndex] = useState(0);
+
+  // Counts for Tabs (Fetched separately to be always visible)
+  const { data: vipCountData } = useQuery({
+    queryKey: ['vip-channels-count'],
+    queryFn: () => api.getVipChannels({ limit: 1 }).then(res => res.data),
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const { data: viopCountData } = useQuery({
+    queryKey: ['viop-markets-count'],
+    queryFn: () => api.getMarkets({ type: 'viop', limit: 1 }).then(res => res.data),
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const { data: cryptoCountData } = useQuery({
+    queryKey: ['crypto-markets-count'],
+    queryFn: () => api.getMarkets({ type: 'crypto', limit: 1 }).then(res => res.data),
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const { data: stockCountData } = useQuery({
+    queryKey: ['stock-markets-count'],
+    queryFn: () => api.getMarkets({ type: 'stock', limit: 1 }).then(res => res.data),
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const { data: fundCountData } = useQuery({
+    queryKey: ['funds-count'],
+    queryFn: () => api.getFunds({ limit: 1 }).then(res => res.data),
+    staleTime: 5 * 60 * 1000,
+  });
 
   // Fetch all channels with pagination
   const {
@@ -424,13 +455,16 @@ const Channels = () => {
     });
   }, [fundsData, allChannelsData]);
 
-  // Get total counts
-  const totalAllChannels = allChannelsPages?.pages?.[0]?.totalResults || 0;
-  const totalVipChannels = vipChannelsPages?.pages?.[0]?.totalResults || 0;
-  const totalViopResults = viopPages?.pages?.[0]?.totalResults || 0;
-  const totalCryptoResults = cryptoPages?.pages?.[0]?.totalResults || 0;
-  const totalStockResults = stockPages?.pages?.[0]?.totalResults || 0;
-  const totalFundResults = fundPages?.pages?.[0]?.total || 0;
+  // Get total counts (Prioritize count queries, fall back to list queries if active)
+  const totalVipChannels = vipCountData?.totalResults || vipChannelsPages?.pages?.[0]?.totalResults || 0;
+  const totalViopResults = viopCountData?.totalResults || viopPages?.pages?.[0]?.totalResults || 0;
+  const totalCryptoResults = cryptoCountData?.totalResults || cryptoPages?.pages?.[0]?.totalResults || 0;
+  const totalStockResults = stockCountData?.totalResults || stockPages?.pages?.[0]?.totalResults || 0;
+  const totalFundResults = fundCountData?.total || fundPages?.pages?.[0]?.total || 0; // funds usually use 'total' instead of 'totalResults' in some APIs, checking usage
+  
+  // For 'All', we sum them up or use list count if available
+  const totalAllChannels = allChannelsPages?.pages?.[0]?.totalResults || 0; // This is 'My Channels' count
+  
   const totalAllCombinedCount =
     (totalStockResults || 0) +
     (totalCryptoResults || 0) +
