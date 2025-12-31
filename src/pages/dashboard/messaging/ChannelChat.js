@@ -43,6 +43,7 @@ import {
   Textarea,
   Select,
   useToast,
+  Portal,
 } from '@chakra-ui/react';
 import {useQuery, useMutation, useQueryClient, useInfiniteQuery} from '@tanstack/react-query';
 import {api} from '../../../api';
@@ -494,10 +495,11 @@ const MessageBubble = ({message, isOwn, onReply, onForward, onCopyLink, onOpenLi
                 variant="ghost"
                 aria-label="İşlemler"
               />
-              <MenuList maxH="300px" overflowY="auto">
-                <MenuItem icon={<FiCornerUpLeft />} onClick={() => onReply(message)}>
-                  Cevapla
-                </MenuItem>
+              <Portal>
+                <MenuList maxH="300px" overflowY="auto" zIndex={9999}>
+                  <MenuItem icon={<FiCornerUpLeft />} onClick={() => onReply(message)}>
+                    Cevapla
+                  </MenuItem>
                 <MenuItem icon={<FiShare2 />} onClick={() => onForward && onForward(message)}>
                   İlet
                 </MenuItem>
@@ -540,8 +542,9 @@ const MessageBubble = ({message, isOwn, onReply, onForward, onCopyLink, onOpenLi
                   Sil
                 </MenuItem>
               </MenuList>
-            </Menu>
-          </VStack>
+            </Portal>
+          </Menu>
+        </VStack>
         )}
         
         <Box
