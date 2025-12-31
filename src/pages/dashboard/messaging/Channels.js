@@ -128,7 +128,7 @@ const ChannelList = ({
     );
   }
 
-  if (!channels || channels.length === 0) {
+  if ((!channels || channels.length === 0) && !hasNextPage) {
     return (
       <Box textAlign="center" py="10">
         <Icon as={FiMessageCircle} boxSize="12" color="gray.300" />
@@ -398,7 +398,7 @@ const Channels = () => {
   } = useInfiniteQuery({
     queryKey: ['private-channels-messaging'],
     queryFn: async ({ pageParam = 1 }) => {
-      const res = await api.getJoinedChannels({ limit: PAGE_SIZE, page: pageParam, filter: 'friends' });
+      const res = await api.getJoinedChannels({ limit: PAGE_SIZE, page: pageParam });
       return res.data;
     },
     getNextPageParam: (lastPage) => {
