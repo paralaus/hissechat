@@ -1,4 +1,4 @@
-import React, {useState} from 'react';
+import React, {useState, useMemo} from 'react';
 import {useNavigate} from 'react-router-dom';
 import {
   Box,
@@ -29,7 +29,7 @@ import {formatDistanceToNow} from 'date-fns';
 import {tr} from 'date-fns/locale';
 import {useUserStore} from '../../../store';
 
-const ChannelItem = ({channel, onClick, currentUserId}) => {
+const ChannelItem = ({channel, onClick, currentUserId, price}) => {
   const lastMessageTime = channel.lastMessageAt 
     ? formatDistanceToNow(new Date(channel.lastMessageAt), {addSuffix: true, locale: tr})
     : '';
@@ -96,6 +96,11 @@ const ChannelItem = ({channel, onClick, currentUserId}) => {
               <Text fontSize="xs" color="gray.400">
                 {lastMessageTime}
               </Text>
+              {price && (
+                <Badge colorScheme="green" variant="subtle" fontSize="xs">
+                  {price}
+                </Badge>
+              )}
               {channel.messageCount > 0 && (
                 <Badge colorScheme="blue" borderRadius="full" px="2">
                   {channel.messageCount}
@@ -119,6 +124,7 @@ const ChannelList = ({
   onLoadMore,
   totalCount,
   currentUserId,
+  priceMap,
 }) => {
   if (isLoading) {
     return (
@@ -153,6 +159,7 @@ const ChannelList = ({
           channel={channel}
           onClick={() => onChannelClick(channel)}
           currentUserId={currentUserId}
+          price={priceMap?.[channel.id]}
         />
       ))}
 
@@ -235,6 +242,30 @@ const Channels = () => {
     staleTime: 5 * 60 * 1000,
   });
 
+  // Fetch active products for prices
+  const { data: productsData } = useQuery({
+    queryKey: ['active-products-messaging'],
+    queryFn: () => api.getProducts({ isActive: true, limit: 1000 }).then(res => res.data),
+    staleTime: 10 * 60 * 1000,
+  });
+
+  const channelPriceMap = useMemo(() => {
+    const map = {};
+    if (productsData?.results) {
+      productsData.results.forEach(product => {
+        if (product.channel) {
+          const channelId = typeof product.channel === 'string' ? product.channel : product.channel.id;
+          // Prefer subscribeText as it contains formatted price/duration usually
+          if (product.subscribeText) {
+             map[channelId] = product.subscribeText;
+          } else if (product.price) {
+             map[channelId] = `${product.price} TL`; // Fallback if simple price field exists
+          }
+        }
+      });
+    }
+    return map;
+  }, [productsData]);
 
 
   // Fetch all channels with pagination
@@ -752,6 +783,7 @@ const Channels = () => {
                 onLoadMore={fetchNextAllCombined}
                 totalCount={totalAllCombinedCount}
                 currentUserId={currentUserId}
+                priceMap={channelPriceMap}
               />
             </TabPanel>
 
@@ -767,6 +799,7 @@ const Channels = () => {
                 onLoadMore={fetchNextStock}
                 totalCount={totalStockResults}
                 currentUserId={currentUserId}
+                priceMap={channelPriceMap}
               />
             </TabPanel>
 
@@ -782,6 +815,7 @@ const Channels = () => {
                 onLoadMore={fetchNextCrypto}
                 totalCount={totalCryptoResults}
                 currentUserId={currentUserId}
+                priceMap={channelPriceMap}
               />
             </TabPanel>
 
@@ -797,6 +831,7 @@ const Channels = () => {
                 onLoadMore={fetchNextViop}
                 totalCount={totalViopResults}
                 currentUserId={currentUserId}
+                priceMap={channelPriceMap}
               />
             </TabPanel>
 
@@ -812,6 +847,7 @@ const Channels = () => {
                 onLoadMore={fetchNextFunds}
                 totalCount={totalFundResults}
                 currentUserId={currentUserId}
+                priceMap={channelPriceMap}
               />
             </TabPanel>
 
@@ -827,6 +863,7 @@ const Channels = () => {
                 onLoadMore={fetchNextVipChannels}
                 totalCount={totalVipChannels}
                 currentUserId={currentUserId}
+                priceMap={channelPriceMap}
               />
             </TabPanel>
 
@@ -842,6 +879,7 @@ const Channels = () => {
                 onLoadMore={fetchNextPrivate}
                 totalCount={privateChannels?.length}
                 currentUserId={currentUserId}
+                priceMap={channelPriceMap}
               />
             </TabPanel>
           </TabPanels>
