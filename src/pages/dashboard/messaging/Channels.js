@@ -179,6 +179,7 @@ const Channels = () => {
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState(SORT_OPTIONS.MOST_MESSAGES);
+  const [tabIndex, setTabIndex] = useState(0);
 
   // Fetch all channels with pagination
   const {
@@ -200,6 +201,7 @@ const Channels = () => {
       return undefined;
     },
     initialPageParam: 1,
+    enabled: true, // Always fetch active channels
   });
 
   // Fetch VIP channels with pagination
@@ -222,6 +224,7 @@ const Channels = () => {
       return undefined;
     },
     initialPageParam: 1,
+    enabled: tabIndex === 5,
   });
 
   // Fetch VİOP Markets
@@ -244,6 +247,7 @@ const Channels = () => {
       return undefined;
     },
     initialPageParam: 1,
+    enabled: tabIndex === 3,
   });
 
   const {
@@ -265,6 +269,7 @@ const Channels = () => {
       return undefined;
     },
     initialPageParam: 1,
+    enabled: tabIndex === 2,
   });
 
   const {
@@ -286,6 +291,7 @@ const Channels = () => {
       return undefined;
     },
     initialPageParam: 1,
+    enabled: tabIndex === 1,
   });
 
   // Fetch Funds
@@ -308,6 +314,7 @@ const Channels = () => {
       return undefined;
     },
     initialPageParam: 1,
+    enabled: tabIndex === 4,
   });
 
   // Flatten paginated data
@@ -511,6 +518,12 @@ const Channels = () => {
   const vipChannels = filterAndSortChannels(vipChannelsData);
   const otherChannels = filterAndSortChannels(allChannelsData?.filter(c => c.type !== 'market' && c.type !== 'vip' && c.type !== 'fund'));
   const allCombined = React.useMemo(() => {
+    // When on Tab 0 (All), we only want to show active channels to avoid performance issues
+    // and clutter. If users want to see markets/funds, they should use specific tabs.
+    // However, if we enabled other queries, we could merge them.
+    // Given we disabled other queries on Tab 0, these arrays (mergedViopChannels etc) will be empty
+    // except for what's already in allChannelsData.
+    
     const map = new Map();
     const add = (c) => {
       const key =
@@ -524,6 +537,7 @@ const Channels = () => {
       if (!map.has(key)) map.set(key, c);
     };
     (allChannelsData || []).forEach(add);
+    // We can still try to add others if they exist (e.g. if we cached them), but primarily this will be allChannelsData
     (mergedViopChannels || []).forEach(add);
     (mergedFundChannels || []).forEach(add);
     (mergedCryptoChannels || []).forEach(add);
@@ -531,17 +545,11 @@ const Channels = () => {
   }, [allChannelsData, mergedViopChannels, mergedFundChannels, mergedCryptoChannels]);
   const allFiltered = filterAndSortChannels(allCombined);
 
-  const isLoadingAllCombined = isLoadingAll || isLoadingViop || isLoadingFunds || isLoadingCrypto;
-  const hasNextAllCombined = hasNextAllChannels || hasNextViop || hasNextFunds || hasNextCrypto || hasNextStock;
-  const isFetchingNextAllCombined =
-    isFetchingNextAllChannels || isFetchingNextViop || isFetchingNextFunds || isFetchingNextCrypto || isFetchingNextStock;
-  const fetchNextAllCombined = () => {
-    if (hasNextAllChannels) fetchNextAllChannels();
-    if (hasNextViop) fetchNextViop();
-    if (hasNextFunds) fetchNextFunds();
-    if (hasNextCrypto) fetchNextCrypto();
-    if (hasNextStock) fetchNextStock();
-  };
+  // Optimized for Tab 0: only track all-channels query
+  const isLoadingAllCombined = isLoadingAll;
+  const hasNextAllCombined = hasNextAllChannels;
+  const isFetchingNextAllCombined = isFetchingNextAllChannels;
+  const fetchNextAllCombined = fetchNextAllChannels;
 
   return (
     <Page>
@@ -590,7 +598,7 @@ const Channels = () => {
 
       {/* Tabs */}
       <Box bg="white" borderRadius="xl" boxShadow="md" p="4">
-        <Tabs variant="soft-rounded" colorScheme="blue">
+        <Tabs variant="soft-rounded" colorScheme="blue" index={tabIndex} onChange={setTabIndex}>
           <TabList mb="4" flexWrap="wrap" gap="2">
             <Tab>
               <HStack spacing="2">
