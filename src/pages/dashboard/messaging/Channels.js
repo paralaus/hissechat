@@ -254,7 +254,9 @@ const Channels = () => {
     if (productsData?.results) {
       productsData.results.forEach(product => {
         if (product.channel) {
-          const channelId = typeof product.channel === 'string' ? product.channel : product.channel.id;
+          const channelId = typeof product.channel === 'string' 
+            ? product.channel 
+            : (product.channel.id || product.channel._id);
           // Prefer subscribeText as it contains formatted price/duration usually
           if (product.subscribeText) {
              map[channelId] = product.subscribeText;
