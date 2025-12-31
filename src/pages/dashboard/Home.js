@@ -55,28 +55,28 @@ const Home = () => {
 
   // Channel Counts
   const { data: stockChannels } = useQuery({
-    queryKey: ['channels', 'stock', 'count'],
-    queryFn: () => api.getAllChannels({ category: 'borsa', limit: 1 }).then(res => res.data),
+    queryKey: ['markets', 'stock', 'count'],
+    queryFn: () => api.getMarkets({ type: 'stock', limit: 1 }).then(res => res.data),
   });
 
   const { data: cryptoChannels } = useQuery({
-    queryKey: ['channels', 'crypto', 'count'],
-    queryFn: () => api.getAllChannels({ category: 'kripto', limit: 1 }).then(res => res.data),
+    queryKey: ['markets', 'crypto', 'count'],
+    queryFn: () => api.getMarkets({ type: 'crypto', limit: 1 }).then(res => res.data),
   });
 
   const { data: viopChannels } = useQuery({
-    queryKey: ['channels', 'viop', 'count'],
-    queryFn: () => api.getAllChannels({ category: 'viop', limit: 1 }).then(res => res.data),
+    queryKey: ['markets', 'viop', 'count'],
+    queryFn: () => api.getMarkets({ type: 'viop', limit: 1 }).then(res => res.data),
   });
 
   const { data: commodityChannels } = useQuery({
-    queryKey: ['channels', 'commodity', 'count'],
-    queryFn: () => api.getAllChannels({ category: 'emtia', limit: 1 }).then(res => res.data),
+    queryKey: ['markets', 'commodity', 'count'],
+    queryFn: () => api.getMarkets({ type: 'commodity', limit: 1 }).then(res => res.data),
   });
 
   const { data: fundChannels } = useQuery({
-    queryKey: ['channels', 'fund', 'count'],
-    queryFn: () => api.getAllChannels({ category: 'fon', limit: 1 }).then(res => res.data),
+    queryKey: ['funds', 'count'],
+    queryFn: () => api.getFunds({ limit: 1 }).then(res => res.data),
   });
 
   // Yüklenirken skeleton göster
