@@ -119,6 +119,7 @@ const AllChannels = ({category}) => {
   return (
     <Page>
       <DataTable
+        key={category}
         queryEnabled
         deleteVisible={false}
         onRow={onRow}
@@ -154,6 +155,7 @@ const AllChannels = ({category}) => {
           },
         ]}
         fetchData={fetchData}
+        filters={{ category }}
       />
     </Page>
   );
