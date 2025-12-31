@@ -20,6 +20,15 @@ import {
   StatArrow,
   Badge,
 } from '@chakra-ui/react';
+import {
+  AreaChart,
+  Area,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer
+} from 'recharts';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '../../api';
 import { getCombinedLogoUrl } from '../../utils/image';
@@ -38,40 +47,11 @@ const ChannelDetailsModal = ({ isOpen, onClose, channel }) => {
 
   const market = marketData;
 
-  useEffect(() => {
-    if (isOpen && isMarket && marketCode && !isLoading && market) {
-      const initWidget = () => {
-        if (window.TradingView && document.getElementById('tradingview_chart')) {
-          new window.TradingView.widget({
-            "autosize": true,
-            "symbol": `BIST:${marketCode}`,
-            "interval": "D",
-            "timezone": "Europe/Istanbul",
-            "theme": "light",
-            "style": "1",
-            "locale": "tr",
-            "enable_publishing": false,
-            "allow_symbol_change": false,
-            "container_id": "tradingview_chart",
-            "hide_side_toolbar": true,
-            "hide_top_toolbar": false,
-            "save_image": false
-          });
-        }
-      };
-
-      if (!window.TradingView) {
-        const script = document.createElement('script');
-        script.src = 'https://s3.tradingview.com/tv.js';
-        script.async = true;
-        script.onload = initWidget;
-        document.head.appendChild(script);
-      } else {
-        // Container render edilmesini beklemek için kısa bir gecikme
-        setTimeout(initWidget, 100);
-      }
-    }
-  }, [isOpen, isMarket, marketCode, isLoading, market]);
+  const { data: chartData, isLoading: isChartLoading } = useQuery({
+    queryKey: ['market-chart', marketCode],
+    queryFn: () => api.getChartData(marketCode, market?.type || 'stock', '1m').then(res => res.data),
+    enabled: !!marketCode && isOpen && isMarket && !!market,
+  });
 
   const renderContent = () => {
     if (isLoading) {
@@ -133,7 +113,62 @@ const ChannelDetailsModal = ({ isOpen, onClose, channel }) => {
           </HStack>
 
           {/* Chart Section */}
-          <Box h="400px" w="100%" borderRadius="lg" overflow="hidden" border="1px solid" borderColor="gray.200" id="tradingview_chart" />
+          <Box h="300px" w="100%" bg="white" borderRadius="lg" p={4} border="1px solid" borderColor="gray.200">
+            {isChartLoading ? (
+              <Box display="flex" justifyContent="center" alignItems="center" h="100%">
+                <Spinner size="lg" />
+              </Box>
+            ) : chartData?.dataPoints ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart
+                  data={chartData.dataPoints}
+                  margin={{
+                    top: 10,
+                    right: 0,
+                    left: 0,
+                    bottom: 0,
+                  }}
+                >
+                  <defs>
+                    <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor={isUp ? "#48BB78" : "#F56565"} stopOpacity={0.8}/>
+                      <stop offset="95%" stopColor={isUp ? "#48BB78" : "#F56565"} stopOpacity={0}/>
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
+                  <XAxis 
+                    dataKey="date" 
+                    hide={true} 
+                  />
+                  <YAxis 
+                    domain={['auto', 'auto']} 
+                    orientation="right" 
+                    tick={{fontSize: 12, fill: '#718096'}} 
+                    axisLine={false}
+                    tickLine={false}
+                    tickFormatter={(value) => value.toFixed(2)}
+                  />
+                  <Tooltip 
+                    contentStyle={{borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'}}
+                    labelStyle={{color: '#718096', marginBottom: '4px'}}
+                    itemStyle={{color: '#2D3748', fontWeight: 'bold'}}
+                    formatter={(value) => [`${value.toFixed(2)} ₺`, 'Fiyat']}
+                  />
+                  <Area 
+                    type="monotone" 
+                    dataKey="value" 
+                    stroke={isUp ? "#48BB78" : "#F56565"} 
+                    fillOpacity={1} 
+                    fill="url(#colorValue)" 
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+            ) : (
+              <Box display="flex" justifyContent="center" alignItems="center" h="100%">
+                <Text color="gray.500">Grafik verisi bulunamadı.</Text>
+              </Box>
+            )}
+          </Box>
 
           {/* Info Section */}
           {market.about && (

@@ -107,6 +107,12 @@ export const getMarketDetail = async code => {
   return apiClient.get(`/market-details/${code}`);
 };
 
+export const getChartData = async (code, type, range = '1m') => {
+  return apiClient.get(`/markets/${code}/chart`, {
+    params: { type, range },
+  });
+};
+
 export const deleteMarketDetail = async code => {
   return apiClient.delete(`/market-details/${code}`);
 };
