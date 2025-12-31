@@ -13,6 +13,67 @@ const AllChannels = ({category}) => {
   const fetchData = useCallback(
     async options => {
       const params = {...options};
+      
+      // Map category to market type
+      let marketType = null;
+      if (category === 'borsa') marketType = 'stock';
+      else if (category === 'kripto') marketType = 'crypto';
+      else if (category === 'viop') marketType = 'viop';
+      else if (category === 'emtia') marketType = 'commodity';
+      
+      const isFund = category === 'fon';
+
+      if (marketType || isFund) {
+        // 1. Fetch Markets/Funds (Pagination Source)
+        let marketsRes;
+        const marketParams = { ...params, type: marketType };
+        // Clean up params that might not be needed for markets API if strict
+        delete marketParams.category;
+
+        if (isFund) {
+          marketsRes = await api.getFunds(marketParams);
+        } else {
+          marketsRes = await api.getMarkets(marketParams);
+        }
+
+        // 2. Fetch Active Channels for this category to merge
+        // We fetch a larger list to find matches. Ideally backend should support this, 
+        // but for now we follow messaging logic.
+        const channelsRes = await api.getAllChannels({ category, limit: 1000 });
+        const activeChannels = channelsRes.data.results || [];
+
+        // 3. Merge
+        const mergedResults = (marketsRes.data.results || []).map(item => {
+          const code = item.code;
+          const existingChannel = activeChannels.find(c => 
+            (c.marketCode === code) || (c.fundCode === code)
+          );
+
+          if (existingChannel) return existingChannel;
+
+          // Create virtual channel object
+          return {
+            id: null,
+            name: item.name,
+            marketCode: !isFund ? code : undefined,
+            fundCode: isFund ? code : undefined,
+            type: isFund ? 'fund' : 'market',
+            thumbnail: item.logo || null,
+            messageCount: 0,
+            memberCount: 0,
+            isVirtual: true,
+            // Preserve other market data if needed
+            ...item
+          };
+        });
+
+        return {
+          results: mergedResults,
+          totalResults: marketsRes.data.totalResults || marketsRes.data.total || 0,
+        };
+      }
+
+      // Default behavior for other categories or 'all'
       if (category) {
         params.category = category;
       }
@@ -23,7 +84,13 @@ const AllChannels = ({category}) => {
   );
 
   const onRow = async item => {
-    navigate(routes.editChannel.getPath(item.id));
+    if (item.id) {
+      navigate(routes.editChannel.getPath(item.id));
+    } else {
+      // Handle virtual channel click - maybe initiate or show info
+      // For now, prevent navigation to undefined ID
+      console.log('Clicked virtual channel:', item);
+    }
   };
 
   return (

@@ -165,7 +165,7 @@ const Home = () => {
     },
     {
       title: 'Fon Kanalları',
-      amount: fundChannels?.totalResults || 0,
+      amount: fundChannels?.total || fundChannels?.totalResults || 0,
       icon: <FiPieChart {...iconProps} />,
       path: routes.fundChannels.path,
     },
