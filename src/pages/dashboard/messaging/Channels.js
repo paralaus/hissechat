@@ -254,20 +254,24 @@ const Channels = () => {
   const channelPriceMap = useMemo(() => {
     const map = {};
     if (productsData?.results) {
-      productsData.results.forEach(product => {
-        if (product.channel) {
-          const channelId = typeof product.channel === 'string' 
-            ? product.channel 
-            : (product.channel.id || product.channel._id);
-          
-          if (product.subscribeText) {
-             map[channelId] = product.subscribeText;
-          } else if (product.price) {
-             map[channelId] = `${product.price} TL`;
-          }
+          productsData.results.forEach(product => {
+            if (product.channel) {
+              const channelId = typeof product.channel === 'string' 
+                ? product.channel 
+                : (product.channel.id || product.channel._id);
+              
+              if (product.displayPrice) {
+                map[channelId] = product.displayPrice;
+              } else if (product.localizedPrice) {
+                map[channelId] = product.localizedPrice;
+              } else if (product.subscribeText) {
+                 map[channelId] = product.subscribeText;
+              } else if (product.price) {
+                 map[channelId] = `${product.price} TL`;
+              }
+            }
+          });
         }
-      });
-    }
     return map;
   }, [productsData]);
 

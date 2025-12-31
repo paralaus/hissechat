@@ -39,6 +39,7 @@ const object = {
   channel: yup.string().required('Bu alan zorunludur.'),
   isActive: yup.boolean().notRequired(),
   timeDays: yup.number().required('Bu alan zorunludur.'),
+  subscribeText: yup.string().nullable(),
 };
 
 const schema = yup.object().shape(object);
@@ -263,6 +264,30 @@ const EditProduct = ({id}) => {
                 })}
               </Select>
               <FormErrorMessage>{errors.timeDays?.message}</FormErrorMessage>
+            </FormControl>
+
+            <FormControl isInvalid={!!errors.subscribeText} mb="4">
+              <FormLabel
+                display="flex"
+                ms="4px"
+                fontSize="sm"
+                fontWeight="500"
+                mb="8px">
+                Görünen Fiyat / Metin (Örn: 100 TL / Ay)
+              </FormLabel>
+              <Input
+                fontSize="sm"
+                type="text"
+                fontWeight="500"
+                size="md"
+                placeholder="Web kanal listesinde görünecek fiyat bilgisi"
+                defaultValue={data?.subscribeText}
+                {...register('subscribeText')}
+              />
+              <FormHelperText>
+                Mobilde fiyatlar App Store/Google Play'den otomatik çekilir. Webde görünmesi için buraya manuel giriş yapmalısınız.
+              </FormHelperText>
+              <FormErrorMessage>{errors.subscribeText?.message}</FormErrorMessage>
             </FormControl>
 
             <FormControl
