@@ -1482,11 +1482,13 @@ const ChannelChat = () => {
     queryFn: () => api.getPinnedMessages(channelId),
     enabled: !!channelId,
   });
-  const pinnedMessages = Array.isArray(pinnedData?.results)
-    ? pinnedData.results
-    : Array.isArray(pinnedData?.data)
-      ? pinnedData.data
-      : (Array.isArray(pinnedData) ? pinnedData : []);
+  const pinnedMessages = Array.isArray(pinnedData?.data?.results)
+    ? pinnedData.data.results
+    : Array.isArray(pinnedData?.results)
+      ? pinnedData.results
+      : Array.isArray(pinnedData?.data)
+        ? pinnedData.data
+        : (Array.isArray(pinnedData) ? pinnedData : []);
   const pinnedIds = new Set(
     (pinnedMessages || []).map(pm => pm?.messageId || pm?.message?.id || pm?.id)
   );
