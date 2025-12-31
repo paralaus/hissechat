@@ -259,32 +259,6 @@ const Channels = () => {
     staleTime: 5 * 60 * 1000,
   });
 
-  // Calculate Rate Map (Change Percentage)
-  const rateMap = useMemo(() => {
-    const map = {};
-    
-    const addToMap = (items, isFund = false) => {
-      if (!items) return;
-      items.forEach(item => {
-        if (item.code) {
-          // For funds use dailyReturn, for markets use rate
-          const rate = isFund ? item.dailyReturn : item.rate;
-          if (rate !== undefined && rate !== null) {
-            map[item.code] = rate;
-          }
-        }
-      });
-    };
-
-    addToMap(stockMarketsData);
-    addToMap(viopMarketsData);
-    addToMap(commodityMarketsData);
-    addToMap(cryptoMarketsData);
-    addToMap(fundsData, true);
-
-    return map;
-  }, [stockMarketsData, viopMarketsData, commodityMarketsData, cryptoMarketsData, fundsData]);
-
   // Fetch active products for prices
   const {data: productsData} = useQuery({
     queryKey: ['products'],
@@ -515,6 +489,32 @@ const Channels = () => {
     if (!privateChannelsPages?.pages) return [];
     return privateChannelsPages.pages.flatMap(page => page.results || []).filter(c => c.type === 'private');
   }, [privateChannelsPages]);
+
+  // Calculate Rate Map (Change Percentage)
+  const rateMap = useMemo(() => {
+    const map = {};
+    
+    const addToMap = (items, isFund = false) => {
+      if (!items) return;
+      items.forEach(item => {
+        if (item.code) {
+          // For funds use dailyReturn, for markets use rate
+          const rate = isFund ? item.dailyReturn : item.rate;
+          if (rate !== undefined && rate !== null) {
+            map[item.code] = rate;
+          }
+        }
+      });
+    };
+
+    addToMap(stockMarketsData);
+    addToMap(viopMarketsData);
+    addToMap(commodityMarketsData);
+    addToMap(cryptoMarketsData);
+    addToMap(fundsData, true);
+
+    return map;
+  }, [stockMarketsData, viopMarketsData, commodityMarketsData, cryptoMarketsData, fundsData]);
 
   const priceMap = useMemo(() => {
     const map = {};
