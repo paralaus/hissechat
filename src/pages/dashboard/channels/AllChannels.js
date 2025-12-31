@@ -73,7 +73,12 @@ const AllChannels = ({category}) => {
 
           // Create virtual channel object
           return {
+            // Preserve other market data if needed
+            ...item,
+            // Ensure ID is null so we know it's virtual
             id: null,
+            _id: null,
+            
             name: item.name,
             marketCode: !isFund ? code : undefined,
             fundCode: isFund ? code : undefined,
@@ -82,8 +87,6 @@ const AllChannels = ({category}) => {
             messageCount: 0,
             memberCount: 0,
             isVirtual: true,
-            // Preserve other market data if needed
-            ...item
           };
         });
 
