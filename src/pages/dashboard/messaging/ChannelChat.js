@@ -3225,6 +3225,28 @@ const ChannelChat = () => {
     return () => window.removeEventListener('keydown', handler);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isSelectMode, selectedMessageIds, messages]);
+  const onChannelDetail = () => {
+    if (!channel) return;
+    
+    if (channel.type === 'private') {
+      let targetUserId = null;
+      // currentUserId is now available from store
+      if ((channel.privateUser1?.id || channel.privateUser1?._id) === currentUserId) {
+        targetUserId = channel.privateUser2?.id || channel.privateUser2?._id;
+      } else {
+        targetUserId = channel.privateUser1?.id || channel.privateUser1?._id;
+      }
+      
+      if (targetUserId) {
+        setUserProfileId(targetUserId);
+        onUserProfileOpen();
+      }
+    } else if (channel.type === 'vip') {
+      navigate(routes.editVipChannels.getPath(channel.id || channel._id));
+    }
+    // Add other types as needed
+  };
+
   if (isLoadingChannel) {
     return (
       <Page>
@@ -3267,25 +3289,36 @@ const ChannelChat = () => {
               onClick={() => navigate('/dashboard/messaging/channels')}
               aria-label="Geri"
             />
-            <Avatar
-              size="md"
-              name={displayName}
-              src={getCombinedLogoUrl(displayImage)}
-            />
-            <VStack align="start" spacing="0">
-              <Text fontWeight="600">{displayName}</Text>
-              <Text fontSize="xs" color="gray.500">
-                {isPrivate ? 'Kişisel Sohbet' : channel?.type === 'vip' ? 'VIP Kanal' : channel?.type === 'market' ? 'Piyasa Kanalı' : 'Kanal'}
-                {!isPrivate && (
-                  <>
-                    {' • '}
-                    {channel?.messageCount || 0} mesaj
-                    {' • '}
-                    {channel?.memberCount || channel?.members?.length || 0} üye
-                  </>
-                )}
-              </Text>
-            </VStack>
+            <HStack 
+              spacing="3" 
+              cursor="pointer" 
+              onClick={onChannelDetail}
+              p="2"
+              borderRadius="lg"
+              _hover={{ bg: 'gray.50' }}
+              _active={{ transform: 'scale(0.98)', bg: 'gray.100' }}
+              transition="all 0.2s"
+            >
+              <Avatar
+                size="md"
+                name={displayName}
+                src={getCombinedLogoUrl(displayImage)}
+              />
+              <VStack align="start" spacing="0">
+                <Text fontWeight="600">{displayName}</Text>
+                <Text fontSize="xs" color="gray.500">
+                  {isPrivate ? 'Kişisel Sohbet' : channel?.type === 'vip' ? 'VIP Kanal' : channel?.type === 'market' ? 'Piyasa Kanalı' : 'Kanal'}
+                  {!isPrivate && (
+                    <>
+                      {' • '}
+                      {channel?.messageCount || 0} mesaj
+                      {' • '}
+                      {channel?.memberCount || channel?.members?.length || 0} üye
+                    </>
+                  )}
+                </Text>
+              </VStack>
+            </HStack>
           </HStack>
           <HStack spacing="2">
             <Tooltip label="Arşivlenmiş Mesajlar">
