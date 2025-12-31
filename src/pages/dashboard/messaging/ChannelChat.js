@@ -82,6 +82,7 @@ import {
   FiFilter,
   FiMessageSquare,
   FiHeart,
+  FiArrowDown,
 } from 'react-icons/fi';
 import EmojiPicker from 'emoji-picker-react';
 import {getCombinedLogoUrl} from '../../../utils/image';
@@ -90,6 +91,7 @@ import {tr} from 'date-fns/locale';
 import useFileInput from '../../../hooks/useFileInput';
 import useBrowserNotification from '../../../hooks/useBrowserNotification';
 import {getErrorMessage} from '../../../utils/string';
+import {getUserColor} from '../../../utils/color';
 import VideoConference from '../../../components/conference/VideoConference';
 import ForwardMessageModal from '../../../components/modals/ForwardMessageModal';
 import CreateConferenceModal from '../../../components/modals/CreateConferenceModal';
@@ -553,7 +555,12 @@ const MessageBubble = ({message, isOwn, onReply, onForward, onCopyLink, onOpenLi
           boxShadow="sm"
         >
           {!isOwn && (
-            <Text fontSize="xs" fontWeight="600" color={isOwn ? 'blue.100' : 'blue.500'} mb="1">
+            <Text 
+              fontSize="xs" 
+              fontWeight="bold" 
+              color={getUserColor(message.user?.id || message.user?._id)} 
+              mb="1"
+            >
               {message.user?.fullname || 'Kullanıcı'}
             </Text>
           )}
@@ -566,11 +573,15 @@ const MessageBubble = ({message, isOwn, onReply, onForward, onCopyLink, onOpenLi
               borderRadius="md"
               mb="2"
               borderLeft="3px solid"
-              borderLeftColor={isOwn ? 'blue.200' : 'blue.400'}
+              borderLeftColor={isOwn ? 'blue.200' : getUserColor(repliedMessage.user?.id || repliedMessage.user?._id)}
               cursor="pointer"
               onClick={() => onReplyClick && onReplyClick(repliedMessage.id || repliedMessage._id)}
             >
-              <Text fontSize="xs" fontWeight="600" color={isOwn ? 'blue.100' : 'blue.600'}>
+              <Text 
+                fontSize="xs" 
+                fontWeight="bold" 
+                color={isOwn ? 'blue.100' : getUserColor(repliedMessage.user?.id || repliedMessage.user?._id)}
+              >
                 {repliedMessage.user?.fullname || 'Kullanıcı'}
               </Text>
               <Text fontSize="xs" color={isOwn ? 'blue.100' : 'gray.600'} noOfLines={2}>
@@ -1246,13 +1257,25 @@ const ChannelChat = () => {
   }, [allMessages, isFetchingNextPage]);
 
   // Handle scroll to load more messages
+  const [showScrollBottom, setShowScrollBottom] = useState(false);
+
   const handleScroll = async (e) => {
     const container = e.target;
+    
+    // Check if we should show scroll to bottom button
+    const isNearBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 200;
+    setShowScrollBottom(!isNearBottom);
+
     // If scrolled near top (within 100px) and there are more pages
     if (container.scrollTop < 100 && hasNextPage && !isFetchingNextPage) {
       previousScrollHeight.current = container.scrollHeight;
       await fetchNextPage();
     }
+  };
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    setShowScrollBottom(false);
   };
 
   // Get current user ID from stored user data
@@ -3799,6 +3822,24 @@ const ChannelChat = () => {
           </VStack>
         )}
       </Box>
+
+      {/* Scroll to Bottom Button */}
+      {showScrollBottom && (
+        <IconButton
+          icon={<FiArrowDown />}
+          position="absolute"
+          bottom="120px"
+          right="6"
+          colorScheme="blue"
+          rounded="full"
+          shadow="lg"
+          zIndex="10"
+          onClick={scrollToBottom}
+          aria-label="En aşağıya git"
+          size="lg"
+          animation="fadeIn 0.2s"
+        />
+      )}
 
       {/* Reply Preview */}
       {replyTo && (
