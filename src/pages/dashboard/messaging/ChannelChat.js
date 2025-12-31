@@ -1159,6 +1159,7 @@ const ChannelChat = () => {
   } = useInfiniteQuery({
     queryKey: ['channel-messages', channelId],
     queryFn: async ({ pageParam = 1 }) => {
+      if (!channelId) return { results: [], page: 1, totalPages: 1 };
       const res = await api.getChannelMessages(channelId, {
         limit: PAGE_SIZE,
         page: pageParam,
@@ -1172,6 +1173,7 @@ const ChannelChat = () => {
       }
       return undefined;
     },
+    enabled: !!channelId,
     refetchInterval: 3000, // Auto-refresh every 3 seconds
     refetchIntervalInBackground: true, // Keep polling even when tab is not focused
     refetchOnWindowFocus: true, // Refetch when window regains focus
@@ -4464,7 +4466,7 @@ const ChannelChat = () => {
             flex="1"
           />
 
-          {/* Quick Like (Heart) Button */}
+          {/* Quick Like (Heart) Button - Temporarily disabled for debugging
           {!messageText.trim() && (
             <IconButton
               icon={<FiHeart fill="currentColor" />}
@@ -4476,6 +4478,7 @@ const ChannelChat = () => {
               aria-label="Beğen"
             />
           )}
+          */}
 
           {/* Send Button */}
           <IconButton
