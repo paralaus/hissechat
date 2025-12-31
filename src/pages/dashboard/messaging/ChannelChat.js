@@ -486,7 +486,7 @@ const MessageBubble = ({message, isOwn, onReply, onForward, onCopyLink, onOpenLi
                 </PopoverBody>
               </PopoverContent>
             </Popover>
-            <Menu placement="bottom-end">
+            <Menu placement="auto-end" isLazy strategy="fixed">
               <MenuButton
                 as={IconButton}
                 icon={<FiMoreVertical />}
@@ -494,7 +494,7 @@ const MessageBubble = ({message, isOwn, onReply, onForward, onCopyLink, onOpenLi
                 variant="ghost"
                 aria-label="İşlemler"
               />
-              <MenuList>
+              <MenuList maxH="300px" overflowY="auto">
                 <MenuItem icon={<FiCornerUpLeft />} onClick={() => onReply(message)}>
                   Cevapla
                 </MenuItem>
