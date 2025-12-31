@@ -320,7 +320,7 @@ const Channels = () => {
       return undefined;
     },
     initialPageParam: 1,
-    enabled: tabIndex === 3,
+    enabled: true,
   });
 
   const {
@@ -342,7 +342,7 @@ const Channels = () => {
       return undefined;
     },
     initialPageParam: 1,
-    enabled: tabIndex === 2,
+    enabled: true,
   });
 
   const {
@@ -364,7 +364,7 @@ const Channels = () => {
       return undefined;
     },
     initialPageParam: 1,
-    enabled: tabIndex === 1,
+    enabled: true,
   });
 
   // Fetch Funds
@@ -387,7 +387,7 @@ const Channels = () => {
       return undefined;
     },
     initialPageParam: 1,
-    enabled: tabIndex === 4,
+    enabled: true,
   });
 
   // Fetch Private Channels
