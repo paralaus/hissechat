@@ -97,6 +97,7 @@ import VideoConference from '../../../components/conference/VideoConference';
 import ForwardMessageModal from '../../../components/modals/ForwardMessageModal';
 import CreateConferenceModal from '../../../components/modals/CreateConferenceModal';
 import UserProfileModal from '../../../components/modals/UserProfileModal';
+import ChannelDetailsModal from '../../../components/modals/ChannelDetailsModal';
 import { routes } from '../../../config/routes';
 import {useUserStore} from '../../../store';
 
@@ -1166,6 +1167,8 @@ const ChannelChat = () => {
     onOpen: onUserProfileOpen, 
     onClose: onUserProfileClose 
   } = useDisclosure();
+
+  const channelDetailModal = useDisclosure();
 
   // File inputs
   const imageInput = useFileInput({accept: 'image/*'});
@@ -3242,9 +3245,14 @@ const ChannelChat = () => {
         onUserProfileOpen();
       }
     } else if (channel.type === 'vip') {
-      navigate(routes.editVipChannels.getPath(channel.id || channel._id));
+      // VIP kanallar için başlığa tıklanma devre dışı
+      return;
+    } else if (channel.type === 'market' && channel.marketCode) {
+      channelDetailModal.onOpen();
+    } else if (channel.type === 'fund' && channel.fundCode) {
+      // Admin panelde fon detay sayfası henüz yok, şimdilik işlem yapmıyoruz
+      // navigate(routes.editFund.getPath(channel.fundCode));
     }
-    // Add other types as needed
   };
 
   if (isLoadingChannel) {
@@ -4806,6 +4814,13 @@ const ChannelChat = () => {
         onClose={onUserProfileClose}
         userId={userProfileId}
         currentUserId={currentUserId}
+      />
+
+      {/* Channel Details Modal */}
+      <ChannelDetailsModal
+        isOpen={channelDetailModal.isOpen}
+        onClose={channelDetailModal.onClose}
+        channel={channel}
       />
     </Page>
   );
