@@ -86,6 +86,21 @@ export const routes = {
   allChannels: {
     path: `/dashboard/channels/all`,
   },
+  stockChannels: {
+    path: `/dashboard/channels/stock`,
+  },
+  cryptoChannels: {
+    path: `/dashboard/channels/crypto`,
+  },
+  viopChannels: {
+    path: `/dashboard/channels/viop`,
+  },
+  commodityChannels: {
+    path: `/dashboard/channels/commodity`,
+  },
+  fundChannels: {
+    path: `/dashboard/channels/fund`,
+  },
   bulkMessage: {
     path: '/dashboard/messaging/bulk',
   },

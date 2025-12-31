@@ -1,4 +1,4 @@
-import { FiHome, FiSettings, FiUsers, FiBell, FiSend, FiMessageCircle, FiSmartphone, FiShield } from 'react-icons/fi';
+import { FiHome, FiSettings, FiUsers, FiBell, FiSend, FiMessageCircle, FiSmartphone, FiShield, FiTrendingUp, FiCpu, FiActivity, FiPieChart, FiLayers } from 'react-icons/fi';
 import {
   AiOutlineUserAdd,
   AiOutlineProduct,
@@ -109,6 +109,36 @@ export const sidebarRoutes = [
         name: 'Vip Kanallar',
         path: routes.vipChannels.path,
         icon: RiVipLine,
+        exact: true,
+      },
+      {
+        name: 'Borsa Kanalları',
+        path: routes.stockChannels.path,
+        icon: FiTrendingUp,
+        exact: true,
+      },
+      {
+        name: 'Kripto Kanalları',
+        path: routes.cryptoChannels.path,
+        icon: FiCpu,
+        exact: true,
+      },
+      {
+        name: 'VİOP Kanalları',
+        path: routes.viopChannels.path,
+        icon: FiActivity,
+        exact: true,
+      },
+      {
+        name: 'Emtia Kanalları',
+        path: routes.commodityChannels.path,
+        icon: FiLayers,
+        exact: true,
+      },
+      {
+        name: 'Fon Kanalları',
+        path: routes.fundChannels.path,
+        icon: FiPieChart,
         exact: true,
       },
       {

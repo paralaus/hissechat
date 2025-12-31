@@ -164,6 +164,41 @@ const router = createBrowserRouter(
 
             <Route index element={<VipChannels />} />
           </Route>
+          <Route
+            path="stock"
+            element={<AllChannels category="borsa" />}
+            handle={{
+              crumb: () => <Text>Borsa Kanalları</Text>,
+            }}
+          />
+          <Route
+            path="crypto"
+            element={<AllChannels category="kripto" />}
+            handle={{
+              crumb: () => <Text>Kripto Kanalları</Text>,
+            }}
+          />
+          <Route
+            path="viop"
+            element={<AllChannels category="viop" />}
+            handle={{
+              crumb: () => <Text>VİOP Kanalları</Text>,
+            }}
+          />
+          <Route
+            path="commodity"
+            element={<AllChannels category="emtia" />}
+            handle={{
+              crumb: () => <Text>Emtia Kanalları</Text>,
+            }}
+          />
+          <Route
+            path="fund"
+            element={<AllChannels category="fon" />}
+            handle={{
+              crumb: () => <Text>Fon Kanalları</Text>,
+            }}
+          />
 
           <Route
             path=":id"

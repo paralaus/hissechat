@@ -1,63 +1,21 @@
 import { MiniStatistics, Page, StatisticsSkeleton } from '../../components';
-import { SimpleGrid } from '@chakra-ui/react';
+import { SimpleGrid, Box, Text, Heading, Divider } from '@chakra-ui/react';
 import { FaUserClock, FaUsers, FaChartLine } from 'react-icons/fa';
 import { RiVipFill, RiMoneyDollarCircleFill } from 'react-icons/ri';
 import { BiSolidMessageDetail } from 'react-icons/bi';
 import { MdInsertChart, MdReport, MdBlock, MdShoppingCart } from 'react-icons/md';
-import { FiVideo, FiAlertTriangle, FiShield } from 'react-icons/fi';
+import { FiVideo, FiAlertTriangle, FiShield, FiTrendingUp, FiActivity, FiLayers, FiPieChart, FiCpu } from 'react-icons/fi';
 import { useQuery } from '@tanstack/react-query';
 import { NavLink } from 'react-router-dom';
 import { routes } from '../../config/routes';
 import { api } from '../../api';
 import { isValue } from '../../utils/string';
+import React from 'react';
 
 const iconProps = {
   color: 'white',
   size: 22,
 };
-
-const items = [
-  {
-    title: 'Aktif Kullanıcı',
-    value: 'activeUsers',
-    icon: <FaUserClock {...iconProps} />,
-  },
-  {
-    title: 'Aylık Aboneler',
-    value: 'monthlySubscribers',
-    icon: <RiMoneyDollarCircleFill {...iconProps} />,
-  },
-  {
-    title: 'Toplam Kullanıcı',
-    value: 'totalUsers',
-    icon: <FaUsers {...iconProps} />,
-  },
-  {
-    title: 'VİP Kanallar',
-    value: 'vipChannels',
-    icon: <RiVipFill {...iconProps} />,
-  },
-  {
-    title: 'Atılan Mesajlar',
-    value: 'totalMessages',
-    icon: <BiSolidMessageDetail {...iconProps} />,
-  },
-  {
-    title: 'Hisse Senedi',
-    value: 'stockMarkets',
-    icon: <FaChartLine {...iconProps} />,
-  },
-  {
-    title: 'Kripto Para',
-    value: 'cryptoMarkets',
-    icon: <MdInsertChart {...iconProps} />,
-  },
-  {
-    title: 'Son Raporlar',
-    value: 'latelyReports',
-    icon: <MdReport {...iconProps} />,
-  },
-];
 
 const Home = () => {
   const { data, isLoading } = useQuery({
@@ -95,6 +53,32 @@ const Home = () => {
     queryFn: () => api.getProducts({ limit: 1, page: 1 }).then(res => res.data),
   });
 
+  // Channel Counts
+  const { data: stockChannels } = useQuery({
+    queryKey: ['channels', 'stock', 'count'],
+    queryFn: () => api.getAllChannels({ category: 'borsa', limit: 1 }).then(res => res.data),
+  });
+
+  const { data: cryptoChannels } = useQuery({
+    queryKey: ['channels', 'crypto', 'count'],
+    queryFn: () => api.getAllChannels({ category: 'kripto', limit: 1 }).then(res => res.data),
+  });
+
+  const { data: viopChannels } = useQuery({
+    queryKey: ['channels', 'viop', 'count'],
+    queryFn: () => api.getAllChannels({ category: 'viop', limit: 1 }).then(res => res.data),
+  });
+
+  const { data: commodityChannels } = useQuery({
+    queryKey: ['channels', 'commodity', 'count'],
+    queryFn: () => api.getAllChannels({ category: 'emtia', limit: 1 }).then(res => res.data),
+  });
+
+  const { data: fundChannels } = useQuery({
+    queryKey: ['channels', 'fund', 'count'],
+    queryFn: () => api.getAllChannels({ category: 'fon', limit: 1 }).then(res => res.data),
+  });
+
   // Yüklenirken skeleton göster
   if (isLoading) {
     return (
@@ -104,10 +88,90 @@ const Home = () => {
     );
   }
 
-  // Görüntülenecek istatistikleri filtrele
-  const visibleItems = items.filter((item) => isValue(data?.[item.value]));
+  // Gruplandırılmış İstatistikler
   
-  const extraItems = [
+  const userStats = [
+    {
+      title: 'Aktif Kullanıcı',
+      value: 'activeUsers',
+      amount: data?.activeUsers,
+      icon: <FaUserClock {...iconProps} />,
+    },
+    {
+      title: 'Aylık Aboneler',
+      value: 'monthlySubscribers',
+      amount: data?.monthlySubscribers,
+      icon: <RiMoneyDollarCircleFill {...iconProps} />,
+    },
+    {
+      title: 'Toplam Kullanıcı',
+      value: 'totalUsers',
+      amount: data?.totalUsers,
+      icon: <FaUsers {...iconProps} />,
+    },
+  ];
+
+  const marketStats = [
+    {
+      title: 'Atılan Mesajlar',
+      value: 'totalMessages',
+      amount: data?.totalMessages,
+      icon: <BiSolidMessageDetail {...iconProps} />,
+    },
+    {
+      title: 'Hisse Senedi Verileri',
+      value: 'stockMarkets',
+      amount: data?.stockMarkets,
+      icon: <FaChartLine {...iconProps} />,
+    },
+    {
+      title: 'Kripto Para Verileri',
+      value: 'cryptoMarkets',
+      amount: data?.cryptoMarkets,
+      icon: <MdInsertChart {...iconProps} />,
+    },
+  ];
+
+  const channelStats = [
+    {
+      title: 'VİP Kanallar',
+      amount: data?.vipChannels,
+      icon: <RiVipFill {...iconProps} />,
+      path: routes.vipChannels.path,
+    },
+    {
+      title: 'Borsa Kanalları',
+      amount: stockChannels?.totalResults || 0,
+      icon: <FiTrendingUp {...iconProps} />,
+      path: routes.stockChannels.path,
+    },
+    {
+      title: 'Kripto Kanalları',
+      amount: cryptoChannels?.totalResults || 0,
+      icon: <FiCpu {...iconProps} />,
+      path: routes.cryptoChannels.path,
+    },
+    {
+      title: 'VİOP Kanalları',
+      amount: viopChannels?.totalResults || 0,
+      icon: <FiActivity {...iconProps} />,
+      path: routes.viopChannels.path,
+    },
+    {
+      title: 'Emtia Kanalları',
+      amount: commodityChannels?.totalResults || 0,
+      icon: <FiLayers {...iconProps} />,
+      path: routes.commodityChannels.path,
+    },
+    {
+      title: 'Fon Kanalları',
+      amount: fundChannels?.totalResults || 0,
+      icon: <FiPieChart {...iconProps} />,
+      path: routes.fundChannels.path,
+    },
+  ];
+
+  const operationStats = [
     {
       title: 'Bekleyen VIP Başvuruları',
       amount: vipApplications?.totalResults || 0,
@@ -132,6 +196,21 @@ const Home = () => {
       })(),
     },
     {
+      title: 'Ürünler',
+      amount: products?.totalResults || 0,
+      icon: <MdShoppingCart {...iconProps} />,
+      path: routes.products.path,
+    },
+  ];
+
+  const moderationStats = [
+    {
+      title: 'Son Raporlar',
+      amount: data?.latelyReports,
+      icon: <MdReport {...iconProps} />,
+      path: routes.reports.path,
+    },
+    {
       title: 'Şikayet Edilen Mesajlar',
       amount: flaggedMessages?.totalResults || 0,
       icon: <FiAlertTriangle {...iconProps} />,
@@ -149,38 +228,45 @@ const Home = () => {
       icon: <MdBlock {...iconProps} />,
       path: routes.blacklist.path,
     },
-    {
-      title: 'Ürünler',
-      amount: products?.totalResults || 0,
-      icon: <MdShoppingCart {...iconProps} />,
-      path: routes.products.path,
-    },
   ];
 
-  return (
-    <Page title="Dashboard" subtitle="Genel bakış ve istatistikler">
-      <SimpleGrid columns={{ base: 1, sm: 2, lg: 4 }} spacing="6">
-        {visibleItems.map((item) => (
-          <MiniStatistics
-            key={item.value}
-            title={item.title}
-            amount={data?.[item.value]}
-            icon={item.icon}
-          />
-        ))}
-      </SimpleGrid>
-
-      <SimpleGrid columns={{ base: 1, sm: 2, lg: 4 }} spacing="6" mt="6">
-        {extraItems.map((item) => (
-          <NavLink key={item.title} to={item.path} style={{ textDecoration: 'none' }}>
+  const renderSection = (title, items) => (
+    <Box mb={8}>
+      <Heading size="md" mb={4} color="gray.600">{title}</Heading>
+      <SimpleGrid columns={{ base: 1, sm: 2, lg: 3, xl: 4 }} spacing="6">
+        {items.map((item, index) => {
+          // If item has a path, make it clickable
+          const content = (
             <MiniStatistics
+              key={item.title || index}
               title={item.title}
               amount={item.amount}
               icon={item.icon}
             />
-          </NavLink>
-        ))}
+          );
+
+          if (item.path) {
+            return (
+              <NavLink key={item.title || index} to={item.path} style={{ textDecoration: 'none' }}>
+                {content}
+              </NavLink>
+            );
+          }
+
+          return content;
+        })}
       </SimpleGrid>
+      <Divider mt={6} />
+    </Box>
+  );
+
+  return (
+    <Page title="Dashboard" subtitle="Genel bakış ve istatistikler">
+      {renderSection('Kullanıcı İstatistikleri', userStats)}
+      {renderSection('Kanal İstatistikleri', channelStats)}
+      {renderSection('Operasyonel Durum', operationStats)}
+      {renderSection('Piyasa Verileri', marketStats)}
+      {renderSection('Güvenlik ve Moderasyon', moderationStats)}
     </Page>
   );
 };

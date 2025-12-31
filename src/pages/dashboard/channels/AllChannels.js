@@ -5,15 +5,23 @@ import {DataTable, Page} from '../../../components';
 import {routes} from '../../../config/routes';
 import {api} from '../../../api';
 import {ChannelType} from '../../../config';
-import React from 'react';
+import React, {useCallback} from 'react';
 
-const fetchData = async options => {
-  const response = await api.getAllChannels(options);
-  return response.data;
-};
-
-const AllChannels = () => {
+const AllChannels = ({category}) => {
   const navigate = useNavigate();
+
+  const fetchData = useCallback(
+    async options => {
+      const params = {...options};
+      if (category) {
+        params.category = category;
+      }
+      const response = await api.getAllChannels(params);
+      return response.data;
+    },
+    [category],
+  );
+
   const onRow = async item => {
     navigate(routes.editChannel.getPath(item.id));
   };
