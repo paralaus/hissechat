@@ -1006,7 +1006,7 @@ const MessageBubble = ({message, isOwn, onReply, onForward, onCopyLink, onOpenLi
                 </PopoverBody>
               </PopoverContent>
             </Popover>
-            <Menu placement="bottom-end">
+            <Menu placement="auto-end" isLazy strategy="fixed">
               <MenuButton
                 as={IconButton}
                 icon={<FiMoreVertical />}
@@ -1014,10 +1014,11 @@ const MessageBubble = ({message, isOwn, onReply, onForward, onCopyLink, onOpenLi
                 variant="ghost"
                 aria-label="İşlemler"
               />
-              <MenuList>
-                <MenuItem icon={<FiCornerUpLeft />} onClick={() => onReply(message)}>
-                  Cevapla
-                </MenuItem>
+              <Portal>
+                <MenuList maxH="300px" overflowY="auto" zIndex={9999}>
+                  <MenuItem icon={<FiCornerUpLeft />} onClick={() => onReply(message)}>
+                    Cevapla
+                  </MenuItem>
                 <MenuItem icon={<FiShare2 />} onClick={() => onForward && onForward(message)}>
                   İlet
                 </MenuItem>
@@ -1060,8 +1061,9 @@ const MessageBubble = ({message, isOwn, onReply, onForward, onCopyLink, onOpenLi
                   Sil
                 </MenuItem>
               </MenuList>
-            </Menu>
-          </VStack>
+            </Portal>
+          </Menu>
+        </VStack>
         )}
       </HStack>
     </Flex>
