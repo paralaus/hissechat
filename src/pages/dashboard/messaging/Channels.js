@@ -155,11 +155,11 @@ const ChannelList = ({
 
       {channels.map((channel) => (
         <ChannelItem
-          key={channel.id}
+          key={channel.id || channel._id}
           channel={channel}
           onClick={() => onChannelClick(channel)}
           currentUserId={currentUserId}
-          price={priceMap?.[channel.id]}
+          price={priceMap?.[channel.id || channel._id]}
         />
       ))}
 
