@@ -29,7 +29,7 @@ import {formatDistanceToNow} from 'date-fns';
 import {tr} from 'date-fns/locale';
 import {useUserStore} from '../../../store';
 
-const ChannelItem = ({channel, onClick, currentUserId, price}) => {
+const ChannelItem = ({channel, onClick, currentUserId, priceMap}) => {
   const lastMessageTime = channel.lastMessageAt 
     ? formatDistanceToNow(new Date(channel.lastMessageAt), {addSuffix: true, locale: tr})
     : '';
@@ -47,7 +47,8 @@ const ChannelItem = ({channel, onClick, currentUserId, price}) => {
     }
   }
 
-  const displayPrice = price || channel.subscribeText;
+  const displayPrice = (channel.marketCode && priceMap?.[channel.marketCode]) || 
+                       (channel.fundCode && priceMap?.[channel.fundCode]);
 
   return (
     <Box
@@ -161,7 +162,7 @@ const ChannelList = ({
           channel={channel}
           onClick={() => onChannelClick(channel)}
           currentUserId={currentUserId}
-          price={priceMap?.[channel.id || channel._id]}
+          priceMap={priceMap}
         />
       ))}
 
@@ -791,7 +792,7 @@ const Channels = () => {
                 onLoadMore={fetchNextAllCombined}
                 totalCount={totalAllCombinedCount}
                 currentUserId={currentUserId}
-                priceMap={channelPriceMap}
+                priceMap={priceMap}
               />
             </TabPanel>
 
@@ -807,7 +808,7 @@ const Channels = () => {
                 onLoadMore={fetchNextStock}
                 totalCount={totalStockResults}
                 currentUserId={currentUserId}
-                priceMap={channelPriceMap}
+                priceMap={priceMap}
               />
             </TabPanel>
 
@@ -823,7 +824,7 @@ const Channels = () => {
                 onLoadMore={fetchNextCrypto}
                 totalCount={totalCryptoResults}
                 currentUserId={currentUserId}
-                priceMap={channelPriceMap}
+                priceMap={priceMap}
               />
             </TabPanel>
 
@@ -839,7 +840,7 @@ const Channels = () => {
                 onLoadMore={fetchNextViop}
                 totalCount={totalViopResults}
                 currentUserId={currentUserId}
-                priceMap={channelPriceMap}
+                priceMap={priceMap}
               />
             </TabPanel>
 
@@ -855,7 +856,7 @@ const Channels = () => {
                 onLoadMore={fetchNextFunds}
                 totalCount={totalFundResults}
                 currentUserId={currentUserId}
-                priceMap={channelPriceMap}
+                priceMap={priceMap}
               />
             </TabPanel>
 
@@ -871,7 +872,7 @@ const Channels = () => {
                 onLoadMore={fetchNextVipChannels}
                 totalCount={totalVipChannels}
                 currentUserId={currentUserId}
-                priceMap={channelPriceMap}
+                priceMap={priceMap}
               />
             </TabPanel>
 
@@ -887,7 +888,7 @@ const Channels = () => {
                 onLoadMore={fetchNextPrivate}
                 totalCount={privateChannels?.length}
                 currentUserId={currentUserId}
-                priceMap={channelPriceMap}
+                priceMap={priceMap}
               />
             </TabPanel>
           </TabPanels>

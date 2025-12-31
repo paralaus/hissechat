@@ -86,6 +86,11 @@ const EditProduct = ({id}) => {
   const onSubmit = async values => {
     try {
       const {data} = await mutateAsync({...values, type: 'subscription'});
+      
+      if (values.subscribeText && values.channel) {
+        await api.updateChannel(values.channel, { subscribeText: values.subscribeText });
+      }
+
       if (data) {
         toast({
           title: 'Bilgiler kaydedildi.',
