@@ -422,3 +422,12 @@ export const votePoll = async (pollId, optionIndex) => {
 export const closePoll = async pollId => {
   return apiClient.post(`/polls/${pollId}/close`);
 };
+
+// Reactions
+export const addReaction = async (channelId, messageId, emoji) => {
+  return apiClient.post(`/channels/${channelId}/messages/${messageId}/reactions`, { emoji });
+};
+
+export const removeReaction = async (channelId, messageId, emoji) => {
+  return apiClient.delete(`/channels/${channelId}/messages/${messageId}/reactions`, { data: { emoji } });
+};

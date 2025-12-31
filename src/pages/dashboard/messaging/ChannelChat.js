@@ -268,7 +268,51 @@ const HighlightText = ({text, searchQuery}) => {
   );
 };
 
-const MessageBubble = ({message, isOwn, onReply, onForward, onCopyLink, onOpenLink, onCopyText, onQuoteText, onArchive, onArchiveAndPin, onOpenModeration, onBlock, onUnblock, onDelete, onTogglePin, onReplyClick, allMessages, searchQuery, isHighlighted, messageRef, onMediaClick, onJoinConference, onVotePoll, onClosePoll, currentUserId, isSelectMode, isSelected, onSelect, isPinned}) => {
+// Quick emoji list
+const QUICK_EMOJIS = ['👍', '❤️', '😂', '😮', '😢', '🙏'];
+
+// Reactions Component
+const ReactionsBar = ({ reactions, currentUserId, onReactionClick }) => {
+  if (!reactions || reactions.length === 0) return null;
+
+  return (
+    <HStack spacing={1} mt={1} flexWrap="wrap">
+      {reactions.map((reaction, index) => {
+        const isReacted = reaction.users.some(u => {
+          const uid = typeof u === 'string' ? u : (u.id || u._id);
+          return uid === currentUserId;
+        });
+        
+        return (
+          <Box
+            key={index}
+            bg={isReacted ? 'blue.100' : 'gray.100'}
+            border="1px solid"
+            borderColor={isReacted ? 'blue.300' : 'gray.200'}
+            borderRadius="full"
+            px={2}
+            py={0.5}
+            cursor="pointer"
+            onClick={(e) => {
+              e.stopPropagation();
+              onReactionClick(reaction.emoji, isReacted);
+            }}
+            _hover={{ bg: isReacted ? 'blue.200' : 'gray.200' }}
+            display="flex"
+            alignItems="center"
+          >
+            <Text fontSize="xs" mr={1}>{reaction.emoji}</Text>
+            <Text fontSize="xs" fontWeight="bold" color={isReacted ? 'blue.700' : 'gray.600'}>
+              {reaction.users.length}
+            </Text>
+          </Box>
+        );
+      })}
+    </HStack>
+  );
+};
+
+const MessageBubble = ({message, isOwn, onReply, onForward, onCopyLink, onOpenLink, onCopyText, onQuoteText, onArchive, onArchiveAndPin, onOpenModeration, onBlock, onUnblock, onDelete, onTogglePin, onReplyClick, allMessages, searchQuery, isHighlighted, messageRef, onMediaClick, onJoinConference, onVotePoll, onClosePoll, currentUserId, isSelectMode, isSelected, onSelect, isPinned, onReactionClick}) => {
   const time = message.createdAt 
     ? format(new Date(message.createdAt), 'HH:mm', {locale: tr})
     : '';
@@ -410,6 +454,35 @@ const MessageBubble = ({message, isOwn, onReply, onForward, onCopyLink, onOpenLi
         {/* Reply button for own messages (left side) */}
         {isOwn && (
           <VStack spacing={0} opacity="0" _groupHover={{opacity: 1}}>
+            <Popover placement="top" isLazy>
+              <PopoverTrigger>
+                <IconButton
+                  icon={<FiSmile />}
+                  size="xs"
+                  variant="ghost"
+                  aria-label="Reaksiyon Ekle"
+                  mb={1}
+                />
+              </PopoverTrigger>
+              <PopoverContent width="auto" p={2}>
+                <PopoverBody p={0}>
+                  <HStack spacing={2}>
+                    {QUICK_EMOJIS.map(emoji => (
+                      <Button
+                        key={emoji}
+                        size="sm"
+                        variant="ghost"
+                        fontSize="xl"
+                        p={1}
+                        onClick={() => onReactionClick && onReactionClick(message, emoji)}
+                      >
+                        {emoji}
+                      </Button>
+                    ))}
+                  </HStack>
+                </PopoverBody>
+              </PopoverContent>
+            </Popover>
             <Menu placement="bottom-end">
               <MenuButton
                 as={IconButton}
@@ -873,6 +946,12 @@ const MessageBubble = ({message, isOwn, onReply, onForward, onCopyLink, onOpenLi
             </Text>
           )}
           
+          <ReactionsBar 
+            reactions={message.reactions} 
+            currentUserId={currentUserId}
+            onReactionClick={(emoji, isReacted) => onReactionClick && onReactionClick(message, emoji, isReacted)}
+          />
+          
           <Text fontSize="xs" color={isOwn ? 'blue.100' : 'gray.400'} textAlign="right" mt="1">
             {time}
           </Text>
@@ -881,6 +960,35 @@ const MessageBubble = ({message, isOwn, onReply, onForward, onCopyLink, onOpenLi
         {/* Reply button for other's messages (right side) */}
         {!isOwn && (
           <VStack spacing={0} opacity="0" _groupHover={{opacity: 1}}>
+            <Popover placement="top" isLazy>
+              <PopoverTrigger>
+                <IconButton
+                  icon={<FiSmile />}
+                  size="xs"
+                  variant="ghost"
+                  aria-label="Reaksiyon Ekle"
+                  mb={1}
+                />
+              </PopoverTrigger>
+              <PopoverContent width="auto" p={2}>
+                <PopoverBody p={0}>
+                  <HStack spacing={2}>
+                    {QUICK_EMOJIS.map(emoji => (
+                      <Button
+                        key={emoji}
+                        size="sm"
+                        variant="ghost"
+                        fontSize="xl"
+                        p={1}
+                        onClick={() => onReactionClick && onReactionClick(message, emoji)}
+                      >
+                        {emoji}
+                      </Button>
+                    ))}
+                  </HStack>
+                </PopoverBody>
+              </PopoverContent>
+            </Popover>
             <Menu placement="bottom-end">
               <MenuButton
                 as={IconButton}
@@ -1203,6 +1311,48 @@ const ChannelChat = () => {
       }
     }
   }, [allMessages, currentUserId, channelId, showNotification]);
+
+  // Reaction mutation
+  const reactionMutation = useMutation({
+    mutationFn: async ({ messageId, emoji, isReacted }) => {
+      if (isReacted) {
+        return api.removeReaction(channelId, messageId, emoji);
+      } else {
+        return api.addReaction(channelId, messageId, emoji);
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries(['channel-messages', channelId]);
+    },
+    onError: (error) => {
+      toast({
+        title: 'Hata',
+        description: error?.response?.data?.message || 'Reaksiyon işlemi başarısız',
+        status: 'error',
+        duration: 3000,
+        position: 'top',
+      });
+    }
+  });
+
+  const handleReactionClick = (message, emoji, explicitIsReacted) => {
+    const messageId = message.id || message._id;
+    let isReacted = explicitIsReacted;
+    
+    if (isReacted === undefined) {
+      const reaction = message.reactions?.find(r => r.emoji === emoji);
+      if (reaction) {
+        isReacted = reaction.users.some(u => {
+             const uid = typeof u === 'string' ? u : (u.id || u._id);
+             return uid === currentUserId;
+        });
+      } else {
+        isReacted = false;
+      }
+    }
+
+    reactionMutation.mutate({ messageId, emoji, isReacted });
+  };
 
   const handleSendMessage = async () => {
     if (!messageText.trim() && !imageInput.objectUrl && !videoInput.objectUrl && !audioInput.objectUrl && !fileInput.objectUrl) {
@@ -3524,6 +3674,7 @@ const ChannelChat = () => {
                   message={message}
                   isOwn={message.user?.id === currentUserId}
                   onReply={handleReply}
+                  onReactionClick={handleReactionClick}
                   allMessages={messages}
                   searchQuery={searchQuery}
                   isHighlighted={messageId === currentHighlightedId}
