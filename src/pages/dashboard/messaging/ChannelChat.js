@@ -96,6 +96,7 @@ import {getUserColor} from '../../../utils/color';
 import VideoConference from '../../../components/conference/VideoConference';
 import ForwardMessageModal from '../../../components/modals/ForwardMessageModal';
 import CreateConferenceModal from '../../../components/modals/CreateConferenceModal';
+import UserProfileModal from '../../../components/modals/UserProfileModal';
 import { routes } from '../../../config/routes';
 import {useUserStore} from '../../../store';
 
@@ -317,7 +318,7 @@ const ReactionsBar = ({ reactions, currentUserId, onReactionClick }) => {
   );
 };
 
-const MessageBubble = ({message, isOwn, onReply, onForward, onCopyLink, onOpenLink, onCopyText, onQuoteText, onArchive, onArchiveAndPin, onOpenModeration, onBlock, onUnblock, onDelete, onTogglePin, onReplyClick, allMessages, searchQuery, isHighlighted, messageRef, onMediaClick, onJoinConference, onVotePoll, onClosePoll, currentUserId, isSelectMode, isSelected, onSelect, isPinned, onReactionClick}) => {
+const MessageBubble = ({message, isOwn, onReply, onForward, onCopyLink, onOpenLink, onCopyText, onQuoteText, onArchive, onArchiveAndPin, onOpenModeration, onBlock, onUnblock, onDelete, onTogglePin, onReplyClick, allMessages, searchQuery, isHighlighted, messageRef, onMediaClick, onJoinConference, onVotePoll, onClosePoll, currentUserId, isSelectMode, isSelected, onSelect, isPinned, onReactionClick, onAvatarClick}) => {
   const time = message.createdAt 
     ? format(new Date(message.createdAt), 'HH:mm', {locale: tr})
     : '';
@@ -453,6 +454,11 @@ const MessageBubble = ({message, isOwn, onReply, onForward, onCopyLink, onOpenLi
             size="sm"
             name={message.user?.fullname}
             src={getCombinedLogoUrl(message.user?.thumbnail)}
+            cursor="pointer"
+            onClick={(e) => {
+              e.stopPropagation();
+              onAvatarClick && onAvatarClick(message.user?.id || message.user?._id);
+            }}
           />
         )}
         
@@ -1153,6 +1159,14 @@ const ChannelChat = () => {
   const [messageToDelete, setMessageToDelete] = useState(null);
   const [deleteScope, setDeleteScope] = useState('all');
 
+  // User Profile Modal
+  const [userProfileId, setUserProfileId] = useState(null);
+  const { 
+    isOpen: isUserProfileOpen, 
+    onOpen: onUserProfileOpen, 
+    onClose: onUserProfileClose 
+  } = useDisclosure();
+
   // File inputs
   const imageInput = useFileInput({accept: 'image/*'});
   const videoInput = useFileInput({accept: 'video/*'});
@@ -1440,6 +1454,11 @@ const ChannelChat = () => {
   const handleReply = (message) => {
     setReplyTo(message);
     inputRef.current?.focus();
+  };
+
+  const handleAvatarClick = (userId) => {
+    setUserProfileId(userId);
+    onUserProfileOpen();
   };
 
   const handleForward = (message) => {
@@ -3825,6 +3844,7 @@ const ChannelChat = () => {
                         onQuoteText={handleQuoteText}
                         onTogglePin={handleTogglePinMessage}
                         isPinned={pinnedIds.has(messageId)}
+                        onAvatarClick={handleAvatarClick}
                       />
                     );
                   })}
@@ -4746,6 +4766,14 @@ const ChannelChat = () => {
           </Box>
         </ModalContent>
       </Modal>
+
+      {/* User Profile Modal */}
+      <UserProfileModal
+        isOpen={isUserProfileOpen}
+        onClose={onUserProfileClose}
+        userId={userProfileId}
+        currentUserId={currentUserId}
+      />
     </Page>
   );
 };

@@ -311,6 +311,32 @@ export const getJoinedChannels = async (params) => {
   return apiClient.get('/channels/joined', {params});
 };
 
+export const getUserProfile = async (userId) => {
+  return apiClient.get(`/users/${userId}/profile`);
+};
+
+export const getCommonJoinedChannels = async (userId) => {
+  return apiClient.get('/channels/common', {
+    params: {user: userId},
+  });
+};
+
+export const addFriend = async (userId) => {
+  return apiClient.post(`/friends/${userId}/add`);
+};
+
+export const removeFriend = async (userId) => {
+  return apiClient.post(`/friends/${userId}/remove`);
+};
+
+export const acceptFriend = async (userId) => {
+  return apiClient.post(`/friends/${userId}/accept`);
+};
+
+export const fetchFriends = async (userId, params) => {
+  return apiClient.get(`/friends/${userId}/friends`, {params});
+};
+
 export const kickOutFromChannel = async (userId, channelId) => {
   return apiClient.post(`/channels/${channelId}/kick-out/${userId}`);
 };
