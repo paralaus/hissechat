@@ -545,8 +545,10 @@ const MessageBubble = ({message, isOwn, onReply, onForward, onCopyLink, onOpenLi
         )}
         
         <Box
-          bg={isOwn ? 'blue.500' : 'white'}
+          bg={isOwn ? 'blue.500' : `${getUserColor(message.user?.id || message.user?._id)}.50`}
           color={isOwn ? 'white' : 'gray.800'}
+          borderWidth="1px"
+          borderColor={isOwn ? 'blue.500' : `${getUserColor(message.user?.id || message.user?._id)}.200`}
           px="4"
           py="2"
           borderRadius="xl"
@@ -558,7 +560,7 @@ const MessageBubble = ({message, isOwn, onReply, onForward, onCopyLink, onOpenLi
             <Text 
               fontSize="xs" 
               fontWeight="bold" 
-              color={getUserColor(message.user?.id || message.user?._id)} 
+              color={`${getUserColor(message.user?.id || message.user?._id)}.600`}
               mb="1"
             >
               {message.user?.fullname || 'Kullanıcı'}
@@ -568,19 +570,19 @@ const MessageBubble = ({message, isOwn, onReply, onForward, onCopyLink, onOpenLi
           {/* Reply Preview - Don't show for conference messages */}
           {repliedMessage && !message.conference?.roomId && (
             <Box
-              bg={isOwn ? 'blue.400' : 'gray.100'}
+              bg={isOwn ? 'blue.400' : 'whiteAlpha.600'}
               p="2"
               borderRadius="md"
               mb="2"
               borderLeft="3px solid"
-              borderLeftColor={isOwn ? 'blue.200' : getUserColor(repliedMessage.user?.id || repliedMessage.user?._id)}
+              borderLeftColor={isOwn ? 'blue.200' : `${getUserColor(repliedMessage.user?.id || repliedMessage.user?._id)}.500`}
               cursor="pointer"
               onClick={() => onReplyClick && onReplyClick(repliedMessage.id || repliedMessage._id)}
             >
               <Text 
                 fontSize="xs" 
                 fontWeight="bold" 
-                color={isOwn ? 'blue.100' : getUserColor(repliedMessage.user?.id || repliedMessage.user?._id)}
+                color={isOwn ? 'blue.100' : `${getUserColor(repliedMessage.user?.id || repliedMessage.user?._id)}.600`}
               >
                 {repliedMessage.user?.fullname || 'Kullanıcı'}
               </Text>
