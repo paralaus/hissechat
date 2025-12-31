@@ -253,7 +253,7 @@ const Channels = () => {
 
   const { data: privateCountData } = useQuery({
     queryKey: ['private-channels-count'],
-    queryFn: () => api.getJoinedChannels({ limit: 1 }).then(res => res.data),
+    queryFn: () => api.getJoinedChannels({ limit: 1, type: 'private' }).then(res => res.data),
     staleTime: 5 * 60 * 1000,
   });
 
