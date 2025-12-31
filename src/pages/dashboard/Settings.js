@@ -197,7 +197,7 @@ const ProfileSettings = ({ user }) => {
 
 // --- Notification Settings Component ---
 const NotificationSettings = () => {
-  const { permission, requestPermission, showNotification } = useBrowserNotification();
+  const { permission, enabled, toggleEnabled, showNotification } = useBrowserNotification();
   const [soundEnabled, setSoundEnabled] = useState(true);
   const toast = useToast();
 
@@ -208,23 +208,31 @@ const NotificationSettings = () => {
     }
   }, []);
 
-  const handleBrowserNotificationChange = async (e) => {
-    if (e.target.checked) {
-      const perm = await requestPermission();
-      if (perm !== 'granted') {
-        toast({
-          title: 'İzin verilmedi',
-          description: 'Tarayıcı ayarlarından bildirimlere izin vermelisiniz.',
-          status: 'warning',
-          position: 'top',
-        });
-      } else {
+  const handleBrowserNotificationChange = async () => {
+    const result = await toggleEnabled();
+    if (result) {
+      // enabled state might not be updated yet in this scope, so we invert the current enabled value for the message
+      const newState = !enabled;
+      if (newState) {
         toast({
           title: 'Bildirimler aktif',
           status: 'success',
           position: 'top',
         });
+      } else {
+        toast({
+          title: 'Bildirimler kapatıldı',
+          status: 'info',
+          position: 'top',
+        });
       }
+    } else {
+      toast({
+        title: 'İzin verilmedi',
+        description: 'Tarayıcı ayarlarından bildirimlere izin vermelisiniz.',
+        status: 'warning',
+        position: 'top',
+      });
     }
   };
 
@@ -240,9 +248,18 @@ const NotificationSettings = () => {
       playNotificationSound();
     }
     
+    if (!enabled && permission === 'granted') {
+         toast({
+            title: 'Bildirimler kapalı',
+            description: 'Test etmek için önce bildirimleri açmalısınız.',
+            status: 'warning',
+            position: 'top',
+          });
+          return;
+    }
+    
     // Görsel test
-    const perm = await requestPermission();
-    if (perm === 'granted') {
+    if (permission === 'granted') {
       showNotification('Test Bildirimi', {
         body: 'Bu bir test bildirimidir. Bildirimler ve ses çalışıyor.',
         tag: 'test-notification'
@@ -255,12 +272,21 @@ const NotificationSettings = () => {
         position: 'top',
       });
     } else {
-      toast({
-        title: 'Bildirim izni yok',
-        description: 'Tarayıcı ayarlarından bildirimlere izin vermelisiniz.',
-        status: 'warning',
-        position: 'top',
-      });
+       // showNotification will try to request permission if not denied, but here we can show a toast if denied
+       if (permission === 'denied') {
+          toast({
+            title: 'Bildirim izni yok',
+            description: 'Tarayıcı ayarlarından bildirimlere izin vermelisiniz.',
+            status: 'warning',
+            position: 'top',
+          });
+       } else {
+          // try to show notification which will request permission
+           showNotification('Test Bildirimi', {
+            body: 'Bu bir test bildirimidir. Bildirimler ve ses çalışıyor.',
+            tag: 'test-notification'
+          });
+       }
     }
   };
 
@@ -275,9 +301,9 @@ const NotificationSettings = () => {
               <Text fontSize="sm" color="gray.500">Yeni mesaj geldiğinde masaüstü bildirimi göster</Text>
             </VStack>
             <Switch
-              isChecked={permission === 'granted'}
+              isChecked={enabled && permission === 'granted'}
               onChange={handleBrowserNotificationChange}
-              isDisabled={permission === 'denied'}
+              isDisabled={permission === 'denied' && !enabled}
             />
           </HStack>
           

@@ -2,6 +2,10 @@ import { useState, useEffect, useCallback } from 'react';
 
 const useBrowserNotification = () => {
   const [permission, setPermission] = useState(Notification.permission);
+  const [enabled, setEnabled] = useState(() => {
+    const saved = localStorage.getItem('browser_notifications_enabled');
+    return saved !== null ? JSON.parse(saved) : true;
+  });
 
   useEffect(() => {
     if (Notification.permission !== 'granted' && Notification.permission !== 'denied') {
@@ -17,10 +21,30 @@ const useBrowserNotification = () => {
     return perm;
   }, []);
 
+  const toggleEnabled = useCallback(async () => {
+    const newState = !enabled;
+    if (newState && permission !== 'granted') {
+      const perm = await requestPermission();
+      if (perm === 'granted') {
+        setEnabled(true);
+        localStorage.setItem('browser_notifications_enabled', 'true');
+        return true;
+      } else {
+        return false;
+      }
+    } else {
+      setEnabled(newState);
+      localStorage.setItem('browser_notifications_enabled', JSON.stringify(newState));
+      return true;
+    }
+  }, [enabled, permission, requestPermission]);
+
   const showNotification = useCallback((title, options = {}) => {
+    if (!enabled) return;
+
     if (permission === 'granted') {
       const notification = new Notification(title, {
-        icon: '/logo192.png', // Varsayılan ikon, gerekirse değiştirilebilir
+        icon: '/logo192.png',
         badge: '/logo192.png',
         ...options,
       });
@@ -41,10 +65,12 @@ const useBrowserNotification = () => {
         }
       });
     }
-  }, [permission, requestPermission]);
+  }, [permission, enabled, requestPermission]);
 
   return {
     permission,
+    enabled,
+    toggleEnabled,
     requestPermission,
     showNotification,
   };
