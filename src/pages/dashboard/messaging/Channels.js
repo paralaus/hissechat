@@ -201,6 +201,8 @@ const SORT_OPTIONS = {
   RECENT_MESSAGE: 'recent_message',
   NAME_ASC: 'name_asc',
   NAME_DESC: 'name_desc',
+  RISING: 'rising',
+  FALLING: 'falling',
 };
 
 const PAGE_SIZE = 50;
@@ -256,6 +258,32 @@ const Channels = () => {
     queryFn: () => api.getJoinedChannels({ limit: 1, type: 'private' }).then(res => res.data),
     staleTime: 5 * 60 * 1000,
   });
+
+  // Calculate Rate Map (Change Percentage)
+  const rateMap = useMemo(() => {
+    const map = {};
+    
+    const addToMap = (items, isFund = false) => {
+      if (!items) return;
+      items.forEach(item => {
+        if (item.code) {
+          // For funds use dailyReturn, for markets use rate
+          const rate = isFund ? item.dailyReturn : item.rate;
+          if (rate !== undefined && rate !== null) {
+            map[item.code] = rate;
+          }
+        }
+      });
+    };
+
+    addToMap(stockMarketsData);
+    addToMap(viopMarketsData);
+    addToMap(commodityMarketsData);
+    addToMap(cryptoMarketsData);
+    addToMap(fundsData, true);
+
+    return map;
+  }, [stockMarketsData, viopMarketsData, commodityMarketsData, cryptoMarketsData, fundsData]);
 
   // Fetch active products for prices
   const {data: productsData} = useQuery({
@@ -722,6 +750,22 @@ const Channels = () => {
         case SORT_OPTIONS.NAME_DESC:
           // Sort by name Z-A
           return (b.name || '').localeCompare(a.name || '', 'tr');
+
+        case SORT_OPTIONS.RISING:
+          // Sort by rate descending (Highest first)
+          const codeA1 = a.marketCode || a.fundCode;
+          const codeB1 = b.marketCode || b.fundCode;
+          const rateA1 = codeA1 ? (rateMap[codeA1] || 0) : -999999;
+          const rateB1 = codeB1 ? (rateMap[codeB1] || 0) : -999999;
+          return rateB1 - rateA1;
+
+        case SORT_OPTIONS.FALLING:
+          // Sort by rate ascending (Lowest first)
+          const codeA2 = a.marketCode || a.fundCode;
+          const codeB2 = b.marketCode || b.fundCode;
+          const rateA2 = codeA2 ? (rateMap[codeA2] || 0) : 999999;
+          const rateB2 = codeB2 ? (rateMap[codeB2] || 0) : 999999;
+          return rateA2 - rateB2;
           
         default:
           return 0;
@@ -822,6 +866,8 @@ const Channels = () => {
             <option value={SORT_OPTIONS.RECENT_MESSAGE}>🕐 En Son Mesaj</option>
             <option value={SORT_OPTIONS.NAME_ASC}>🔤 İsim (A-Z)</option>
             <option value={SORT_OPTIONS.NAME_DESC}>🔤 İsim (Z-A)</option>
+            <option value={SORT_OPTIONS.RISING}>📈 Yükselenler</option>
+            <option value={SORT_OPTIONS.FALLING}>📉 Düşenler</option>
           </Select>
         </HStack>
       </HStack>
