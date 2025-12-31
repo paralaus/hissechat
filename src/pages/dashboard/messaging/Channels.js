@@ -47,6 +47,8 @@ const ChannelItem = ({channel, onClick, currentUserId, price}) => {
     }
   }
 
+  const displayPrice = price || channel.subscribeText;
+
   return (
     <Box
       onClick={onClick}
@@ -96,9 +98,9 @@ const ChannelItem = ({channel, onClick, currentUserId, price}) => {
               <Text fontSize="xs" color="gray.400">
                 {lastMessageTime}
               </Text>
-              {price && (
-                <Badge colorScheme="green" variant="subtle" fontSize="xs">
-                  {price}
+              {displayPrice && (
+                <Badge colorScheme="green" variant="solid" fontSize="xs" borderRadius="md" px="2">
+                  {displayPrice}
                 </Badge>
               )}
               {channel.messageCount > 0 && (
@@ -243,10 +245,10 @@ const Channels = () => {
   });
 
   // Fetch active products for prices
-  const { data: productsData } = useQuery({
-    queryKey: ['active-products-messaging'],
-    queryFn: () => api.getProducts({ isActive: true, limit: 1000 }).then(res => res.data),
-    staleTime: 10 * 60 * 1000,
+  const {data: productsData} = useQuery({
+    queryKey: ['products'],
+    queryFn: () => api.getProducts({limit: 1000}), // Fetch all products
+    select: (res) => res.data,
   });
 
   const channelPriceMap = useMemo(() => {
@@ -257,11 +259,11 @@ const Channels = () => {
           const channelId = typeof product.channel === 'string' 
             ? product.channel 
             : (product.channel.id || product.channel._id);
-          // Prefer subscribeText as it contains formatted price/duration usually
+          
           if (product.subscribeText) {
              map[channelId] = product.subscribeText;
           } else if (product.price) {
-             map[channelId] = `${product.price} TL`; // Fallback if simple price field exists
+             map[channelId] = `${product.price} TL`;
           }
         }
       });
