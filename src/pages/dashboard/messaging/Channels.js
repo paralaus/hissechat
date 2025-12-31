@@ -23,7 +23,7 @@ import {
 import {useInfiniteQuery, useQuery} from '@tanstack/react-query';
 import {api} from '../../../api';
 import {Page} from '../../../components';
-import {FiSearch, FiMessageCircle, FiTrendingUp, FiStar, FiFilter, FiChevronDown, FiPieChart, FiActivity, FiCpu, FiUser} from 'react-icons/fi';
+import {FiSearch, FiMessageCircle, FiTrendingUp, FiStar, FiFilter, FiChevronDown, FiPieChart, FiActivity, FiCpu, FiUser, FiLayers} from 'react-icons/fi';
 import {getCombinedLogoUrl} from '../../../utils/image';
 import {formatDistanceToNow} from 'date-fns';
 import {tr} from 'date-fns/locale';
@@ -227,6 +227,12 @@ const Channels = () => {
     staleTime: 5 * 60 * 1000,
   });
 
+  const { data: commodityCountData } = useQuery({
+    queryKey: ['commodity-markets-count'],
+    queryFn: () => api.getMarkets({ type: 'commodity', limit: 1 }).then(res => res.data),
+    staleTime: 5 * 60 * 1000,
+  });
+
   const { data: cryptoCountData } = useQuery({
     queryKey: ['crypto-markets-count'],
     queryFn: () => api.getMarkets({ type: 'crypto', limit: 1 }).then(res => res.data),
@@ -311,6 +317,28 @@ const Channels = () => {
     queryKey: ['viop-markets'],
     queryFn: async ({ pageParam = 1 }) => {
       const res = await api.getMarkets({ type: 'viop', limit: PAGE_SIZE, page: pageParam });
+      return res.data;
+    },
+    getNextPageParam: (lastPage) => {
+      if (lastPage.page < lastPage.totalPages) {
+        return lastPage.page + 1;
+      }
+      return undefined;
+    },
+    initialPageParam: 1,
+    enabled: true,
+  });
+
+  const {
+    data: commodityPages,
+    isLoading: isLoadingCommodity,
+    fetchNextPage: fetchNextCommodity,
+    hasNextPage: hasNextCommodity,
+    isFetchingNextPage: isFetchingNextCommodity,
+  } = useInfiniteQuery({
+    queryKey: ['commodity-markets'],
+    queryFn: async ({ pageParam = 1 }) => {
+      const res = await api.getMarkets({ type: 'commodity', limit: PAGE_SIZE, page: pageParam });
       return res.data;
     },
     getNextPageParam: (lastPage) => {
@@ -429,6 +457,11 @@ const Channels = () => {
     return viopPages.pages.flatMap(page => page.results || []);
   }, [viopPages]);
 
+  const commodityMarketsData = React.useMemo(() => {
+    if (!commodityPages?.pages) return [];
+    return commodityPages.pages.flatMap(page => page.results || []);
+  }, [commodityPages]);
+
   const cryptoMarketsData = React.useMemo(() => {
     if (!cryptoPages?.pages) return [];
     return cryptoPages.pages.flatMap(page => page.results || []);
@@ -483,6 +516,7 @@ const Channels = () => {
 
     addToMap(stockMarketsData);
     addToMap(viopMarketsData);
+    addToMap(commodityMarketsData);
     addToMap(fundsData);
     
     // Crypto might need special handling if it's USD
@@ -499,10 +533,10 @@ const Channels = () => {
            map[item.code] = `$${formattedPrice}`;
         }
       });
-    }
+          }
 
-    return map;
-  }, [stockMarketsData, cryptoMarketsData, viopMarketsData, fundsData]);
+          return map;
+        }, [stockMarketsData, cryptoMarketsData, viopMarketsData, commodityMarketsData, fundsData]);
 
   // Merge VİOP markets with existing channels
   const mergedViopChannels = React.useMemo(() => {
@@ -522,7 +556,25 @@ const Channels = () => {
         isVirtual: true, // Flag to indicate this needs initiation
       };
     });
-  }, [viopMarketsData, allChannelsData]);
+  }, [stockMarketsData, allChannelsData]);
+
+  const mergedCommodityChannels = React.useMemo(() => {
+    return commodityMarketsData.map(market => {
+      const existingChannel = allChannelsData.find(c => c.marketCode === market.code);
+      if (existingChannel) return existingChannel;
+      return {
+        id: null,
+        name: market.name,
+        marketCode: market.code,
+        type: 'market',
+        thumbnail: market.logo || null,
+        lastMessage: 'Kanalı başlatmak için tıklayın',
+        lastMessageAt: null,
+        messageCount: 0,
+        isVirtual: true,
+      };
+    });
+  }, [commodityMarketsData, allChannelsData]);
 
   const mergedCryptoChannels = React.useMemo(() => {
     return cryptoMarketsData.map(market => {
@@ -583,6 +635,7 @@ const Channels = () => {
   // Get total counts (Prioritize count queries, fall back to list queries if active)
   const totalVipChannels = vipCountData?.totalResults || vipChannelsPages?.pages?.[0]?.totalResults || 0;
   const totalViopResults = viopCountData?.totalResults || viopPages?.pages?.[0]?.totalResults || 0;
+  const totalCommodityResults = commodityCountData?.totalResults || commodityPages?.pages?.[0]?.totalResults || 0;
   const totalCryptoResults = cryptoCountData?.totalResults || cryptoPages?.pages?.[0]?.totalResults || 0;
   const totalStockResults = stockCountData?.totalResults || stockPages?.pages?.[0]?.totalResults || 0;
   const totalFundResults = fundCountData?.total || fundPages?.pages?.[0]?.total || 0; // funds usually use 'total' instead of 'totalResults' in some APIs, checking usage
@@ -594,6 +647,7 @@ const Channels = () => {
     (totalStockResults || 0) +
     (totalCryptoResults || 0) +
     (totalViopResults || 0) +
+    (totalCommodityResults || 0) +
     (totalFundResults || 0) +
     (totalVipChannels || 0);
 
@@ -679,6 +733,7 @@ const Channels = () => {
   const stockChannels = filterAndSortChannels(mergedStockChannels);
   const cryptoChannels = filterAndSortChannels(mergedCryptoChannels);
   const viopChannels = filterAndSortChannels(mergedViopChannels); // Use merged list
+  const commodityChannels = filterAndSortChannels(mergedCommodityChannels); // Use merged list
   const fundChannels = filterAndSortChannels(mergedFundChannels); // Use merged list
   const vipChannels = filterAndSortChannels(vipChannelsData);
   const privateChannels = filterAndSortChannels(privateChannelsData);
@@ -705,10 +760,11 @@ const Channels = () => {
     (allChannelsData || []).forEach(add);
     // We can still try to add others if they exist (e.g. if we cached them), but primarily this will be allChannelsData
     (mergedViopChannels || []).forEach(add);
+    (mergedCommodityChannels || []).forEach(add);
     (mergedFundChannels || []).forEach(add);
     (mergedCryptoChannels || []).forEach(add);
     return Array.from(map.values());
-  }, [allChannelsData, mergedViopChannels, mergedFundChannels, mergedCryptoChannels]);
+  }, [allChannelsData, mergedViopChannels, mergedFundChannels, mergedCryptoChannels, mergedCommodityChannels]);
   const allFiltered = filterAndSortChannels(allCombined);
 
   // Optimized for Tab 0: only track all-channels query
@@ -793,6 +849,12 @@ const Channels = () => {
             </Tab>
             <Tab>
               <HStack spacing="2">
+                <Icon as={FiLayers} />
+                <Text>Emtia ({totalCommodityResults || mergedCommodityChannels?.length || 0})</Text>
+              </HStack>
+            </Tab>
+            <Tab>
+              <HStack spacing="2">
                 <Icon as={FiPieChart} />
                 <Text>Fonlar ({totalFundResults || fundChannels?.length || 0})</Text>
               </HStack>
@@ -871,6 +933,22 @@ const Channels = () => {
                 isFetchingNextPage={isFetchingNextViop}
                 onLoadMore={fetchNextViop}
                 totalCount={totalViopResults}
+                currentUserId={currentUserId}
+                priceMap={priceMap}
+              />
+            </TabPanel>
+
+            {/* Commodity Channels */}
+            <TabPanel p="0">
+              <ChannelList
+                channels={commodityChannels}
+                isLoading={isLoadingCommodity}
+                onChannelClick={handleChannelClick}
+                emptyMessage="Emtia kanalı bulunamadı"
+                hasNextPage={hasNextCommodity}
+                isFetchingNextPage={isFetchingNextCommodity}
+                onLoadMore={fetchNextCommodity}
+                totalCount={totalCommodityResults}
                 currentUserId={currentUserId}
                 priceMap={priceMap}
               />
