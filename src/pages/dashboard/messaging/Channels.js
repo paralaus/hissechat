@@ -23,15 +23,28 @@ import {
 import {useInfiniteQuery, useQuery} from '@tanstack/react-query';
 import {api} from '../../../api';
 import {Page} from '../../../components';
-import {FiSearch, FiMessageCircle, FiTrendingUp, FiStar, FiFilter, FiChevronDown, FiPieChart, FiActivity, FiCpu} from 'react-icons/fi';
+import {FiSearch, FiMessageCircle, FiTrendingUp, FiStar, FiFilter, FiChevronDown, FiPieChart, FiActivity, FiCpu, FiUser} from 'react-icons/fi';
 import {getCombinedLogoUrl} from '../../../utils/image';
 import {formatDistanceToNow} from 'date-fns';
 import {tr} from 'date-fns/locale';
 
-const ChannelItem = ({channel, onClick}) => {
+const ChannelItem = ({channel, onClick, currentUserId}) => {
   const lastMessageTime = channel.lastMessageAt 
     ? formatDistanceToNow(new Date(channel.lastMessageAt), {addSuffix: true, locale: tr})
     : '';
+
+  let channelName = channel.name;
+  let channelThumbnail = channel.thumbnail;
+
+  if (channel.type === 'private' && currentUserId) {
+    if ((channel.privateUser1?.id || channel.privateUser1?._id) === currentUserId) {
+      channelName = channel.privateUser2?.fullname || 'Bilinmeyen Kullanıcı';
+      channelThumbnail = channel.privateUser2?.thumbnail;
+    } else if ((channel.privateUser2?.id || channel.privateUser2?._id) === currentUserId) {
+      channelName = channel.privateUser1?.fullname || 'Bilinmeyen Kullanıcı';
+      channelThumbnail = channel.privateUser1?.thumbnail;
+    }
+  }
 
   return (
     <Box
@@ -48,27 +61,30 @@ const ChannelItem = ({channel, onClick}) => {
         boxShadow: 'md',
       }}
       borderLeft="4px solid"
-      borderLeftColor={channel.type === 'vip' ? 'purple.400' : channel.type === 'market' ? 'green.400' : 'blue.400'}
+      borderLeftColor={channel.type === 'vip' ? 'purple.400' : channel.type === 'market' ? 'green.400' : channel.type === 'private' ? 'pink.400' : 'blue.400'}
     >
       <HStack spacing="4">
         <Avatar
           size="md"
-          name={channel.name}
-          src={getCombinedLogoUrl(channel.thumbnail)}
-          bg={channel.type === 'vip' ? 'purple.100' : channel.type === 'market' ? 'green.100' : 'blue.100'}
+          name={channelName}
+          src={getCombinedLogoUrl(channelThumbnail)}
+          bg={channel.type === 'vip' ? 'purple.100' : channel.type === 'market' ? 'green.100' : channel.type === 'private' ? 'pink.100' : 'blue.100'}
         />
         <Box flex="1" minW="0">
           <HStack justify="space-between" align="start">
             <VStack align="start" spacing="0" flex="1" minW="0">
               <HStack>
                 <Text fontWeight="600" fontSize="sm" noOfLines={1}>
-                  {channel.name}
+                  {channelName}
                 </Text>
                 {channel.type === 'vip' && (
                   <Badge colorScheme="purple" size="sm">VIP</Badge>
                 )}
                 {channel.type === 'market' && (
                   <Badge colorScheme="green" size="sm">Market</Badge>
+                )}
+                {channel.type === 'private' && (
+                  <Badge colorScheme="pink" size="sm">Kişisel</Badge>
                 )}
               </HStack>
               <Text fontSize="xs" color="gray.500" noOfLines={1}>
@@ -101,6 +117,7 @@ const ChannelList = ({
   isFetchingNextPage,
   onLoadMore,
   totalCount,
+  currentUserId,
 }) => {
   if (isLoading) {
     return (
@@ -134,6 +151,7 @@ const ChannelList = ({
           key={channel.id}
           channel={channel}
           onClick={() => onChannelClick(channel)}
+          currentUserId={currentUserId}
         />
       ))}
 
@@ -182,6 +200,21 @@ const Channels = () => {
   const [sortBy, setSortBy] = useState(SORT_OPTIONS.MOST_MESSAGES);
   const [tabIndex, setTabIndex] = useState(0);
 
+  // Get current user ID
+  const getCurrentUserId = () => {
+    try {
+      const userData = localStorage.getItem('user');
+      if (userData) {
+        const user = JSON.parse(userData);
+        return user.id;
+      }
+    } catch (e) {
+      console.error('Error getting user ID:', e);
+    }
+    return null;
+  };
+  const currentUserId = getCurrentUserId();
+
   // Counts for Tabs (Fetched separately to be always visible)
   const { data: vipCountData } = useQuery({
     queryKey: ['vip-channels-count'],
@@ -210,6 +243,12 @@ const Channels = () => {
   const { data: fundCountData } = useQuery({
     queryKey: ['funds-count'],
     queryFn: () => api.getFunds({ limit: 1 }).then(res => res.data),
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const { data: privateCountData } = useQuery({
+    queryKey: ['private-channels-count'],
+    queryFn: () => api.getJoinedChannels({ limit: 1 }).then(res => res.data),
     staleTime: 5 * 60 * 1000,
   });
 
@@ -349,6 +388,29 @@ const Channels = () => {
     enabled: tabIndex === 4,
   });
 
+  // Fetch Private Channels
+  const {
+    data: privateChannelsPages,
+    isLoading: isLoadingPrivate,
+    fetchNextPage: fetchNextPrivate,
+    hasNextPage: hasNextPrivate,
+    isFetchingNextPage: isFetchingNextPrivate,
+  } = useInfiniteQuery({
+    queryKey: ['private-channels-messaging'],
+    queryFn: async ({ pageParam = 1 }) => {
+      const res = await api.getJoinedChannels({ limit: PAGE_SIZE, page: pageParam, filter: 'friends' });
+      return res.data;
+    },
+    getNextPageParam: (lastPage) => {
+      if (lastPage.page < lastPage.totalPages) {
+        return lastPage.page + 1;
+      }
+      return undefined;
+    },
+    initialPageParam: 1,
+    enabled: tabIndex === 6,
+  });
+
   // Flatten paginated data
   const allChannelsData = React.useMemo(() => {
     if (!allChannelsPages?.pages) return [];
@@ -379,6 +441,11 @@ const Channels = () => {
     if (!fundPages?.pages) return [];
     return fundPages.pages.flatMap(page => page.results || []);
   }, [fundPages]);
+
+  const privateChannelsData = React.useMemo(() => {
+    if (!privateChannelsPages?.pages) return [];
+    return privateChannelsPages.pages.flatMap(page => page.results || []).filter(c => c.type === 'private');
+  }, [privateChannelsPages]);
 
   // Merge VİOP markets with existing channels
   const mergedViopChannels = React.useMemo(() => {
@@ -557,6 +624,7 @@ const Channels = () => {
   const viopChannels = filterAndSortChannels(mergedViopChannels); // Use merged list
   const fundChannels = filterAndSortChannels(mergedFundChannels); // Use merged list
   const vipChannels = filterAndSortChannels(vipChannelsData);
+  const privateChannels = filterAndSortChannels(privateChannelsData);
   const otherChannels = filterAndSortChannels(allChannelsData?.filter(c => c.type !== 'market' && c.type !== 'vip' && c.type !== 'fund'));
   const allCombined = React.useMemo(() => {
     // When on Tab 0 (All), we only want to show active channels to avoid performance issues
@@ -678,6 +746,12 @@ const Channels = () => {
                 <Text>VIP ({totalVipChannels || vipChannels?.length || 0})</Text>
               </HStack>
             </Tab>
+            <Tab>
+              <HStack spacing="2">
+                <Icon as={FiUser} />
+                <Text>Kişisel ({privateChannels?.length || 0})</Text>
+              </HStack>
+            </Tab>
           </TabList>
 
           <TabPanels>
@@ -692,6 +766,7 @@ const Channels = () => {
                 isFetchingNextPage={isFetchingNextAllCombined}
                 onLoadMore={fetchNextAllCombined}
                 totalCount={totalAllCombinedCount}
+                currentUserId={currentUserId}
               />
             </TabPanel>
 
@@ -706,6 +781,7 @@ const Channels = () => {
                 isFetchingNextPage={isFetchingNextStock}
                 onLoadMore={fetchNextStock}
                 totalCount={totalStockResults}
+                currentUserId={currentUserId}
               />
             </TabPanel>
 
@@ -720,6 +796,7 @@ const Channels = () => {
                 isFetchingNextPage={isFetchingNextCrypto}
                 onLoadMore={fetchNextCrypto}
                 totalCount={totalCryptoResults}
+                currentUserId={currentUserId}
               />
             </TabPanel>
 
@@ -734,6 +811,7 @@ const Channels = () => {
                 isFetchingNextPage={isFetchingNextViop}
                 onLoadMore={fetchNextViop}
                 totalCount={totalViopResults}
+                currentUserId={currentUserId}
               />
             </TabPanel>
 
@@ -748,6 +826,7 @@ const Channels = () => {
                 isFetchingNextPage={isFetchingNextFunds}
                 onLoadMore={fetchNextFunds}
                 totalCount={totalFundResults}
+                currentUserId={currentUserId}
               />
             </TabPanel>
 
@@ -762,6 +841,22 @@ const Channels = () => {
                 isFetchingNextPage={isFetchingNextVipChannels}
                 onLoadMore={fetchNextVipChannels}
                 totalCount={totalVipChannels}
+                currentUserId={currentUserId}
+              />
+            </TabPanel>
+
+            {/* Private Channels */}
+            <TabPanel p="0">
+              <ChannelList
+                channels={privateChannels}
+                isLoading={isLoadingPrivate}
+                onChannelClick={handleChannelClick}
+                emptyMessage="Kişisel mesaj bulunamadı"
+                hasNextPage={hasNextPrivate}
+                isFetchingNextPage={isFetchingNextPrivate}
+                onLoadMore={fetchNextPrivate}
+                totalCount={privateChannels?.length}
+                currentUserId={currentUserId}
               />
             </TabPanel>
           </TabPanels>

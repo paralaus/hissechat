@@ -3228,6 +3228,20 @@ const ChannelChat = () => {
     );
   }
 
+  const isPrivate = channel?.type === 'private';
+  let displayName = channel?.name;
+  let displayImage = channel?.thumbnail;
+
+  if (isPrivate && currentUserId) {
+    if ((channel.privateUser1?.id || channel.privateUser1?._id) === currentUserId) {
+      displayName = channel.privateUser2?.fullname || 'Bilinmeyen Kullanıcı';
+      displayImage = channel.privateUser2?.thumbnail;
+    } else if ((channel.privateUser2?.id || channel.privateUser2?._id) === currentUserId) {
+      displayName = channel.privateUser1?.fullname || 'Bilinmeyen Kullanıcı';
+      displayImage = channel.privateUser1?.thumbnail;
+    }
+  }
+
   return (
     <Page>
       {/* Header */}
@@ -3248,17 +3262,21 @@ const ChannelChat = () => {
             />
             <Avatar
               size="md"
-              name={channel?.name}
-              src={getCombinedLogoUrl(channel?.thumbnail)}
+              name={displayName}
+              src={getCombinedLogoUrl(displayImage)}
             />
             <VStack align="start" spacing="0">
-              <Text fontWeight="600">{channel?.name}</Text>
+              <Text fontWeight="600">{displayName}</Text>
               <Text fontSize="xs" color="gray.500">
-                {channel?.type === 'vip' ? 'VIP Kanal' : channel?.type === 'market' ? 'Piyasa Kanalı' : 'Kanal'}
-                {' • '}
-                {channel?.messageCount || 0} mesaj
-                {' • '}
-                {channel?.memberCount || channel?.members?.length || 0} üye
+                {isPrivate ? 'Kişisel Sohbet' : channel?.type === 'vip' ? 'VIP Kanal' : channel?.type === 'market' ? 'Piyasa Kanalı' : 'Kanal'}
+                {!isPrivate && (
+                  <>
+                    {' • '}
+                    {channel?.messageCount || 0} mesaj
+                    {' • '}
+                    {channel?.memberCount || channel?.members?.length || 0} üye
+                  </>
+                )}
               </Text>
             </VStack>
           </HStack>

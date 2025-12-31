@@ -307,6 +307,10 @@ export const getChannelsOfUser = async (id, params) => {
   return apiClient.get(`/users/${id}/channels`, {params});
 };
 
+export const getJoinedChannels = async (params) => {
+  return apiClient.get('/channels/joined', {params});
+};
+
 export const kickOutFromChannel = async (userId, channelId) => {
   return apiClient.post(`/channels/${channelId}/kick-out/${userId}`);
 };
