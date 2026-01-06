@@ -43,7 +43,7 @@ const FriendItem = ({ friend, currentUserId, onMessage, onRemove, isRemoving }) 
         </Avatar>
         <VStack align="start" spacing="0">
           <Text fontWeight="600">{otherUser.fullname}</Text>
-          <Text fontSize="sm" color="gray.500">@{otherUser.username || otherUser.email.split('@')[0]}</Text>
+          <Text fontSize="sm" color="gray.500">@{otherUser.username || otherUser.email?.split('@')[0] || 'Bilinmiyor'}</Text>
         </VStack>
       </HStack>
       <HStack spacing="2">
@@ -139,7 +139,7 @@ const UserSearchItem = ({ user, onAdd, isAdding, friendshipStatus }) => {
         <Avatar name={user.fullname} src={user.thumbnail} size="sm" />
         <VStack align="start" spacing="0">
           <Text fontWeight="600" fontSize="sm">{user.fullname}</Text>
-          <Text fontSize="xs" color="gray.500">@{user.username || user.email.split('@')[0]}</Text>
+          <Text fontSize="xs" color="gray.500">@{user.username || user.email?.split('@')[0] || 'Bilinmiyor'}</Text>
         </VStack>
       </HStack>
       
