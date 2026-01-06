@@ -201,6 +201,11 @@ export const createProduct = async body => {
   return apiClient.post('/products', body);
 };
 
+// Friend APIs
+export const initiatePrivateChannel = async (userId) => {
+  return apiClient.post(`/channels/initiate/private`, { userId });
+};
+
 export const getProducts = async params => {
   return apiClient.get('/products', {params});
 };

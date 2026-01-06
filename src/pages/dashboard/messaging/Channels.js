@@ -1,5 +1,5 @@
-import React, {useState, useMemo} from 'react';
-import {useNavigate} from 'react-router-dom';
+import React, {useState, useMemo, useEffect} from 'react';
+import {useNavigate, useLocation} from 'react-router-dom';
 import {
   Box,
   VStack,
@@ -23,11 +23,12 @@ import {
 import {useInfiniteQuery, useQuery} from '@tanstack/react-query';
 import {api} from '../../../api';
 import {Page} from '../../../components';
-import {FiSearch, FiMessageCircle, FiTrendingUp, FiStar, FiFilter, FiChevronDown, FiPieChart, FiActivity, FiCpu, FiUser, FiLayers} from 'react-icons/fi';
+import {FiSearch, FiMessageCircle, FiTrendingUp, FiStar, FiFilter, FiChevronDown, FiPieChart, FiActivity, FiCpu, FiUser, FiLayers, FiUsers} from 'react-icons/fi';
 import {getCombinedLogoUrl} from '../../../utils/image';
 import {formatDistanceToNow} from 'date-fns';
 import {tr} from 'date-fns/locale';
 import {useUserStore} from '../../../store';
+import FriendManager from './FriendManager';
 
 const ChannelItem = ({channel, onClick, currentUserId, priceMap}) => {
   const lastMessageTime = channel.lastMessageAt 
@@ -209,9 +210,16 @@ const PAGE_SIZE = 50;
 
 const Channels = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState(SORT_OPTIONS.MOST_MESSAGES);
-  const [tabIndex, setTabIndex] = useState(0);
+  const [tabIndex, setTabIndex] = useState(location.state?.initialTabIndex || 0);
+
+  useEffect(() => {
+    if (location.state?.initialTabIndex !== undefined) {
+      setTabIndex(location.state.initialTabIndex);
+    }
+  }, [location.state]);
 
   const user = useUserStore((state) => state.user);
   const currentUserId = user?.id;
@@ -924,6 +932,12 @@ const Channels = () => {
                 <Text>Kişisel ({totalPrivateResults || privateChannels?.length || 0})</Text>
               </HStack>
             </Tab>
+            <Tab>
+              <HStack spacing="2">
+                <Icon as={FiUsers} />
+                <Text>Arkadaşlar</Text>
+              </HStack>
+            </Tab>
           </TabList>
 
           <TabPanels>
@@ -1053,6 +1067,11 @@ const Channels = () => {
                 currentUserId={currentUserId}
                 priceMap={priceMap}
               />
+            </TabPanel>
+
+            {/* Friend Manager */}
+            <TabPanel p="0">
+              <FriendManager currentUserId={currentUserId} navigate={navigate} />
             </TabPanel>
           </TabPanels>
         </Tabs>

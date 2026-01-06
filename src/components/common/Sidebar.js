@@ -369,6 +369,12 @@ const MobileNav = ({ onOpen, ...rest }) => {
     // Determine navigation based on notification data
     // Check both root level and data property
     const data = notification.data || notification;
+
+    // Friend Request
+    if (notification.type === 'friend-request-received' || notification.type === 'friend-request-accepted') {
+      navigate(routes.messagingChannels.path, { state: { initialTabIndex: 8 } });
+      return;
+    }
     
     // Kanal bildirimi için: data.channelId veya notification.channel (ObjectId/Obje)
     let channelId = data.channelId || (notification.channel && (notification.channel._id || notification.channel));
