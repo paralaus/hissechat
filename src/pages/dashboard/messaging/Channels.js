@@ -319,7 +319,7 @@ const Channels = () => {
       return undefined;
     },
     initialPageParam: 1,
-    enabled: tabIndex === 5,
+    enabled: tabIndex === 6,
   });
 
   // Fetch VİOP Markets
@@ -454,7 +454,7 @@ const Channels = () => {
       return undefined;
     },
     initialPageParam: 1,
-    enabled: tabIndex === 6,
+    enabled: tabIndex === 7,
   });
 
   // Flatten paginated data
