@@ -98,6 +98,26 @@ const Conferences = () => {
     refetchInterval: 30000, // Refresh every 30 seconds
   });
 
+  // Helper to extract ID string from various formats
+  const extractIdString = (obj) => {
+    if (!obj) return null;
+    if (typeof obj === 'string') return obj;
+    if (typeof obj === 'object') {
+      if (obj._id) {
+        if (typeof obj._id === 'string') return obj._id;
+        if (obj._id.toString) return obj._id.toString();
+      }
+      if (obj.id) {
+        if (typeof obj.id === 'string') return obj.id;
+        if (obj.id.toString) return obj.id.toString();
+      }
+      if (obj.toString && obj.toString() !== '[object Object]') {
+        return obj.toString();
+      }
+    }
+    return null;
+  };
+
   // Process and filter conferences
   const { conferences, counts } = useMemo(() => {
     const results = conferencesData?.results || [];
@@ -116,9 +136,13 @@ const Conferences = () => {
         status = 'past';
       }
 
+      // Pre-extract channelId as string for navigation
+      const channelIdString = extractIdString(conf.channelId);
+
       return {
         ...conf,
         id: conf._id || conf.id,
+        channelIdString, // Pre-computed string ID for navigation
         status,
         startTime,
         endTime,
@@ -165,14 +189,36 @@ const Conferences = () => {
   // Helper to extract channelId as string
   const getChannelIdString = (channelId) => {
     if (!channelId) return null;
-    // If it's already a string
-    if (typeof channelId === 'string') return channelId;
-    // If it's an object with _id
-    if (channelId._id) return typeof channelId._id === 'string' ? channelId._id : String(channelId._id);
-    // If it's an object with id
-    if (channelId.id) return typeof channelId.id === 'string' ? channelId.id : String(channelId.id);
-    // Try to convert to string
-    return String(channelId);
+    
+    // If it's already a string (24 char hex = MongoDB ObjectId)
+    if (typeof channelId === 'string') {
+      return channelId;
+    }
+    
+    // If it's an object, try various ways to get the ID
+    if (typeof channelId === 'object') {
+      // Try _id first (populated MongoDB document)
+      if (channelId._id) {
+        // _id might be ObjectId or string
+        if (typeof channelId._id === 'string') return channelId._id;
+        if (channelId._id.toString) return channelId._id.toString();
+        return String(channelId._id);
+      }
+      // Try id
+      if (channelId.id) {
+        if (typeof channelId.id === 'string') return channelId.id;
+        if (channelId.id.toString) return channelId.id.toString();
+        return String(channelId.id);
+      }
+      // If object has toString method (like ObjectId)
+      if (channelId.toString && channelId.toString() !== '[object Object]') {
+        return channelId.toString();
+      }
+    }
+    
+    // Last resort - should not reach here ideally
+    console.warn('Unable to extract channelId:', channelId);
+    return null;
   };
 
   const handleJoinConference = (conference) => {
@@ -197,13 +243,19 @@ const Conferences = () => {
     }
 
     // Navigate to channel chat with conference params
-    const channelId = getChannelIdString(conference.channelId);
-    if (channelId && channelId !== '[object Object]') {
+    // Use pre-computed channelIdString or try to extract it
+    const channelId = conference.channelIdString || getChannelIdString(conference.channelId);
+    
+    // Validate channelId is a valid MongoDB ObjectId format (24 hex chars)
+    const isValidId = channelId && typeof channelId === 'string' && /^[a-fA-F0-9]{24}$/.test(channelId);
+    
+    if (isValidId) {
       navigate(`${routes.channelChat.getPath(channelId)}?conference=active&roomId=${conference.roomId}`);
     } else {
+      console.error('Invalid channelId:', channelId, 'from conference:', conference);
       toast({
         title: 'Hata',
-        description: 'Kanal bilgisi bulunamadı.',
+        description: 'Kanal bilgisi bulunamadı veya geçersiz.',
         status: 'error',
         duration: 3000,
       });
