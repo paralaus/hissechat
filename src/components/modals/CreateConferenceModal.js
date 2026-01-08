@@ -63,7 +63,14 @@ const CreateConferenceModal = ({ isOpen, onClose, onCreate, isLoading }) => {
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={handleClose} isCentered size="md">
+    <Modal 
+      isOpen={isOpen} 
+      onClose={handleClose} 
+      isCentered 
+      size="md"
+      closeOnOverlayClick={true}
+      closeOnEsc={true}
+    >
       <ModalOverlay />
       <ModalContent>
         <ModalHeader>Video Görüşme Başlat</ModalHeader>
@@ -132,6 +139,16 @@ const CreateConferenceModal = ({ isOpen, onClose, onCreate, isLoading }) => {
                   </VStack>
                 </HStack>
               </Button>
+
+              {/* Cancel Button */}
+              <Button
+                variant="ghost"
+                colorScheme="gray"
+                onClick={handleClose}
+                mt={2}
+              >
+                İptal
+              </Button>
             </VStack>
           ) : (
             <VStack spacing={4} align="stretch">
@@ -176,19 +193,24 @@ const CreateConferenceModal = ({ isOpen, onClose, onCreate, isLoading }) => {
                 </SimpleGrid>
               </FormControl>
 
-              <HStack justify="flex-end" pt={4} spacing={3}>
-                <Button variant="ghost" onClick={() => setMode('select')}>
-                  Geri
+              <HStack justify="space-between" pt={4}>
+                <Button variant="ghost" colorScheme="gray" onClick={handleClose}>
+                  İptal
                 </Button>
-                <Button 
-                  colorScheme="blue" 
-                  onClick={handleScheduleStart}
-                  isDisabled={!date || !time}
-                  isLoading={isLoading}
-                  leftIcon={<Icon as={FiCalendar} />}
-                >
-                  Planla ve Gönder
-                </Button>
+                <HStack spacing={3}>
+                  <Button variant="outline" onClick={() => setMode('select')}>
+                    Geri
+                  </Button>
+                  <Button 
+                    colorScheme="blue" 
+                    onClick={handleScheduleStart}
+                    isDisabled={!date || !time}
+                    isLoading={isLoading}
+                    leftIcon={<Icon as={FiCalendar} />}
+                  >
+                    Planla ve Gönder
+                  </Button>
+                </HStack>
               </HStack>
             </VStack>
           )}
