@@ -15,17 +15,25 @@ import {
   FormControl,
   FormLabel,
   Icon,
-  Divider,
+  SimpleGrid,
 } from '@chakra-ui/react';
 import { FiVideo, FiCalendar, FiClock } from 'react-icons/fi';
+
+const DURATION_OPTIONS = [
+  { value: 30, label: '30 dk' },
+  { value: 60, label: '1 saat' },
+  { value: 90, label: '1.5 saat' },
+  { value: 120, label: '2 saat' },
+];
 
 const CreateConferenceModal = ({ isOpen, onClose, onCreate, isLoading }) => {
   const [mode, setMode] = useState('select'); // 'select', 'schedule'
   const [date, setDate] = useState('');
   const [time, setTime] = useState('');
+  const [duration, setDuration] = useState(60); // Default 60 minutes
 
   const handleInstantStart = () => {
-    onCreate({ type: 'instant' });
+    onCreate({ type: 'instant', duration });
     onClose();
   };
 
@@ -35,19 +43,22 @@ const CreateConferenceModal = ({ isOpen, onClose, onCreate, isLoading }) => {
     const scheduledDateTime = new Date(`${date}T${time}`);
     onCreate({ 
       type: 'scheduled', 
-      startTime: scheduledDateTime.toISOString() 
+      startTime: scheduledDateTime.toISOString(),
+      duration,
     });
     onClose();
     // Reset state
     setMode('select');
     setDate('');
     setTime('');
+    setDuration(60);
   };
 
   const handleClose = () => {
     setMode('select');
     setDate('');
     setTime('');
+    setDuration(60);
     onClose();
   };
 
@@ -60,6 +71,29 @@ const CreateConferenceModal = ({ isOpen, onClose, onCreate, isLoading }) => {
         <ModalBody pb={6}>
           {mode === 'select' ? (
             <VStack spacing={4} align="stretch">
+              {/* Duration Selection */}
+              <FormControl>
+                <FormLabel>
+                  <HStack spacing={2}>
+                    <Icon as={FiClock} />
+                    <Text>Tahmini Süre</Text>
+                  </HStack>
+                </FormLabel>
+                <SimpleGrid columns={4} spacing={2}>
+                  {DURATION_OPTIONS.map((opt) => (
+                    <Button
+                      key={opt.value}
+                      size="sm"
+                      variant={duration === opt.value ? 'solid' : 'outline'}
+                      colorScheme={duration === opt.value ? 'blue' : 'gray'}
+                      onClick={() => setDuration(opt.value)}
+                    >
+                      {opt.label}
+                    </Button>
+                  ))}
+                </SimpleGrid>
+              </FormControl>
+
               <Button
                 height="80px"
                 colorScheme="green"
@@ -75,7 +109,7 @@ const CreateConferenceModal = ({ isOpen, onClose, onCreate, isLoading }) => {
                   </Box>
                   <VStack align="start" spacing={0}>
                     <Text fontWeight="bold" fontSize="lg">Anında Başlat</Text>
-                    <Text fontSize="sm" fontWeight="normal">Hemen bir görüşme başlatın ve kanala gönderin</Text>
+                    <Text fontSize="sm" fontWeight="normal">Hemen bir görüşme başlatın ({duration} dk)</Text>
                   </VStack>
                 </HStack>
               </Button>
@@ -122,6 +156,24 @@ const CreateConferenceModal = ({ isOpen, onClose, onCreate, isLoading }) => {
                   value={time} 
                   onChange={(e) => setTime(e.target.value)} 
                 />
+              </FormControl>
+
+              {/* Duration Selection for Scheduled */}
+              <FormControl>
+                <FormLabel>Tahmini Süre</FormLabel>
+                <SimpleGrid columns={4} spacing={2}>
+                  {DURATION_OPTIONS.map((opt) => (
+                    <Button
+                      key={opt.value}
+                      size="sm"
+                      variant={duration === opt.value ? 'solid' : 'outline'}
+                      colorScheme={duration === opt.value ? 'blue' : 'gray'}
+                      onClick={() => setDuration(opt.value)}
+                    >
+                      {opt.label}
+                    </Button>
+                  ))}
+                </SimpleGrid>
               </FormControl>
 
               <HStack justify="flex-end" pt={4} spacing={3}>

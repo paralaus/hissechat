@@ -1851,21 +1851,28 @@ const ChannelChat = () => {
       const roomId = `hissechat-${channelId}-${Date.now()}`;
       const conferenceTitle = `${channel?.name || 'Kanal'} Video Görüşmesi`;
       
+      // Get duration from options (default 60 minutes)
+      const durationMinutes = options.duration || 60;
+      const durationMs = durationMinutes * 60 * 1000;
+      
       let startTime = new Date().toISOString();
-      let scheduledEndTime = new Date(Date.now() + 60 * 60 * 1000).toISOString(); // 1 hour later
+      let scheduledEndTime = new Date(Date.now() + durationMs).toISOString();
       
       // Handle scheduled conference
       if (options.type === 'scheduled' && options.startTime) {
         startTime = options.startTime;
-        // End time is 1 hour after start time by default
-        scheduledEndTime = new Date(new Date(startTime).getTime() + 60 * 60 * 1000).toISOString();
+        // End time is duration after start time
+        scheduledEndTime = new Date(new Date(startTime).getTime() + durationMs).toISOString();
       }
       
-      // Create conference in backend
+      // Create conference in backend with proper start/end times
       await api.createConference({
         roomId,
         title: conferenceTitle,
         channelId,
+        startTime,
+        scheduledEndTime,
+        isScheduled: options.type === 'scheduled',
       });
       
       // Send conference message to channel (no text, just conference card)

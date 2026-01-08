@@ -29,10 +29,43 @@ const Home = () => {
     queryFn: () => api.getVipApplications({ status: 'pending', limit: 1, page: 1 }).then(res => res.data),
   });
   
-  const { data: activeConferences } = useQuery({
-    queryKey: ['conferences', 'active', 1],
-    queryFn: () => api.getActiveConferences({ isActive: true, limit: 1, page: 1 }).then(res => res.data),
+  const { data: activeConferencesRaw } = useQuery({
+    queryKey: ['conferences', 'active', 'dashboard'],
+    queryFn: () => api.getActiveConferences({ isActive: true, limit: 100, page: 1 }).then(res => res.data),
+    refetchInterval: 30000, // Refresh every 30 seconds
   });
+
+  // Client-side filtering for truly active conferences
+  // Backend might return conferences where isActive=true but scheduledEndTime has passed
+  const activeConferencesCount = React.useMemo(() => {
+    const results = activeConferencesRaw?.results || [];
+    const now = new Date();
+    const DEFAULT_DURATION_MS = 60 * 60 * 1000; // 60 minutes default
+    const SAFETY_FALLBACK_MS = 24 * 60 * 60 * 1000; // 24 hours
+    
+    const trulyActive = results.filter(conf => {
+      const startTime = new Date(conf.startTime);
+      const endTime = conf.scheduledEndTime ? new Date(conf.scheduledEndTime) : null;
+      const endedAt = conf.endedAt ? new Date(conf.endedAt) : null;
+      
+      // Calculate effective end time
+      const effectiveEndTime = endTime || new Date(startTime.getTime() + DEFAULT_DURATION_MS);
+      
+      // Check if conference has ended
+      const hasEndedExplicitly = endedAt !== null || conf.isActive === false;
+      const hasEndedByTime = effectiveEndTime < now;
+      const hasEndedBySafety = (now - startTime) > SAFETY_FALLBACK_MS;
+      const isFuture = startTime > now;
+      
+      // Conference is truly active if:
+      // - Not ended by any criteria
+      // - Not in the future
+      // - isActive is true
+      return !hasEndedExplicitly && !hasEndedByTime && !hasEndedBySafety && !isFuture && conf.isActive === true;
+    });
+    
+    return trulyActive.length;
+  }, [activeConferencesRaw]);
   
   const { data: flaggedMessages } = useQuery({
     queryKey: ['moderation', 'flagged', 1],
@@ -181,7 +214,7 @@ const Home = () => {
     },
     {
       title: 'Aktif Konferanslar',
-      amount: activeConferences?.totalResults || 0,
+      amount: activeConferencesCount,
       icon: <FiVideo {...iconProps} />,
       path: '/dashboard/conferences',
     },

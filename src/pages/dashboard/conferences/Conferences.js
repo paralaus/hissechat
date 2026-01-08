@@ -125,32 +125,67 @@ const Conferences = () => {
     const processed = results.map(conf => {
       const startTime = new Date(conf.startTime);
       const endTime = conf.scheduledEndTime ? new Date(conf.scheduledEndTime) : null;
+      const endedAt = conf.endedAt ? new Date(conf.endedAt) : null;
       
-      // Determine conference status
+      // Determine conference status with multiple checks
       let status = 'unknown';
       
-      // Check if conference has ended (scheduledEndTime passed OR isActive is false)
-      const hasEnded = (endTime && isBefore(endTime, now)) || conf.isActive === false;
+      // Calculate time differences
+      const hoursSinceStart = differenceInHours(now, startTime);
+      const minutesSinceStart = differenceInMinutes(now, startTime);
       
-      // Check if conference is in the future
+      // Default duration: 60 minutes if scheduledEndTime not set
+      const DEFAULT_DURATION_MINUTES = 60;
+      const SAFETY_FALLBACK_HOURS = 24;
+      
+      // Calculate effective end time
+      // If scheduledEndTime exists, use it; otherwise use startTime + default duration
+      let effectiveEndTime = endTime;
+      if (!effectiveEndTime && startTime) {
+        effectiveEndTime = new Date(startTime.getTime() + DEFAULT_DURATION_MINUTES * 60 * 1000);
+      }
+      
+      // Check if conference has ended based on multiple criteria:
+      // 1. endedAt field exists (explicitly ended by host)
+      // 2. isActive is explicitly false (backend marked as inactive)
+      // 3. scheduledEndTime/effectiveEndTime has passed
+      // 4. Started more than 24 hours ago (safety fallback)
+      const hasEndedExplicitly = endedAt !== null || conf.isActive === false;
+      const hasEndedByTime = effectiveEndTime && isBefore(effectiveEndTime, now);
+      const hasEndedBySafety = hoursSinceStart > SAFETY_FALLBACK_HOURS;
+      const hasEnded = hasEndedExplicitly || hasEndedByTime || hasEndedBySafety;
+      
+      // Check if conference is scheduled for the future
       const isFuture = isAfter(startTime, now);
+      const isScheduledConference = conf.isScheduled === true;
       
+      // Determine final status
       if (hasEnded) {
-        // Conference is finished
+        // Conference is finished (any of the end conditions met)
         status = 'past';
-      } else if (isFuture && !conf.isActive) {
-        // Conference hasn't started yet
+      } else if (isFuture) {
+        // Conference hasn't started yet (startTime is in the future)
         status = 'upcoming';
-      } else if (conf.isActive) {
+      } else if (conf.isActive === true && !hasEnded) {
         // Conference is currently active
         status = 'live';
+      } else if (!conf.isActive && !isFuture && !hasEnded) {
+        // Edge case: Not active, not in future, but also hasn't officially ended
+        // Treat as past to be safe
+        status = 'past';
       } else {
-        // Default to past for any edge cases
+        // Default fallback
         status = 'past';
       }
 
       // Pre-extract channelId as string for navigation
       const channelIdString = extractIdString(conf.channelId);
+
+      // Calculate remaining time for live conferences
+      let remainingMinutes = null;
+      if (status === 'live' && effectiveEndTime) {
+        remainingMinutes = Math.max(0, differenceInMinutes(effectiveEndTime, now));
+      }
 
       return {
         ...conf,
@@ -159,6 +194,8 @@ const Conferences = () => {
         status,
         startTime,
         endTime,
+        effectiveEndTime,
+        remainingMinutes,
         activeParticipants: conf.participants?.filter(p => !p.leftAt)?.length || 0,
       };
     });
@@ -235,12 +272,17 @@ const Conferences = () => {
   };
 
   const handleJoinConference = (conference) => {
-    // Double check: if conference is marked as past or isActive is false
+    // Comprehensive check: if conference has ended
     const now = new Date();
-    const endTime = conference.endTime;
-    const hasEnded = conference.status === 'past' || 
-                     conference.isActive === false || 
-                     (endTime && isBefore(endTime, now));
+    const endTime = conference.effectiveEndTime || conference.endTime;
+    const startTime = conference.startTime;
+    const hoursSinceStart = differenceInHours(now, startTime);
+    
+    // Use same criteria as status determination
+    const hasEndedExplicitly = conference.endedAt || conference.isActive === false;
+    const hasEndedByTime = endTime && isBefore(endTime, now);
+    const hasEndedBySafety = hoursSinceStart > 24;  // Safety: 24+ hours old
+    const hasEnded = conference.status === 'past' || hasEndedExplicitly || hasEndedByTime || hasEndedBySafety;
     
     if (hasEnded) {
       toast({
@@ -296,16 +338,41 @@ const Conferences = () => {
   const getTimeDisplay = (conference) => {
     const now = new Date();
     const startTime = conference.startTime;
+    const effectiveEndTime = conference.effectiveEndTime;
 
     if (conference.status === 'live') {
-      const mins = differenceInMinutes(now, startTime);
-      if (mins < 1) return 'Az önce başladı';
-      if (mins < 60) return `${mins} dk önce başladı`;
-      const hours = differenceInHours(now, startTime);
-      const remainingMins = mins % 60;
-      return remainingMins > 0 
-        ? `${hours} saat ${remainingMins} dk önce başladı`
-        : `${hours} saat önce başladı`;
+      // Show both elapsed and remaining time
+      const elapsedMins = differenceInMinutes(now, startTime);
+      const remainingMins = conference.remainingMinutes;
+      
+      // Format elapsed time
+      let elapsedText = '';
+      if (elapsedMins < 1) {
+        elapsedText = 'Az önce başladı';
+      } else if (elapsedMins < 60) {
+        elapsedText = `${elapsedMins} dk önce başladı`;
+      } else {
+        const hours = Math.floor(elapsedMins / 60);
+        const mins = elapsedMins % 60;
+        elapsedText = mins > 0 
+          ? `${hours} saat ${mins} dk önce başladı`
+          : `${hours} saat önce başladı`;
+      }
+      
+      // Add remaining time if available
+      if (remainingMins !== null && remainingMins > 0) {
+        if (remainingMins < 60) {
+          return `${elapsedText} • ${remainingMins} dk kaldı`;
+        } else {
+          const remainingHours = Math.floor(remainingMins / 60);
+          const remainingMinsMod = remainingMins % 60;
+          return remainingMinsMod > 0
+            ? `${elapsedText} • ${remainingHours}s ${remainingMinsMod}dk kaldı`
+            : `${elapsedText} • ${remainingHours} saat kaldı`;
+        }
+      }
+      
+      return elapsedText;
     }
 
     if (conference.status === 'upcoming') {
@@ -318,6 +385,17 @@ const Conferences = () => {
       if (hours > 0) return mins > 0 ? `${hours} saat ${mins} dk sonra` : `${hours} saat sonra`;
       if (mins > 0) return `${mins} dk sonra`;
       return 'Birazdan başlayacak';
+    }
+
+    // Past conferences - show when they ended
+    if (conference.status === 'past') {
+      if (conference.endedAt) {
+        return `${format(new Date(conference.endedAt), 'dd MMM HH:mm', { locale: tr })} sona erdi`;
+      }
+      if (effectiveEndTime) {
+        return `${format(effectiveEndTime, 'dd MMM HH:mm', { locale: tr })} sona erdi`;
+      }
+      return `${format(startTime, 'dd MMM yyyy, HH:mm', { locale: tr })} başladı`;
     }
 
     return format(startTime, 'dd MMM yyyy, HH:mm', { locale: tr });
@@ -339,42 +417,60 @@ const Conferences = () => {
     >
       {/* Status Badge */}
       <Flex justify="space-between" align="center" mb={3}>
-        {conference.status === 'live' ? (
-          <Badge 
-            bg={liveBadgeBg} 
-            color="white" 
-            px={2} 
-            py={1} 
-            borderRadius="md"
-            display="flex"
-            alignItems="center"
-            gap={1}
-          >
-            <Box w={2} h={2} bg="white" borderRadius="full" animation="pulse 1.5s infinite" />
-            CANLI
-          </Badge>
-        ) : conference.status === 'upcoming' ? (
-          <Badge 
-            bg={upcomingBadgeBg} 
-            color="white" 
-            px={2} 
-            py={1} 
-            borderRadius="md"
-            display="flex"
-            alignItems="center"
-            gap={1}
-          >
-            <FiCalendar size={12} />
-            Planlandı
-          </Badge>
-        ) : (
-          <Badge colorScheme="gray" px={2} py={1} borderRadius="md">
-            <Flex align="center" gap={1}>
-              <FiCheckCircle size={12} />
-              Sona Erdi
-            </Flex>
-          </Badge>
-        )}
+        <HStack spacing={2}>
+          {conference.status === 'live' ? (
+            <Badge 
+              bg={liveBadgeBg} 
+              color="white" 
+              px={2} 
+              py={1} 
+              borderRadius="md"
+              display="flex"
+              alignItems="center"
+              gap={1}
+            >
+              <Box w={2} h={2} bg="white" borderRadius="full" animation="pulse 1.5s infinite" />
+              CANLI
+            </Badge>
+          ) : conference.status === 'upcoming' ? (
+            <Badge 
+              bg={upcomingBadgeBg} 
+              color="white" 
+              px={2} 
+              py={1} 
+              borderRadius="md"
+              display="flex"
+              alignItems="center"
+              gap={1}
+            >
+              <FiCalendar size={12} />
+              Planlandı
+            </Badge>
+          ) : (
+            <Badge colorScheme="gray" px={2} py={1} borderRadius="md">
+              <Flex align="center" gap={1}>
+                <FiCheckCircle size={12} />
+                Sona Erdi
+              </Flex>
+            </Badge>
+          )}
+
+          {/* Remaining time warning for live conferences */}
+          {conference.status === 'live' && conference.remainingMinutes !== null && conference.remainingMinutes <= 15 && (
+            <Badge 
+              colorScheme="orange" 
+              variant="subtle"
+              px={2}
+              py={1}
+              borderRadius="md"
+            >
+              <Flex align="center" gap={1}>
+                <FiClock size={12} />
+                {conference.remainingMinutes <= 0 ? 'Süre doldu' : `${conference.remainingMinutes} dk kaldı`}
+              </Flex>
+            </Badge>
+          )}
+        </HStack>
 
         {conference.isRecording && (
           <Badge colorScheme="red" variant="subtle">
