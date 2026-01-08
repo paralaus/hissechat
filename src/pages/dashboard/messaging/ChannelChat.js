@@ -138,6 +138,9 @@ const MediaPreviewModal = ({isOpen, onClose, mediaType, mediaUrl, fileName}) => 
                 src={mediaUrl}
                 controls
                 autoPlay
+                preload="metadata"
+                playsInline
+                controlsList="nodownload"
                 style={{
                   maxHeight: '80vh',
                   maxWidth: '100%',
@@ -644,6 +647,9 @@ const MessageBubble = ({message, isOwn, onReply, onForward, onCopyLink, onOpenLi
             >
               <video
                 src={getCombinedLogoUrl(message.video)}
+                preload="metadata"
+                playsInline
+                muted
                 style={{maxHeight: '200px', borderRadius: '8px', pointerEvents: 'none'}}
               />
               <Box

@@ -20,6 +20,7 @@ import {
   Input,
   Button,
   Flex,
+  Progress,
 } from '@chakra-ui/react';
 import {
   FiMic,
@@ -38,10 +39,12 @@ import {
   FiPaperclip,
   FiFile,
   FiDownload,
+  FiWifi,
 } from 'react-icons/fi';
 import io from 'socket.io-client';
 import Cookies from 'js-cookie';
 import { uploadFile } from '../../api/api';
+import { Device } from 'mediasoup-client';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001';
 const SOCKET_URL = API_URL.replace('/v1', '');
@@ -51,6 +54,25 @@ const DEFAULT_ICE_SERVERS = [
   { urls: 'stun:stun.l.google.com:19302' },
   { urls: 'stun:stun1.l.google.com:19302' },
 ];
+
+// Adaptive bitrate configuration
+const ADAPTIVE_BITRATE = {
+  checkInterval: 3000,
+  rttThresholds: {
+    excellent: 50,
+    good: 150,
+    fair: 300,
+  },
+  bitrateProfiles: {
+    excellent: { video: 1500000, audio: 64000 },
+    good: { video: 1000000, audio: 48000 },
+    fair: { video: 500000, audio: 32000 },
+    poor: { video: 200000, audio: 24000 },
+  },
+};
+
+// SFU threshold - switch to SFU mode when participants exceed this
+const SFU_THRESHOLD = 4;
 
 // Video participant component
 const VideoParticipant = ({ participant, isLocal, isSpeaking, isFullscreen, onFullscreen }) => {
@@ -559,11 +581,26 @@ const VideoConference = ({ roomId, channelId, title, onClose }) => {
   const [newPollQuestion, setNewPollQuestion] = useState('');
   const [newPollOptions, setNewPollOptions] = useState(['', '']);
   
+  // Conference mode and network quality
+  const [conferenceMode, setConferenceMode] = useState('mesh'); // 'mesh' or 'sfu'
+  const [networkQuality, setNetworkQuality] = useState('good'); // 'excellent', 'good', 'fair', 'poor'
+  
   // Refs
   const socketRef = useRef(null);
   const peersRef = useRef(new Map());
   const localStreamRef = useRef(null);
   const iceServersRef = useRef(DEFAULT_ICE_SERVERS);
+  
+  // SFU Mode Refs
+  const sfuDeviceRef = useRef(null);
+  const sfuSendTransportRef = useRef(null);
+  const sfuRecvTransportRef = useRef(null);
+  const sfuProducersRef = useRef(new Map());
+  const sfuConsumersRef = useRef(new Map());
+  
+  // Adaptive bitrate refs
+  const adaptiveTimerRef = useRef(null);
+  const currentQualityRef = useRef('good');
 
   // Get current user
   const getCurrentUser = () => {
@@ -687,6 +724,385 @@ const VideoConference = ({ roomId, channelId, title, onClose }) => {
     return pc;
   }, []);
 
+  // Calculate quality level from network stats
+  const calculateQualityLevel = (rtt, packetLoss) => {
+    if (packetLoss > 10) return 'poor';
+    if (packetLoss > 5) return 'fair';
+    if (rtt < ADAPTIVE_BITRATE.rttThresholds.excellent) return 'excellent';
+    if (rtt < ADAPTIVE_BITRATE.rttThresholds.good) return 'good';
+    if (rtt < ADAPTIVE_BITRATE.rttThresholds.fair) return 'fair';
+    return 'poor';
+  };
+
+  // Gather network statistics from peer connections
+  const gatherNetworkStats = useCallback(async () => {
+    const pcs = Array.from(peersRef.current.values());
+    if (pcs.length === 0) return null;
+
+    let totalRtt = 0;
+    let totalPacketLoss = 0;
+    let validStats = 0;
+
+    for (const pc of pcs) {
+      try {
+        const stats = await pc.getStats();
+        stats.forEach((report) => {
+          if (report.type === 'candidate-pair' && report.state === 'succeeded') {
+            if (report.currentRoundTripTime) {
+              totalRtt += report.currentRoundTripTime * 1000;
+              validStats++;
+            }
+          }
+          if (report.type === 'inbound-rtp' && report.kind === 'video') {
+            if (report.packetsLost !== undefined && report.packetsReceived) {
+              const loss = (report.packetsLost / (report.packetsReceived + report.packetsLost)) * 100;
+              totalPacketLoss += loss;
+            }
+          }
+        });
+      } catch (err) {
+        console.warn('Error getting stats:', err);
+      }
+    }
+
+    if (validStats === 0) return null;
+
+    return {
+      rtt: totalRtt / validStats,
+      packetLoss: totalPacketLoss / pcs.length,
+    };
+  }, []);
+
+  // Apply adaptive bitrate to all peer connections
+  const applyAdaptiveBitrate = useCallback(async (quality) => {
+    const profile = ADAPTIVE_BITRATE.bitrateProfiles[quality];
+    const pcs = Array.from(peersRef.current.values());
+
+    console.log(`Applying adaptive bitrate: ${quality} (video: ${profile.video / 1000}kbps)`);
+
+    for (const pc of pcs) {
+      try {
+        const senders = pc.getSenders();
+        for (const sender of senders) {
+          if (sender.track?.kind === 'video') {
+            const params = sender.getParameters();
+            if (!params.encodings) {
+              params.encodings = [{}];
+            }
+            params.encodings[0].maxBitrate = profile.video;
+            if (quality === 'poor') {
+              params.encodings[0].scaleResolutionDownBy = 2;
+            } else if (quality === 'fair') {
+              params.encodings[0].scaleResolutionDownBy = 1.5;
+            } else {
+              params.encodings[0].scaleResolutionDownBy = 1;
+            }
+            await sender.setParameters(params);
+          } else if (sender.track?.kind === 'audio') {
+            const params = sender.getParameters();
+            if (!params.encodings) {
+              params.encodings = [{}];
+            }
+            params.encodings[0].maxBitrate = profile.audio;
+            await sender.setParameters(params);
+          }
+        }
+      } catch (err) {
+        console.warn('Error applying adaptive bitrate:', err);
+      }
+    }
+  }, []);
+
+  // Start adaptive bitrate monitoring
+  const startAdaptiveMonitoring = useCallback(() => {
+    if (adaptiveTimerRef.current) {
+      clearInterval(adaptiveTimerRef.current);
+    }
+
+    console.log('Starting adaptive bitrate monitoring');
+
+    adaptiveTimerRef.current = setInterval(async () => {
+      const stats = await gatherNetworkStats();
+      if (!stats) return;
+
+      const newQuality = calculateQualityLevel(stats.rtt, stats.packetLoss);
+
+      if (newQuality !== currentQualityRef.current) {
+        currentQualityRef.current = newQuality;
+        setNetworkQuality(newQuality);
+        await applyAdaptiveBitrate(newQuality);
+        console.log(`Network quality changed to ${newQuality} (RTT: ${stats.rtt.toFixed(0)}ms, Loss: ${stats.packetLoss.toFixed(1)}%)`);
+      }
+    }, ADAPTIVE_BITRATE.checkInterval);
+  }, [gatherNetworkStats, applyAdaptiveBitrate]);
+
+  // Stop adaptive bitrate monitoring
+  const stopAdaptiveMonitoring = useCallback(() => {
+    if (adaptiveTimerRef.current) {
+      clearInterval(adaptiveTimerRef.current);
+      adaptiveTimerRef.current = null;
+      console.log('Stopped adaptive bitrate monitoring');
+    }
+  }, []);
+
+  // Initialize SFU mode (Mediasoup)
+  const initializeSfuMode = useCallback(async () => {
+    if (!socketRef.current || !localStreamRef.current) {
+      console.error('Cannot initialize SFU: missing socket or stream');
+      return;
+    }
+
+    try {
+      console.log('Initializing SFU mode...');
+      
+      // Get RTP capabilities from server
+      const rtpCapabilities = await new Promise((resolve, reject) => {
+        socketRef.current.emit('sfu:get-rtp-capabilities', (response) => {
+          if (response.error) reject(new Error(response.error));
+          else resolve(response.rtpCapabilities);
+        });
+      });
+
+      // Load device
+      const device = new Device();
+      await device.load({ routerRtpCapabilities: rtpCapabilities });
+      sfuDeviceRef.current = device;
+      console.log('SFU Device loaded');
+
+      // Create send transport
+      const sendTransportParams = await new Promise((resolve, reject) => {
+        socketRef.current.emit('sfu:create-send-transport', (response) => {
+          if (response.error) reject(new Error(response.error));
+          else resolve(response.transport);
+        });
+      });
+
+      const sendTransport = device.createSendTransport({
+        id: sendTransportParams.id,
+        iceParameters: sendTransportParams.iceParameters,
+        iceCandidates: sendTransportParams.iceCandidates,
+        dtlsParameters: sendTransportParams.dtlsParameters,
+      });
+
+      sendTransport.on('connect', async ({ dtlsParameters }, callback, errback) => {
+        try {
+          socketRef.current.emit('sfu:connect-transport', {
+            transportId: sendTransport.id,
+            dtlsParameters,
+          }, (res) => {
+            if (res.error) errback(new Error(res.error));
+            else callback();
+          });
+        } catch (err) {
+          errback(err);
+        }
+      });
+
+      sendTransport.on('produce', async ({ kind, rtpParameters, appData }, callback, errback) => {
+        try {
+          socketRef.current.emit('sfu:produce', {
+            transportId: sendTransport.id,
+            kind,
+            rtpParameters,
+            appData,
+          }, (res) => {
+            if (res.error) errback(new Error(res.error));
+            else callback({ id: res.producerId });
+          });
+        } catch (err) {
+          errback(err);
+        }
+      });
+
+      sfuSendTransportRef.current = sendTransport;
+      console.log('SFU Send transport created');
+
+      // Create recv transport
+      const recvTransportParams = await new Promise((resolve, reject) => {
+        socketRef.current.emit('sfu:create-recv-transport', (response) => {
+          if (response.error) reject(new Error(response.error));
+          else resolve(response.transport);
+        });
+      });
+
+      const recvTransport = device.createRecvTransport({
+        id: recvTransportParams.id,
+        iceParameters: recvTransportParams.iceParameters,
+        iceCandidates: recvTransportParams.iceCandidates,
+        dtlsParameters: recvTransportParams.dtlsParameters,
+      });
+
+      recvTransport.on('connect', async ({ dtlsParameters }, callback, errback) => {
+        try {
+          socketRef.current.emit('sfu:connect-transport', {
+            transportId: recvTransport.id,
+            dtlsParameters,
+          }, (res) => {
+            if (res.error) errback(new Error(res.error));
+            else callback();
+          });
+        } catch (err) {
+          errback(err);
+        }
+      });
+
+      sfuRecvTransportRef.current = recvTransport;
+      console.log('SFU Recv transport created');
+
+      // Produce local tracks
+      const tracks = localStreamRef.current.getTracks();
+      for (const track of tracks) {
+        try {
+          const producer = await sendTransport.produce({
+            track,
+            encodings: track.kind === 'video' ? [
+              { maxBitrate: 100000, scaleResolutionDownBy: 4 },
+              { maxBitrate: 300000, scaleResolutionDownBy: 2 },
+              { maxBitrate: 900000, scaleResolutionDownBy: 1 },
+            ] : undefined,
+          });
+          sfuProducersRef.current.set(producer.id, producer);
+          console.log(`SFU Produced ${track.kind} track: ${producer.id}`);
+        } catch (err) {
+          console.error(`Failed to produce ${track.kind}:`, err);
+        }
+      }
+
+      // Get existing producers and consume them
+      socketRef.current.emit('sfu:get-producers', async (response) => {
+        if (response.error) {
+          console.error('Failed to get producers:', response.error);
+          return;
+        }
+
+        for (const producer of response.producers) {
+          await consumeProducer(producer.producerId, producer.producerOdaId, producer.kind);
+        }
+      });
+
+      console.log('SFU mode initialized successfully');
+    } catch (err) {
+      console.error('Failed to initialize SFU mode:', err);
+      setConferenceMode('mesh');
+    }
+  }, []);
+
+  // Consume a producer (receive remote stream)
+  const consumeProducer = useCallback(async (producerId, producerOdaId, kind) => {
+    if (!socketRef.current || !sfuDeviceRef.current || !sfuRecvTransportRef.current) {
+      console.error('Cannot consume: missing dependencies');
+      return;
+    }
+
+    try {
+      const consumerData = await new Promise((resolve, reject) => {
+        socketRef.current.emit('sfu:consume', {
+          producerId,
+          producerOdaId,
+          rtpCapabilities: sfuDeviceRef.current.rtpCapabilities,
+        }, (response) => {
+          if (response.error) reject(new Error(response.error));
+          else resolve(response);
+        });
+      });
+
+      const consumer = await sfuRecvTransportRef.current.consume({
+        id: consumerData.consumerId,
+        producerId: consumerData.producerId,
+        kind: consumerData.kind,
+        rtpParameters: consumerData.rtpParameters,
+      });
+
+      sfuConsumersRef.current.set(consumer.id, consumer);
+
+      // Create a MediaStream from the track
+      const stream = new MediaStream([consumer.track]);
+
+      // Update participant with new stream
+      setParticipants(prev => {
+        const existing = prev.find(p => p.odaId === producerOdaId);
+        if (existing) {
+          return prev.map(p =>
+            p.odaId === producerOdaId ? { ...p, stream } : p
+          );
+        }
+        return [...prev, {
+          id: `sfu-${producerOdaId}`,
+          odaId: producerOdaId,
+          userName: producerOdaId,
+          stream,
+          audioEnabled: kind === 'audio',
+          videoEnabled: kind === 'video',
+          handRaised: false,
+        }];
+      });
+
+      // Resume consumer
+      socketRef.current.emit('sfu:resume-consumer', { consumerId: consumer.id });
+
+      console.log(`SFU Consuming ${kind} from ${producerOdaId}`);
+    } catch (err) {
+      console.error(`Failed to consume ${kind} from ${producerOdaId}:`, err);
+    }
+  }, []);
+
+  // Setup SFU event listeners
+  const setupSfuEventListeners = useCallback(() => {
+    if (!socketRef.current) return;
+
+    socketRef.current.on('sfu:new-producer', async (data) => {
+      console.log('SFU New producer:', data);
+      await consumeProducer(data.producerId, data.producerOdaId, data.kind);
+    });
+
+    socketRef.current.on('sfu:producer-paused', (data) => {
+      setParticipants(prev =>
+        prev.map(p => p.odaId === data.producerOdaId ? { ...p, audioEnabled: false } : p)
+      );
+    });
+
+    socketRef.current.on('sfu:producer-resumed', (data) => {
+      setParticipants(prev =>
+        prev.map(p => p.odaId === data.producerOdaId ? { ...p, audioEnabled: true } : p)
+      );
+    });
+
+    socketRef.current.on('sfu:producer-closed', (data) => {
+      for (const [id, consumer] of sfuConsumersRef.current) {
+        if (consumer.producerId === data.producerId) {
+          consumer.close();
+          sfuConsumersRef.current.delete(id);
+          break;
+        }
+      }
+    });
+  }, [consumeProducer]);
+
+  // Cleanup SFU resources
+  const cleanupSfu = useCallback(() => {
+    for (const producer of sfuProducersRef.current.values()) {
+      producer.close();
+    }
+    sfuProducersRef.current.clear();
+
+    for (const consumer of sfuConsumersRef.current.values()) {
+      consumer.close();
+    }
+    sfuConsumersRef.current.clear();
+
+    if (sfuSendTransportRef.current) {
+      sfuSendTransportRef.current.close();
+      sfuSendTransportRef.current = null;
+    }
+    if (sfuRecvTransportRef.current) {
+      sfuRecvTransportRef.current.close();
+      sfuRecvTransportRef.current = null;
+    }
+
+    sfuDeviceRef.current = null;
+    console.log('SFU resources cleaned up');
+  }, []);
+
   // Track if already initialized (for StrictMode)
   const initializedRef = useRef(false);
 
@@ -701,12 +1117,19 @@ const VideoConference = ({ roomId, channelId, title, onClose }) => {
 
     const initConference = async () => {
       try {
-        // Get local stream
+        // Get local stream with optimized settings
         const stream = await navigator.mediaDevices.getUserMedia({
-          audio: true,
+          audio: {
+            echoCancellation: true,
+            noiseSuppression: true,
+            autoGainControl: true,
+            sampleRate: 48000,
+          },
           video: {
-            width: { ideal: 1280 },
-            height: { ideal: 720 },
+            width: { ideal: 1280, max: 1920 },
+            height: { ideal: 720, max: 1080 },
+            frameRate: { ideal: 30, max: 30 },
+            facingMode: 'user',
           },
         });
 
@@ -785,45 +1208,76 @@ const VideoConference = ({ roomId, channelId, title, onClose }) => {
           iceServersRef.current = data.iceServers || DEFAULT_ICE_SERVERS;
           setIsConnected(true);
           setIsConnecting(false);
+          
+          // Set conference mode (mesh or sfu)
+          const mode = data.mode || 'mesh';
+          setConferenceMode(mode);
+          console.log(`Conference mode: ${mode}`);
+          
+          // Start adaptive bitrate monitoring
+          setTimeout(() => {
+            startAdaptiveMonitoring();
+          }, 2000);
 
-          // Add existing participants and send offers to them
-          for (const participant of data.participants) {
-            console.log('Found existing participant:', participant.userName);
-            
-            // Create peer connection and send offer to existing participant
-            const pc = createPeerConnection(
-              participant.socketId,
-              participant.userId,
-              participant.userName,
-              participant.userAvatar
-            );
-
-            // Send offer to existing participant
-            try {
-              const offer = await pc.createOffer();
-              await pc.setLocalDescription(offer);
+          // Handle connection based on mode
+          if (mode === 'sfu') {
+            // SFU Mode: Initialize mediasoup client
+            await initializeSfuMode();
+            setupSfuEventListeners();
+          } else {
+            // Mesh Mode: Create peer connections
+            for (const participant of data.participants) {
+              console.log('Found existing participant:', participant.userName);
               
-              socketRef.current.emit('offer', {
-                to: participant.socketId,
-                offer,
-              });
-              console.log('Sent offer to existing participant:', participant.userName);
-            } catch (err) {
-              console.error('Error sending offer to existing participant:', err);
-            }
+              const pc = createPeerConnection(
+                participant.socketId,
+                participant.userId,
+                participant.userName,
+                participant.userAvatar
+              );
 
-            setParticipants(prev => {
-              if (prev.some(p => p.odaId === participant.userId)) return prev;
-              return [...prev, {
-                id: participant.socketId,
-                odaId: participant.userId,
-                userName: participant.userName,
-                userAvatar: participant.userAvatar,
-                audioEnabled: true,
-                videoEnabled: true,
-                handRaised: false,
-              }];
-            });
+              try {
+                const offer = await pc.createOffer();
+                await pc.setLocalDescription(offer);
+                
+                socketRef.current.emit('offer', {
+                  to: participant.socketId,
+                  offer,
+                });
+                console.log('Sent offer to existing participant:', participant.userName);
+              } catch (err) {
+                console.error('Error sending offer to existing participant:', err);
+              }
+
+              setParticipants(prev => {
+                if (prev.some(p => p.odaId === participant.userId)) return prev;
+                return [...prev, {
+                  id: participant.socketId,
+                  odaId: participant.userId,
+                  userName: participant.userName,
+                  userAvatar: participant.userAvatar,
+                  audioEnabled: true,
+                  videoEnabled: true,
+                  handRaised: false,
+                }];
+              });
+            }
+          }
+        });
+        
+        // Handle mode switch (mesh to sfu)
+        socketRef.current.on('mode-switch', async (data) => {
+          console.log('Mode switch requested:', data.mode);
+          if (data.mode === 'sfu' && conferenceMode !== 'sfu') {
+            setConferenceMode('sfu');
+            
+            // Close all P2P connections
+            peersRef.current.forEach(pc => pc.close());
+            peersRef.current.clear();
+            
+            // Initialize SFU mode
+            await initializeSfuMode();
+            setupSfuEventListeners();
           }
         });
 
@@ -1090,12 +1544,44 @@ const VideoConference = ({ roomId, channelId, title, onClose }) => {
       // Don't cleanup in StrictMode's first unmount
       // Only cleanup when actually leaving
       console.log('Conference cleanup called');
+      
+      // Stop adaptive monitoring
+      if (adaptiveTimerRef.current) {
+        clearInterval(adaptiveTimerRef.current);
+        adaptiveTimerRef.current = null;
+      }
+      
+      // Cleanup SFU resources
+      for (const producer of sfuProducersRef.current.values()) {
+        producer.close();
+      }
+      sfuProducersRef.current.clear();
+      
+      for (const consumer of sfuConsumersRef.current.values()) {
+        consumer.close();
+      }
+      sfuConsumersRef.current.clear();
+      
+      if (sfuSendTransportRef.current) {
+        sfuSendTransportRef.current.close();
+        sfuSendTransportRef.current = null;
+      }
+      if (sfuRecvTransportRef.current) {
+        sfuRecvTransportRef.current.close();
+        sfuRecvTransportRef.current = null;
+      }
+      sfuDeviceRef.current = null;
+      
+      // Cleanup local stream
       if (localStreamRef.current) {
         localStreamRef.current.getTracks().forEach(track => track.stop());
         localStreamRef.current = null;
       }
+      
+      // Cleanup peer connections (mesh mode)
       peersRef.current.forEach(pc => pc.close());
       peersRef.current.clear();
+      
       if (socketRef.current) {
         socketRef.current.emit('leave-room');
         socketRef.current.disconnect();
@@ -1104,7 +1590,7 @@ const VideoConference = ({ roomId, channelId, title, onClose }) => {
       // Reset initialization flag
       initializedRef.current = false;
     };
-  }, [roomId, createPeerConnection, toast, onClose]);
+  }, [roomId, createPeerConnection, toast, onClose, startAdaptiveMonitoring, initializeSfuMode, setupSfuEventListeners, conferenceMode]);
 
   // Toggle audio
   const toggleAudio = () => {
@@ -1260,6 +1746,14 @@ const VideoConference = ({ roomId, channelId, title, onClose }) => {
 
   // Leave conference
   const leaveConference = () => {
+    // Stop adaptive monitoring
+    stopAdaptiveMonitoring();
+    
+    // Cleanup SFU if in SFU mode
+    if (conferenceMode === 'sfu') {
+      cleanupSfu();
+    }
+    
     if (localStreamRef.current) {
       localStreamRef.current.getTracks().forEach(track => track.stop());
     }
@@ -1328,6 +1822,27 @@ const VideoConference = ({ roomId, channelId, title, onClose }) => {
           <Box w="3" h="3" borderRadius="full" bg={isConnected ? 'green.500' : 'red.500'} />
           <Text color="white" fontWeight="bold">{title || 'Video Konferans'}</Text>
           <Badge colorScheme="blue">{allParticipants.length} katılımcı</Badge>
+          <Badge colorScheme={conferenceMode === 'sfu' ? 'purple' : 'gray'}>
+            {conferenceMode === 'sfu' ? 'SFU' : 'P2P'}
+          </Badge>
+          <Tooltip label={`Ağ Kalitesi: ${networkQuality}`}>
+            <HStack spacing="1">
+              <FiWifi color={
+                networkQuality === 'excellent' ? '#48BB78' :
+                networkQuality === 'good' ? '#68D391' :
+                networkQuality === 'fair' ? '#ECC94B' : '#FC8181'
+              } />
+              <Text fontSize="xs" color={
+                networkQuality === 'excellent' ? 'green.400' :
+                networkQuality === 'good' ? 'green.300' :
+                networkQuality === 'fair' ? 'yellow.400' : 'red.400'
+              }>
+                {networkQuality === 'excellent' ? 'Mükemmel' :
+                 networkQuality === 'good' ? 'İyi' :
+                 networkQuality === 'fair' ? 'Orta' : 'Zayıf'}
+              </Text>
+            </HStack>
+          </Tooltip>
         </HStack>
         <HStack spacing="2">
           <Tooltip label="Katılımcılar">

@@ -33,7 +33,7 @@ import { routes } from '../../config/routes';
 import { useLocation, NavLink, useNavigate } from 'react-router-dom';
 import { trim } from '../../utils/string';
 import { useUserStore } from '../../store';
-import Cookies from 'js-cookie';
+import { clearAuthTokens } from '../../api';
 import Breadcrumbs from './Breadcrumbs';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import * as api from '../../api/api';
@@ -470,7 +470,7 @@ const MobileNav = ({ onOpen, ...rest }) => {
 
   const onLogout = () => {
     setUser(null);
-    Cookies.remove('token');
+    clearAuthTokens(); // Clears token, tokenExpires, and refreshToken
     toast({
       title: 'Çıkış Yapıldı',
       status: 'success',

@@ -72,9 +72,22 @@ const Login = () => {
           position: 'top',
         });
         setUser(data.user);
+        
+        // Save access token
         Cookies.set('token', data.tokens.access.token, {
           expires: new Date(data.tokens.access.expires),
         });
+        Cookies.set('tokenExpires', data.tokens.access.expires, {
+          expires: new Date(data.tokens.access.expires),
+        });
+        
+        // Save refresh token (longer expiry)
+        if (data.tokens.refresh) {
+          Cookies.set('refreshToken', data.tokens.refresh.token, {
+            expires: new Date(data.tokens.refresh.expires),
+          });
+        }
+        
         setAuthToken(data.tokens.access.token);
         navigate(routes.dashboard.path);
       }

@@ -1008,12 +1008,12 @@ const BulkMessage = () => {
                   {/* Video Upload */}
                   <TabPanel p="0">
                     <Box
-                      onClick={() => videoInput.open()}
-                      cursor="pointer"
+                      onClick={() => !videoInput.isProcessing && videoInput.open()}
+                      cursor={videoInput.isProcessing ? 'wait' : 'pointer'}
                       borderRadius="xl"
                       border="2px dashed"
-                      borderColor={videoInput.objectUrl ? 'green.300' : 'gray.300'}
-                      bg={videoInput.objectUrl ? 'green.50' : 'gray.50'}
+                      borderColor={videoInput.validationError ? 'red.300' : videoInput.objectUrl ? 'green.300' : 'gray.300'}
+                      bg={videoInput.validationError ? 'red.50' : videoInput.objectUrl ? 'green.50' : 'gray.50'}
                       p="8"
                       minH="200px"
                       display="flex"
@@ -1021,18 +1021,46 @@ const BulkMessage = () => {
                       justifyContent="center"
                       transition="all 0.2s"
                       _hover={{
-                        borderColor: 'blue.400',
-                        bg: videoInput.objectUrl ? 'green.50' : 'blue.50',
+                        borderColor: videoInput.validationError ? 'red.400' : 'blue.400',
+                        bg: videoInput.validationError ? 'red.50' : videoInput.objectUrl ? 'green.50' : 'blue.50',
                       }}
                       position="relative"
                     >
-                      {videoInput.objectUrl ? (
+                      {videoInput.isProcessing ? (
+                        <VStack spacing="3">
+                          <Spinner size="lg" color="blue.500" />
+                          <Text fontSize="sm" color="gray.600">Video işleniyor...</Text>
+                        </VStack>
+                      ) : videoInput.objectUrl ? (
                         <Box position="relative" w="100%">
                           <video
                             src={videoInput.objectUrl}
                             controls
+                            preload="metadata"
+                            playsInline
                             style={{maxHeight: '300px', width: '100%', borderRadius: '8px'}}
                           />
+                          {videoInput.videoMetadata && (
+                            <HStack
+                              position="absolute"
+                              bottom="2"
+                              left="2"
+                              bg="blackAlpha.700"
+                              px="2"
+                              py="1"
+                              borderRadius="md"
+                              spacing="2"
+                            >
+                              <Text fontSize="xs" color="white">
+                                {videoInput.formatSize(videoInput.file?.size || 0)}
+                              </Text>
+                              {videoInput.videoMetadata.duration && (
+                                <Text fontSize="xs" color="white">
+                                  {Math.floor(videoInput.videoMetadata.duration / 60)}:{String(Math.floor(videoInput.videoMetadata.duration % 60)).padStart(2, '0')}
+                                </Text>
+                              )}
+                            </HStack>
+                          )}
                           <IconButton
                             icon={<FiX />}
                             size="sm"
@@ -1057,13 +1085,19 @@ const BulkMessage = () => {
                               Video Yükle
                             </Text>
                             <Text fontSize="xs" color="gray.400">
-                              MP4, MOV, AVI - Max 100MB
+                              MP4, MOV, AVI - Max 100MB, Max 5 dakika
                             </Text>
                           </VStack>
                           <Icon as={FiUpload} boxSize="4" color="gray.400" />
                         </VStack>
                       )}
                     </Box>
+                    {videoInput.validationError && (
+                      <Alert status="error" mt="2" borderRadius="md">
+                        <AlertIcon />
+                        <Text fontSize="sm">{videoInput.validationError}</Text>
+                      </Alert>
+                    )}
                     {videoInput.input}
                   </TabPanel>
 

@@ -155,6 +155,68 @@ export const uploadFile = async file => {
   });
 };
 
+/**
+ * Upload file with progress tracking
+ * @param {File} file - File to upload
+ * @param {Function} onProgress - Progress callback (0-100)
+ * @param {Object} options - Additional options
+ * @returns {Promise} Upload response
+ */
+export const uploadFileWithProgress = async (file, onProgress, options = {}) => {
+  const formData = new FormData();
+  formData.append('file', file);
+  
+  // Determine timeout based on file size (1 minute per 10MB, min 60s)
+  const sizeMB = file.size / (1024 * 1024);
+  const timeout = Math.max(60000, Math.ceil(sizeMB / 10) * 60000);
+  
+  return apiClient.post(`/upload/file`, formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data',
+    },
+    timeout,
+    onUploadProgress: (progressEvent) => {
+      if (onProgress && progressEvent.total) {
+        const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+        onProgress(percentCompleted);
+      }
+    },
+    ...options,
+  });
+};
+
+/**
+ * Upload video with optimized settings
+ * @param {File} file - Video file to upload
+ * @param {Function} onProgress - Progress callback (0-100)
+ * @param {Object} options - Additional options
+ * @returns {Promise} Upload response
+ */
+export const uploadVideo = async (file, onProgress, options = {}) => {
+  const formData = new FormData();
+  formData.append('file', file);
+  
+  // Videos get longer timeout (2 minutes per 10MB, min 120s)
+  const sizeMB = file.size / (1024 * 1024);
+  const timeout = Math.max(120000, Math.ceil(sizeMB / 10) * 120000);
+  
+  return apiClient.post(`/upload/file`, formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data',
+    },
+    timeout,
+    maxContentLength: 100 * 1024 * 1024, // 100MB
+    maxBodyLength: 100 * 1024 * 1024,
+    onUploadProgress: (progressEvent) => {
+      if (onProgress && progressEvent.total) {
+        const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+        onProgress(percentCompleted);
+      }
+    },
+    ...options,
+  });
+};
+
 export const uploadImage = async file => {
   const formData = new FormData();
   formData.append('image', file);
