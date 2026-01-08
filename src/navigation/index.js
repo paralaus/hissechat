@@ -51,6 +51,7 @@ import ChannelChat from '../pages/dashboard/messaging/ChannelChat';
 import AppDistribution from '../pages/dashboard/distribution/AppDistribution';
 import Moderation from '../pages/dashboard/moderation/Moderation';
 import ArchivedMessages from '../pages/dashboard/messaging/ArchivedMessages';
+import Conferences from '../pages/dashboard/conferences/Conferences';
 
 const rootLoader = async ({request}) => {
   const {pathname} = new URL(request.url);
@@ -382,6 +383,13 @@ const router = createBrowserRouter(
           element={<ArchivedMessages />}
           handle={{
             crumb: () => <Text>Arşiv</Text>,
+          }}
+        />
+        <Route
+          path="conferences"
+          element={<Conferences />}
+          handle={{
+            crumb: () => <Text>Video Konferanslar</Text>,
           }}
         />
         <Route

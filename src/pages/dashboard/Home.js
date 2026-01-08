@@ -182,18 +182,7 @@ const Home = () => {
       title: 'Aktif Konferanslar',
       amount: activeConferences?.totalResults || 0,
       icon: <FiVideo {...iconProps} />,
-      path: (() => {
-        const first = activeConferences?.results?.[0];
-        const channelId = first?.channel?.id || first?.channelId;
-        const roomId = first?.roomId || (first?.jitsiUrl ? (() => {
-          const parts = first.jitsiUrl.split('/');
-          const last = parts[parts.length - 1] || '';
-          return last.split('#')[0];
-        })() : undefined);
-        return channelId
-          ? `${routes.channelChat.getPath(channelId)}?conference=active${roomId ? `&roomId=${encodeURIComponent(roomId)}` : ''}`
-          : routes.messagingChannels.path;
-      })(),
+      path: routes.conferences.path,
     },
     {
       title: 'Ürünler',

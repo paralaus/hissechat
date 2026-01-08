@@ -1,4 +1,4 @@
-import { FiHome, FiSettings, FiUsers, FiBell, FiSend, FiMessageCircle, FiSmartphone, FiShield, FiTrendingUp, FiCpu, FiActivity, FiPieChart, FiLayers } from 'react-icons/fi';
+import { FiHome, FiSettings, FiUsers, FiBell, FiSend, FiMessageCircle, FiSmartphone, FiShield, FiTrendingUp, FiCpu, FiActivity, FiPieChart, FiLayers, FiVideo } from 'react-icons/fi';
 import {
   AiOutlineUserAdd,
   AiOutlineProduct,
@@ -287,6 +287,12 @@ export const sidebarRoutes = [
     name: 'İçerik Moderasyonu',
     icon: FiShield,
     path: routes.moderation.path,
+    group: 'Sistem',
+  },
+  {
+    name: 'Video Konferanslar',
+    icon: FiVideo,
+    path: routes.conferences.path,
     group: 'Sistem',
   },
   {

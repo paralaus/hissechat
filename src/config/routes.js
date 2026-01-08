@@ -119,4 +119,7 @@ export const routes = {
   archivedMessages: {
     path: '/dashboard/messaging/archives',
   },
+  conferences: {
+    path: '/dashboard/conferences',
+  },
 };
