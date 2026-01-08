@@ -162,6 +162,19 @@ const Conferences = () => {
     };
   }, [conferencesData, searchQuery, filter]);
 
+  // Helper to extract channelId as string
+  const getChannelIdString = (channelId) => {
+    if (!channelId) return null;
+    // If it's already a string
+    if (typeof channelId === 'string') return channelId;
+    // If it's an object with _id
+    if (channelId._id) return typeof channelId._id === 'string' ? channelId._id : String(channelId._id);
+    // If it's an object with id
+    if (channelId.id) return typeof channelId.id === 'string' ? channelId.id : String(channelId.id);
+    // Try to convert to string
+    return String(channelId);
+  };
+
   const handleJoinConference = (conference) => {
     if (conference.status === 'past') {
       toast({
@@ -184,9 +197,16 @@ const Conferences = () => {
     }
 
     // Navigate to channel chat with conference params
-    const channelId = conference.channelId?._id || conference.channelId?.id || conference.channelId;
-    if (channelId) {
+    const channelId = getChannelIdString(conference.channelId);
+    if (channelId && channelId !== '[object Object]') {
       navigate(`${routes.channelChat.getPath(channelId)}?conference=active&roomId=${conference.roomId}`);
+    } else {
+      toast({
+        title: 'Hata',
+        description: 'Kanal bilgisi bulunamadı.',
+        status: 'error',
+        duration: 3000,
+      });
     }
   };
 
@@ -291,9 +311,9 @@ const Conferences = () => {
       </Heading>
 
       {/* Channel Info */}
-      {conference.channelId?.name && (
+      {(conference.channelId?.name || (typeof conference.channelId === 'object' && conference.channelId?.name)) && (
         <Text fontSize="xs" color={textSecondary} mb={3}>
-          📢 {conference.channelId.name}
+          📢 {conference.channelId?.name}
         </Text>
       )}
 
