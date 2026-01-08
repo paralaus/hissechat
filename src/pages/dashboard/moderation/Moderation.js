@@ -57,7 +57,7 @@ import {getCombinedLogoUrl} from '../../../utils/image';
 import {format} from 'date-fns';
 import {add} from 'date-fns';
 import {tr} from 'date-fns/locale';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 
 const MessageCard = ({message, onBlock, onUnblock, onBanUser, onUnbanUser, isBlocking, isBanning, isUnbanning}) => {
   const {isOpen, onOpen, onClose} = useDisclosure();
@@ -345,6 +345,7 @@ const Moderation = () => {
   const toast = useToast();
   const queryClient = useQueryClient();
   const location = useLocation();
+  const navigate = useNavigate();
   const [selectedChannel, setSelectedChannel] = useState('');
   const [filterType, setFilterType] = useState(() => {
     const params = new URLSearchParams(location.search);
@@ -354,6 +355,7 @@ const Moderation = () => {
   }); // 'all', 'flagged', 'blocked', 'profanity'
   const [searchTerm, setSearchTerm] = useState('');
   const [blockingMessageId, setBlockingMessageId] = useState(null);
+  const [initialLoadDone, setInitialLoadDone] = useState(false);
 
   // Fetch all channels for selection
   const {data: channelsData} = useQuery({
@@ -500,15 +502,32 @@ const Moderation = () => {
     },
   });
 
-  // Sync filterType with query string changes
+  // Sync filterType with query string changes - only on initial load
   useEffect(() => {
+    if (initialLoadDone) return; // Skip after initial load
+    
     const params = new URLSearchParams(location.search);
     const qFilter = params.get('filter');
     const allowed = ['all', 'flagged', 'blocked', 'profanity'];
     if (allowed.includes(qFilter) && qFilter !== filterType) {
       setFilterType(qFilter);
     }
-  }, [location.search, filterType]);
+    setInitialLoadDone(true);
+  }, [location.search]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Update URL when filterType changes (after initial load)
+  const handleFilterTypeChange = (newFilter) => {
+    setFilterType(newFilter);
+    // Update URL without triggering re-render loop
+    const params = new URLSearchParams(location.search);
+    if (newFilter === 'profanity') {
+      params.delete('filter'); // Default value, no need to show in URL
+    } else {
+      params.set('filter', newFilter);
+    }
+    const newSearch = params.toString();
+    navigate(`${location.pathname}${newSearch ? `?${newSearch}` : ''}`, { replace: true });
+  };
 
   // Pre-fill selectedChannel and searchTerm from query params
   useEffect(() => {
@@ -720,7 +739,7 @@ const Moderation = () => {
 
               <Select
                 value={filterType}
-                onChange={(e) => setFilterType(e.target.value)}
+                onChange={(e) => handleFilterTypeChange(e.target.value)}
                 maxW="200px"
               >
                 <option value="profanity">🚫 Uygunsuz Kelime İçerenler</option>
