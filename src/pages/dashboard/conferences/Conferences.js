@@ -66,7 +66,7 @@ import {
 import { Page } from '../../../components';
 import { api } from '../../../api';
 import { routes } from '../../../config/routes';
-import { format, formatDistanceToNow, isAfter, isBefore, differenceInMinutes, differenceInHours, differenceInDays } from 'date-fns';
+import { format, isAfter, isBefore, differenceInMinutes, differenceInHours, differenceInDays } from 'date-fns';
 import { tr } from 'date-fns/locale';
 
 const Conferences = () => {
@@ -126,12 +126,26 @@ const Conferences = () => {
       const startTime = new Date(conf.startTime);
       const endTime = conf.scheduledEndTime ? new Date(conf.scheduledEndTime) : null;
       
+      // Determine conference status
       let status = 'unknown';
-      if (conf.isActive && (!endTime || isAfter(endTime, now))) {
-        status = 'live';
-      } else if (isAfter(startTime, now)) {
+      
+      // Check if conference has ended (scheduledEndTime passed OR isActive is false)
+      const hasEnded = (endTime && isBefore(endTime, now)) || conf.isActive === false;
+      
+      // Check if conference is in the future
+      const isFuture = isAfter(startTime, now);
+      
+      if (hasEnded) {
+        // Conference is finished
+        status = 'past';
+      } else if (isFuture && !conf.isActive) {
+        // Conference hasn't started yet
         status = 'upcoming';
+      } else if (conf.isActive) {
+        // Conference is currently active
+        status = 'live';
       } else {
+        // Default to past for any edge cases
         status = 'past';
       }
 
@@ -221,10 +235,17 @@ const Conferences = () => {
   };
 
   const handleJoinConference = (conference) => {
-    if (conference.status === 'past') {
+    // Double check: if conference is marked as past or isActive is false
+    const now = new Date();
+    const endTime = conference.endTime;
+    const hasEnded = conference.status === 'past' || 
+                     conference.isActive === false || 
+                     (endTime && isBefore(endTime, now));
+    
+    if (hasEnded) {
       toast({
         title: 'Konferans Sona Erdi',
-        description: 'Bu konferans artık aktif değil.',
+        description: 'Bu konferans artık aktif değil ve katılamazsınız.',
         status: 'warning',
         duration: 3000,
       });
@@ -236,6 +257,17 @@ const Conferences = () => {
         title: 'Henüz Başlamadı',
         description: `Bu konferans ${format(conference.startTime, 'dd MMM yyyy HH:mm', { locale: tr })} tarihinde başlayacak.`,
         status: 'info',
+        duration: 3000,
+      });
+      return;
+    }
+    
+    // Extra safety check: only allow joining if truly active
+    if (!conference.isActive) {
+      toast({
+        title: 'Konferans Aktif Değil',
+        description: 'Bu konferansa şu anda katılamazsınız.',
+        status: 'warning',
         duration: 3000,
       });
       return;
