@@ -183,7 +183,7 @@ const Home = () => {
       title: 'Aktif Konferanslar',
       amount: activeConferences?.totalResults || 0,
       icon: <FiVideo {...iconProps} />,
-      path: routes.conferences.path,
+      path: '/dashboard/conferences',
     },
     {
       title: 'Ürünler',
