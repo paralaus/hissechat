@@ -88,6 +88,7 @@ const Conferences = () => {
   const liveBadgeBg = useColorModeValue('red.500', 'red.400');
   const upcomingBg = useColorModeValue('orange.50', 'orange.900');
   const upcomingBadgeBg = useColorModeValue('orange.500', 'orange.400');
+  const emptyStateBg = useColorModeValue('gray.100', 'gray.700');
 
   // Fetch conferences
   const { data: conferencesData, isLoading, refetch, isFetching } = useQuery({
@@ -558,7 +559,7 @@ const Conferences = () => {
           <Box
             p={4}
             borderRadius="full"
-            bg={useColorModeValue('gray.100', 'gray.700')}
+            bg={emptyStateBg}
             mb={4}
           >
             <FiVideo size={48} color="gray" />
