@@ -66,10 +66,8 @@ import {
 import { Page } from '../../../components';
 import { api } from '../../../api';
 import { routes } from '../../../config/routes';
-import moment from 'moment';
-import 'moment/locale/tr';
-
-moment.locale('tr');
+import { format, formatDistanceToNow, isAfter, isBefore, differenceInMinutes, differenceInHours, differenceInDays } from 'date-fns';
+import { tr } from 'date-fns/locale';
 
 const Conferences = () => {
   const navigate = useNavigate();
@@ -121,16 +119,16 @@ const Conferences = () => {
   // Process and filter conferences
   const { conferences, counts } = useMemo(() => {
     const results = conferencesData?.results || [];
-    const now = moment();
+    const now = new Date();
 
     const processed = results.map(conf => {
-      const startTime = moment(conf.startTime);
-      const endTime = conf.scheduledEndTime ? moment(conf.scheduledEndTime) : null;
+      const startTime = new Date(conf.startTime);
+      const endTime = conf.scheduledEndTime ? new Date(conf.scheduledEndTime) : null;
       
       let status = 'unknown';
-      if (conf.isActive && (!endTime || endTime.isAfter(now))) {
+      if (conf.isActive && (!endTime || isAfter(endTime, now))) {
         status = 'live';
-      } else if (startTime.isAfter(now)) {
+      } else if (isAfter(startTime, now)) {
         status = 'upcoming';
       } else {
         status = 'past';
@@ -235,7 +233,7 @@ const Conferences = () => {
     if (conference.status === 'upcoming') {
       toast({
         title: 'Henüz Başlamadı',
-        description: `Bu konferans ${conference.startTime.format('DD MMM YYYY HH:mm')} tarihinde başlayacak.`,
+        description: `Bu konferans ${format(conference.startTime, 'dd MMM yyyy HH:mm', { locale: tr })} tarihinde başlayacak.`,
         status: 'info',
         duration: 3000,
       });
@@ -263,16 +261,14 @@ const Conferences = () => {
   };
 
   const getTimeDisplay = (conference) => {
-    const now = moment();
+    const now = new Date();
     const startTime = conference.startTime;
-    const endTime = conference.endTime;
 
     if (conference.status === 'live') {
-      const duration = moment.duration(now.diff(startTime));
-      const mins = Math.floor(duration.asMinutes());
+      const mins = differenceInMinutes(now, startTime);
       if (mins < 1) return 'Az önce başladı';
       if (mins < 60) return `${mins} dk önce başladı`;
-      const hours = Math.floor(mins / 60);
+      const hours = differenceInHours(now, startTime);
       const remainingMins = mins % 60;
       return remainingMins > 0 
         ? `${hours} saat ${remainingMins} dk önce başladı`
@@ -280,10 +276,10 @@ const Conferences = () => {
     }
 
     if (conference.status === 'upcoming') {
-      const duration = moment.duration(startTime.diff(now));
-      const days = Math.floor(duration.asDays());
-      const hours = Math.floor(duration.asHours() % 24);
-      const mins = Math.floor(duration.asMinutes() % 60);
+      const totalMins = differenceInMinutes(startTime, now);
+      const days = differenceInDays(startTime, now);
+      const hours = differenceInHours(startTime, now) % 24;
+      const mins = totalMins % 60;
 
       if (days > 0) return hours > 0 ? `${days} gün ${hours} saat sonra` : `${days} gün sonra`;
       if (hours > 0) return mins > 0 ? `${hours} saat ${mins} dk sonra` : `${hours} saat sonra`;
@@ -291,7 +287,7 @@ const Conferences = () => {
       return 'Birazdan başlayacak';
     }
 
-    return startTime.format('DD MMM YYYY, HH:mm');
+    return format(startTime, 'dd MMM yyyy, HH:mm', { locale: tr });
   };
 
   const ConferenceCard = ({ conference }) => (
