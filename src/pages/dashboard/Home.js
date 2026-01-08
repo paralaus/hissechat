@@ -1,3 +1,4 @@
+// Force Vercel rebuild - v2
 import { MiniStatistics, Page, StatisticsSkeleton } from '../../components';
 import { SimpleGrid, Box, Text, Heading, Divider } from '@chakra-ui/react';
 import { FaUserClock, FaUsers, FaChartLine } from 'react-icons/fa';
