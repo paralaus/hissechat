@@ -127,7 +127,7 @@ const Conferences = () => {
   // Fetch conferences
   const { data: conferencesData, isLoading, refetch, isFetching } = useQuery({
     queryKey: ['conferences', 'all', page, limit],
-    queryFn: () => api.getActiveConferences({ limit: 100, page: 1 }).then(res => res.data),
+    queryFn: () => api.getActiveConferences({ limit: 100, page: 1, type: 'all' }).then(res => res.data),
     refetchInterval: 30000, // Refresh every 30 seconds
   });
 
