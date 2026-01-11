@@ -53,6 +53,9 @@ const SOCKET_URL = API_URL.replace('/v1', '');
 const DEFAULT_ICE_SERVERS = [
   { urls: 'stun:stun.l.google.com:19302' },
   { urls: 'stun:stun1.l.google.com:19302' },
+  { urls: 'stun:stun2.l.google.com:19302' },
+  { urls: 'stun:stun3.l.google.com:19302' },
+  { urls: 'stun:stun4.l.google.com:19302' },
 ];
 
 // Adaptive bitrate configuration
@@ -588,6 +591,7 @@ const VideoConference = ({ roomId, channelId, title, onClose }) => {
   // Refs
   const socketRef = useRef(null);
   const peersRef = useRef(new Map());
+  const iceCandidateQueueRef = useRef(new Map());
   const localStreamRef = useRef(null);
   const iceServersRef = useRef(DEFAULT_ICE_SERVERS);
   
@@ -635,6 +639,7 @@ const VideoConference = ({ roomId, channelId, title, onClose }) => {
     
     const pc = new RTCPeerConnection({
       iceServers: iceServersRef.current,
+      iceCandidatePoolSize: 10,
     });
 
     // Add local tracks
@@ -1243,6 +1248,9 @@ const VideoConference = ({ roomId, channelId, title, onClose }) => {
                 socketRef.current.emit('offer', {
                   to: participant.socketId,
                   offer,
+                  userId: currentUser?.id,
+                  userName: currentUser?.name,
+                  userAvatar: currentUser?.thumbnail,
                 });
                 console.log('Sent offer to existing participant:', participant.userName);
               } catch (err) {
@@ -1284,19 +1292,9 @@ const VideoConference = ({ roomId, channelId, title, onClose }) => {
         socketRef.current.on('user-joined', async (data) => {
           console.log('User joined:', data);
           
-          const pc = createPeerConnection(
-            data.socketId,
-            data.userId,
-            data.userName,
-            data.userAvatar
-          );
-          const offer = await pc.createOffer();
-          await pc.setLocalDescription(offer);
-
-          socketRef.current.emit('offer', {
-            to: data.socketId,
-            offer,
-          });
+          // We don't create an offer here to avoid signaling glare.
+          // The new user (who just joined and received room-joined) will initiate the connection.
+          // We just update the UI to show the new user.
 
           setParticipants(prev => {
             if (prev.some(p => p.odaId === data.userId)) return prev;
@@ -1337,6 +1335,17 @@ const VideoConference = ({ roomId, channelId, title, onClose }) => {
             // Now we should be in stable state
             if (pc.signalingState === 'stable') {
               await pc.setRemoteDescription(new RTCSessionDescription(data.offer));
+              
+              // Process queued ICE candidates
+              const queue = iceCandidateQueueRef.current.get(data.from);
+              if (queue && queue.length > 0) {
+                console.log(`Processing ${queue.length} queued ICE candidates for ${data.from}`);
+                for (const candidate of queue) {
+                  await pc.addIceCandidate(new RTCIceCandidate(candidate));
+                }
+                iceCandidateQueueRef.current.delete(data.from);
+              }
+
               const answer = await pc.createAnswer();
               await pc.setLocalDescription(answer);
 
@@ -1359,6 +1368,16 @@ const VideoConference = ({ roomId, channelId, title, onClose }) => {
               // Only set remote description if we're expecting an answer
               if (pc.signalingState === 'have-local-offer') {
                 await pc.setRemoteDescription(new RTCSessionDescription(data.answer));
+                
+                // Process queued ICE candidates
+                const queue = iceCandidateQueueRef.current.get(data.from);
+                if (queue && queue.length > 0) {
+                  console.log(`Processing ${queue.length} queued ICE candidates for ${data.from}`);
+                  for (const candidate of queue) {
+                    await pc.addIceCandidate(new RTCIceCandidate(candidate));
+                  }
+                  iceCandidateQueueRef.current.delete(data.from);
+                }
               } else {
                 console.log('Unexpected answer, signaling state:', pc.signalingState);
               }
@@ -1371,8 +1390,16 @@ const VideoConference = ({ roomId, channelId, title, onClose }) => {
         socketRef.current.on('ice-candidate', async (data) => {
           try {
             const pc = peersRef.current.get(data.from);
-            if (pc && pc.remoteDescription) {
-              await pc.addIceCandidate(new RTCIceCandidate(data.candidate));
+            if (pc) {
+              if (pc.remoteDescription) {
+                await pc.addIceCandidate(new RTCIceCandidate(data.candidate));
+              } else {
+                // Queue candidate if remote description is not set yet
+                console.log(`Queuing ICE candidate for ${data.from} (no remote description)`);
+                const queue = iceCandidateQueueRef.current.get(data.from) || [];
+                queue.push(data.candidate);
+                iceCandidateQueueRef.current.set(data.from, queue);
+              }
             }
           } catch (err) {
             console.error('Error adding ICE candidate:', err);
