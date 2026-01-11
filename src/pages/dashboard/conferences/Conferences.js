@@ -506,14 +506,31 @@ const Conferences = () => {
           )}
         </HStack>
 
-        {conference.isRecording && (
-          <Badge colorScheme="red" variant="subtle">
-            <Flex align="center" gap={1}>
-              <Box w={2} h={2} bg="red.500" borderRadius="full" />
-              REC
-            </Flex>
+        <HStack spacing={2}>
+          <Badge
+            bg="orange.50"
+            color="orange.500"
+            px={2}
+            py={1}
+            borderRadius="md"
+            borderWidth="1px"
+            borderColor="orange.200"
+            fontFamily="monospace"
+            fontSize="xs"
+            textTransform="none"
+          >
+            ID: {conference.roomId}
           </Badge>
-        )}
+
+          {conference.isRecording && (
+            <Badge colorScheme="red" variant="subtle">
+              <Flex align="center" gap={1}>
+                <Box w={2} h={2} bg="red.500" borderRadius="full" />
+                REC
+              </Flex>
+            </Badge>
+          )}
+        </HStack>
       </Flex>
 
       {/* Title */}
