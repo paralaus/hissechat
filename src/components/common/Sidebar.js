@@ -156,13 +156,13 @@ const SidebarContent = ({ onClose, ...rest }) => {
 
       {/* Navigation Links */}
       <VStack spacing="1" align="stretch" p="4">
-        <Links />
+        <Links onClose={onClose} />
       </VStack>
     </Box>
   );
 };
 
-const Links = () => {
+const Links = ({ onClose }) => {
   const location = useLocation();
   const [collapsed, setCollapsed] = React.useState({});
 
