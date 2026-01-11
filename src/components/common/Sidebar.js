@@ -224,6 +224,7 @@ const Links = () => {
                           path={child.path}
                           isActive={getIsActive(child, location)}
                           icon={child.icon}
+                          onClose={onClose}
                         >
                           {child.name}
                         </NavItem>
@@ -240,6 +241,7 @@ const Links = () => {
                 icon={link.icon}
                 path={link.path}
                 isActive={getIsActive(link, location)}
+                onClose={onClose}
               >
                 {link.name}
               </NavItem>
@@ -259,6 +261,7 @@ const NavItem = ({
   isParent,
   collapsed,
   onClick,
+  onClose,
   ...rest
 }) => {
   const content = (
