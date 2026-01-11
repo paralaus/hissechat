@@ -83,7 +83,12 @@ const VideoParticipant = ({ participant, isLocal, isSpeaking, isFullscreen, onFu
 
   useEffect(() => {
     if (videoRef.current && participant.stream) {
+      console.log(`[VideoParticipant] Setting srcObject for ${participant.userName}, stream active: ${participant.stream.active}, tracks: ${participant.stream.getTracks().length}`);
+      participant.stream.getTracks().forEach(t => console.log(`[VideoParticipant] Track: ${t.kind}, enabled: ${t.enabled}, state: ${t.readyState}, id: ${t.id}`));
       videoRef.current.srcObject = participant.stream;
+      
+      // Auto-play checks
+      videoRef.current.play().catch(e => console.error('[VideoParticipant] Play error:', e));
     }
   }, [participant.stream, participant.videoEnabled]);
 
@@ -586,6 +591,7 @@ const VideoConference = ({ roomId, channelId, title, onClose }) => {
   
   // Conference mode and network quality
   const [conferenceMode, setConferenceMode] = useState('mesh'); // 'mesh' or 'sfu'
+  const conferenceModeRef = useRef('mesh'); // Ref to access mode inside callbacks without re-running effect
   const [networkQuality, setNetworkQuality] = useState('good'); // 'excellent', 'good', 'fair', 'poor'
   
   // Refs
@@ -961,10 +967,12 @@ const VideoConference = ({ roomId, channelId, title, onClose }) => {
           const producer = await sendTransport.produce({
             track,
             encodings: track.kind === 'video' ? [
-              { maxBitrate: 100000, scaleResolutionDownBy: 4 },
-              { maxBitrate: 300000, scaleResolutionDownBy: 2 },
-              { maxBitrate: 900000, scaleResolutionDownBy: 1 },
+              { maxBitrate: 150000, scaleResolutionDownBy: 4 },
+              { maxBitrate: 800000, scaleResolutionDownBy: 1 },
             ] : undefined,
+            codecOptions: {
+              videoGoogleStartBitrate: 1000
+            }
           });
           sfuProducersRef.current.set(producer.id, producer);
           console.log(`SFU Produced ${track.kind} track: ${producer.id}`);
@@ -1022,6 +1030,9 @@ const VideoConference = ({ roomId, channelId, title, onClose }) => {
 
       // Create a MediaStream from the track
       const stream = new MediaStream([consumer.track]);
+      
+      console.log(`[SFU] Stream created for ${producerOdaId}, tracks: ${stream.getTracks().length}`);
+      stream.getTracks().forEach(t => console.log(`[SFU] Track: ${t.kind}, enabled: ${t.enabled}, state: ${t.readyState}, id: ${t.id}`));
 
       // Update participant with new stream
       setParticipants(prev => {
@@ -1158,10 +1169,11 @@ const VideoConference = ({ roomId, channelId, title, onClose }) => {
         
         socketRef.current = io(`${SOCKET_URL}/conference`, {
           auth: { token },
-          transports: ['websocket', 'polling'],
+          transports: ['websocket'], // Force websocket to prevent server overload
           reconnection: true,
-          reconnectionAttempts: 5,
-          timeout: 10000,
+          reconnectionAttempts: 10,
+          timeout: 20000,
+          forceNew: true,
         });
 
         // Connection timeout
@@ -1218,6 +1230,7 @@ const VideoConference = ({ roomId, channelId, title, onClose }) => {
           // Force SFU mode for better stability across platforms
           const mode = 'sfu'; // data.mode || 'mesh';
           setConferenceMode(mode);
+          conferenceModeRef.current = mode;
           console.log(`Conference mode: ${mode} (Forced SFU)`);
           
           // Start adaptive bitrate monitoring
@@ -1277,8 +1290,9 @@ const VideoConference = ({ roomId, channelId, title, onClose }) => {
         // Handle mode switch (mesh to sfu)
         socketRef.current.on('mode-switch', async (data) => {
           console.log('Mode switch requested:', data.mode);
-          if (data.mode === 'sfu' && conferenceMode !== 'sfu') {
+          if (data.mode === 'sfu' && conferenceModeRef.current !== 'sfu') {
             setConferenceMode('sfu');
+            conferenceModeRef.current = 'sfu';
             
             // Close all P2P connections
             peersRef.current.forEach(pc => pc.close());
@@ -1318,6 +1332,7 @@ const VideoConference = ({ roomId, channelId, title, onClose }) => {
         });
 
         socketRef.current.on('offer', async (data) => {
+          if (conferenceModeRef.current === 'sfu') return;
           try {
             let pc = peersRef.current.get(data.from);
             
@@ -1363,6 +1378,7 @@ const VideoConference = ({ roomId, channelId, title, onClose }) => {
         });
 
         socketRef.current.on('answer', async (data) => {
+          if (conferenceModeRef.current === 'sfu') return;
           try {
             const pc = peersRef.current.get(data.from);
             if (pc) {
@@ -1389,6 +1405,7 @@ const VideoConference = ({ roomId, channelId, title, onClose }) => {
         });
 
         socketRef.current.on('ice-candidate', async (data) => {
+          if (conferenceModeRef.current === 'sfu') return;
           try {
             const pc = peersRef.current.get(data.from);
             if (pc) {
@@ -1618,7 +1635,7 @@ const VideoConference = ({ roomId, channelId, title, onClose }) => {
       // Reset initialization flag
       initializedRef.current = false;
     };
-  }, [roomId, createPeerConnection, toast, onClose, startAdaptiveMonitoring, initializeSfuMode, setupSfuEventListeners, conferenceMode]);
+  }, [roomId, createPeerConnection, toast, onClose, startAdaptiveMonitoring, initializeSfuMode, setupSfuEventListeners]);
 
   // Toggle audio
   const toggleAudio = () => {
