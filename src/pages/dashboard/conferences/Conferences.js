@@ -64,6 +64,7 @@ import {
   FiAlertCircle
 } from 'react-icons/fi';
 import { Page } from '../../../components';
+import CreateConferenceModal from '../../../components/modals/CreateConferenceModal';
 import { api } from '../../../api';
 import { routes } from '../../../config/routes';
 import { format, isAfter, isBefore, differenceInMinutes, differenceInHours, differenceInDays } from 'date-fns';
@@ -75,6 +76,39 @@ const Conferences = () => {
   const queryClient = useQueryClient();
   const { isOpen, onOpen, onClose } = useDisclosure();
   
+  const createMutation = useMutation({
+    mutationFn: (data) => {
+      if (data.type === 'scheduled') {
+        return api.scheduleConference(data);
+      }
+      return api.createConference(data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries(['conferences']);
+      toast({
+        title: 'Konferans Oluşturuldu',
+        description: 'Video konferans başarıyla oluşturuldu.',
+        status: 'success',
+        duration: 3000,
+        isClosable: true,
+      });
+      onClose();
+    },
+    onError: (error) => {
+      toast({
+        title: 'Hata',
+        description: error.response?.data?.message || 'Konferans oluşturulurken bir hata oluştu.',
+        status: 'error',
+        duration: 3000,
+        isClosable: true,
+      });
+    },
+  });
+
+  const handleCreateConference = (data) => {
+    createMutation.mutate(data);
+  };
+
   const [searchQuery, setSearchQuery] = useState('');
   const [filter, setFilter] = useState('all'); // all, live, upcoming, past
   const [page, setPage] = useState(1);
@@ -724,6 +758,14 @@ const Conferences = () => {
           }
         `}
       </style>
+
+      {/* Create Modal */}
+      <CreateConferenceModal 
+        isOpen={isOpen} 
+        onClose={onClose} 
+        onCreate={handleCreateConference}
+        isLoading={createMutation.isLoading}
+      />
     </Page>
   );
 };

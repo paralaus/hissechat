@@ -501,6 +501,10 @@ export const createConference = async body => {
   return apiClient.post('/conferences', body);
 };
 
+export const scheduleConference = async body => {
+  return apiClient.post('/conferences/schedule', body);
+};
+
 export const getActiveConferences = async params => {
   return apiClient.get('/conferences', {params});
 };
