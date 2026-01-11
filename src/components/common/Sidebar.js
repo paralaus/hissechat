@@ -311,6 +311,7 @@ const NavItem = ({
       style={{ textDecoration: 'none' }}
       _focus={{ boxShadow: 'none' }}
       role="group"
+      onClick={onClose}
     >
       {content}
     </Link>
