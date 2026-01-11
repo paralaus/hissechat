@@ -1215,9 +1215,10 @@ const VideoConference = ({ roomId, channelId, title, onClose }) => {
           setIsConnecting(false);
           
           // Set conference mode (mesh or sfu)
-          const mode = data.mode || 'mesh';
+          // Force SFU mode for better stability across platforms
+          const mode = 'sfu'; // data.mode || 'mesh';
           setConferenceMode(mode);
-          console.log(`Conference mode: ${mode}`);
+          console.log(`Conference mode: ${mode} (Forced SFU)`);
           
           // Start adaptive bitrate monitoring
           setTimeout(() => {
