@@ -140,6 +140,7 @@ const BulkMessage = () => {
   } = useForm({
     resolver: yupResolver(schema),
     defaultValues: {
+      targetType: 'all_channels',
       selectedChannels: [],
       message: '',
       image: '',
@@ -172,7 +173,6 @@ const BulkMessage = () => {
   const {data: viopMarketsData} = useQuery({
     queryKey: ['viop-markets-bulk'],
     queryFn: () => fetchAll(api.getMarkets, { type: 'viop' }),
-    enabled: ['selected', 'all_markets', 'all_channels', 'all_viop'].includes(targetType),
     staleTime: 300000,
     cacheTime: 900000,
     refetchOnWindowFocus: false,
@@ -182,7 +182,6 @@ const BulkMessage = () => {
   const {data: cryptoMarketsData} = useQuery({
     queryKey: ['crypto-markets-bulk'],
     queryFn: () => fetchAll(api.getMarkets, { type: 'crypto' }),
-    enabled: ['selected', 'all_markets', 'all_channels'].includes(targetType),
     staleTime: 300000,
     cacheTime: 900000,
     refetchOnWindowFocus: false,
@@ -192,7 +191,6 @@ const BulkMessage = () => {
   const {data: stockMarketsData} = useQuery({
     queryKey: ['stock-markets-bulk'],
     queryFn: () => fetchAll(api.getMarkets, { type: 'stock' }),
-    enabled: ['selected', 'all_markets', 'all_channels'].includes(targetType),
     staleTime: 300000,
     cacheTime: 900000,
     refetchOnWindowFocus: false,
@@ -202,7 +200,6 @@ const BulkMessage = () => {
   const {data: fundsData} = useQuery({
     queryKey: ['funds-list-bulk'],
     queryFn: () => fetchAll(api.getFunds),
-    enabled: ['selected', 'all_channels', 'all_funds'].includes(targetType),
     staleTime: 300000,
     cacheTime: 900000,
     refetchOnWindowFocus: false,

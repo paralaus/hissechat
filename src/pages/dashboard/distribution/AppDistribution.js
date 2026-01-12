@@ -66,6 +66,8 @@ const AppDistribution = () => {
   const [selectedPlatform, setSelectedPlatform] = useState('all');
   const [chunkSize, setChunkSize] = useState('500');
   const [debouncedChunkSize, setDebouncedChunkSize] = useState('500');
+  const [pageIndex, setPageIndex] = useState(0);
+  const [pageSize, setPageSize] = useState(50);
   const toast = useToast();
   
   // Upload modal state
@@ -119,6 +121,10 @@ const AppDistribution = () => {
       );
     });
   }, [testers, searchTerm]);
+
+  useEffect(() => {
+    setPageIndex(0);
+  }, [selectedPlatform, searchTerm]);
 
   const getEmailsForCopy = useCallback(
     (platform) => {
@@ -489,6 +495,21 @@ const AppDistribution = () => {
                 >
                   {hasCopiedAll ? 'Kopyalandı!' : 'Tümünü Kopyala'}
                 </Button>
+                <HStack ml={4} spacing={2}>
+                  <Text fontSize="sm" color="gray.600">Sayfa Boyutu</Text>
+                  <Input
+                    type="number"
+                    value={pageSize}
+                    min={10}
+                    max={500}
+                    width="90px"
+                    onChange={(e) => {
+                      const v = parseInt(e.target.value || '50', 10);
+                      setPageSize(Number.isFinite(v) ? Math.max(10, Math.min(500, v)) : 50);
+                      setPageIndex(0);
+                    }}
+                  />
+                </HStack>
               </HStack>
             </HStack>
           </CardHeader>
@@ -524,59 +545,95 @@ const AppDistribution = () => {
                       </Box>
                     ) : (
                       <Box overflowX="auto">
-                        <Table variant="simple" size="sm">
-                          <Thead>
-                            <Tr>
-                              <Th>Email</Th>
-                              <Th>Ad Soyad</Th>
-                              <Th>Platform</Th>
-                              <Th>Son Aktivite</Th>
-                            </Tr>
-                          </Thead>
-                          <Tbody>
-                            {filteredUsers
-                              .filter(u => platform === 'all' || u.platform === platform)
-                              .map((user, index) => (
-                                <Tr key={index}>
-                                  <Td>{user.email}</Td>
-                                  <Td>{user.fullname || '-'}</Td>
-                                  <Td>
-                                    <Badge
-                                      colorScheme={
-                                        user.platform === 'ios' ? 'gray' :
-                                        user.platform === 'android' ? 'green' : 'orange'
-                                      }
-                                    >
-                                      <HStack spacing={1}>
-                                        {user.platform === 'ios' && <FaApple size={12} />}
-                                        {user.platform === 'android' && <FaAndroid size={12} />}
-                                        <Text>{user.platform || 'Bilinmiyor'}</Text>
-                                      </HStack>
-                                    </Badge>
-                                  </Td>
-                                  <Td>
-                                    {user.lastActivity ? (
-                                      <Tooltip label={new Date(user.lastActivity).toLocaleString('tr-TR')}>
-                                        <Text fontSize="sm" color="gray.500">
-                                          {formatDistanceToNow(new Date(user.lastActivity), { 
-                                            addSuffix: true, 
-                                            locale: tr 
-                                          })}
-                                        </Text>
-                                      </Tooltip>
-                                    ) : (
-                                      <Text fontSize="sm" color="gray.400">-</Text>
-                                    )}
-                                  </Td>
-                                </Tr>
-                              ))}
-                          </Tbody>
-                        </Table>
-                        {filteredUsers.length === 0 && (
-                          <Box textAlign="center" py={10}>
-                            <Text color="gray.500">Kullanıcı bulunamadı</Text>
-                          </Box>
-                        )}
+                        {(() => {
+                          const platformFiltered = filteredUsers.filter(
+                            (u) => platform === 'all' || u.platform === platform
+                          );
+                          const totalForPlatform = platformFiltered.length;
+                          const totalPages = Math.max(1, Math.ceil(totalForPlatform / pageSize));
+                          const safePageIndex = Math.min(pageIndex, totalPages - 1);
+                          const start = safePageIndex * pageSize;
+                          const end = Math.min(start + pageSize, totalForPlatform);
+                          const displayedUsers = platformFiltered.slice(start, end);
+                          return (
+                            <>
+                              <HStack justify="space-between" mb={2}>
+                                <Text fontSize="sm" color="gray.600">
+                                  Toplam {totalForPlatform} kayıt • {safePageIndex + 1}/{totalPages}
+                                </Text>
+                                <HStack>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => setPageIndex((p) => Math.max(0, p - 1))}
+                                    isDisabled={safePageIndex <= 0}
+                                  >
+                                    Önceki
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => setPageIndex((p) => Math.min(totalPages - 1, p + 1))}
+                                    isDisabled={safePageIndex >= totalPages - 1}
+                                  >
+                                    Sonraki
+                                  </Button>
+                                </HStack>
+                              </HStack>
+                              <Table variant="simple" size="sm">
+                                <Thead>
+                                  <Tr>
+                                    <Th>Email</Th>
+                                    <Th>Ad Soyad</Th>
+                                    <Th>Platform</Th>
+                                    <Th>Son Aktivite</Th>
+                                  </Tr>
+                                </Thead>
+                                <Tbody>
+                                  {displayedUsers.map((user, index) => (
+                                    <Tr key={`${user.email}-${start + index}`}>
+                                      <Td>{user.email}</Td>
+                                      <Td>{user.fullname || '-'}</Td>
+                                      <Td>
+                                        <Badge
+                                          colorScheme={
+                                            user.platform === 'ios' ? 'gray' :
+                                            user.platform === 'android' ? 'green' : 'orange'
+                                          }
+                                        >
+                                          <HStack spacing={1}>
+                                            {user.platform === 'ios' && <FaApple size={12} />}
+                                            {user.platform === 'android' && <FaAndroid size={12} />}
+                                            <Text>{user.platform || 'Bilinmiyor'}</Text>
+                                          </HStack>
+                                        </Badge>
+                                      </Td>
+                                      <Td>
+                                        {user.lastActivity ? (
+                                          <Tooltip label={new Date(user.lastActivity).toLocaleString('tr-TR')}>
+                                            <Text fontSize="sm" color="gray.500">
+                                              {formatDistanceToNow(new Date(user.lastActivity), { 
+                                                addSuffix: true, 
+                                                locale: tr 
+                                              })}
+                                            </Text>
+                                          </Tooltip>
+                                        ) : (
+                                          <Text fontSize="sm" color="gray.400">-</Text>
+                                        )}
+                                      </Td>
+                                    </Tr>
+                                  ))}
+                                </Tbody>
+                              </Table>
+                              {platformFiltered.length === 0 && (
+                                <Box textAlign="center" py={10}>
+                                  <Text color="gray.500">Kullanıcı bulunamadı</Text>
+                                </Box>
+                              )}
+                            </>
+                          );
+                        })()}
                       </Box>
                     )}
                   </TabPanel>
