@@ -49,7 +49,7 @@ import {getErrorMessage} from '../../../utils/string';
 import {Page} from '../../../components';
 import {FiSend, FiMessageCircle, FiUsers, FiTrendingUp, FiImage, FiVideo, FiMusic, FiUpload, FiX, FiFile, FiSmile, FiActivity, FiCpu, FiPieChart, FiStar} from 'react-icons/fi';
 import useFileInput from '../../../hooks/useFileInput';
-import EmojiPicker from 'emoji-picker-react';
+const EmojiPickerLazy = React.lazy(() => import('emoji-picker-react'));
 
 const schema = yup
   .object({
@@ -91,26 +91,25 @@ const isViopChannel = (c) =>
 const fetchAll = async (apiFunc, params = {}) => {
   const limit = 100; // Max limit allowed by API
   const firstRes = await apiFunc({ ...params, limit, page: 1 });
-  
+
   if (!firstRes.data) return [];
-  
+
   let allResults = firstRes.data.results || [];
   const totalPages = firstRes.data.totalPages || 1;
-  
+
   if (totalPages > 1) {
     const promises = [];
-    for (let i = 2; i <= totalPages; i++) {
-      promises.push(apiFunc({ ...params, limit, page: i }));
+    for (let page = 2; page <= totalPages; page += 1) {
+      promises.push(apiFunc({ ...params, limit, page }));
     }
-    
     const responses = await Promise.all(promises);
-    responses.forEach(res => {
+    responses.forEach((res) => {
       if (res.data?.results) {
-        allResults = [...allResults, ...res.data.results];
+        allResults = allResults.concat(res.data.results);
       }
     });
   }
-  
+
   return allResults;
 };
 
@@ -151,39 +150,62 @@ const BulkMessage = () => {
   });
 
   // Fetch all channels for selection
+  const targetType = watch('targetType');
   const {data: channelsData, isLoading: isLoadingChannels} = useQuery({
     queryKey: ['all-channels-for-bulk'],
     queryFn: () => fetchAll(api.getAllChannels),
+    staleTime: 300000,
+    cacheTime: 900000,
+    refetchOnWindowFocus: false,
   });
 
   // Fetch VIP channels
   const {data: vipChannelsData} = useQuery({
     queryKey: ['vip-channels-for-bulk'],
     queryFn: () => fetchAll(api.getVipChannels),
+    staleTime: 300000,
+    cacheTime: 900000,
+    refetchOnWindowFocus: false,
   });
 
   // Fetch VIOP Markets
   const {data: viopMarketsData} = useQuery({
     queryKey: ['viop-markets-bulk'],
     queryFn: () => fetchAll(api.getMarkets, { type: 'viop' }),
+    enabled: ['selected', 'all_markets', 'all_channels', 'all_viop'].includes(targetType),
+    staleTime: 300000,
+    cacheTime: 900000,
+    refetchOnWindowFocus: false,
   });
 
   // Fetch Crypto Markets
   const {data: cryptoMarketsData} = useQuery({
     queryKey: ['crypto-markets-bulk'],
     queryFn: () => fetchAll(api.getMarkets, { type: 'crypto' }),
+    enabled: ['selected', 'all_markets', 'all_channels'].includes(targetType),
+    staleTime: 300000,
+    cacheTime: 900000,
+    refetchOnWindowFocus: false,
   });
 
   // Fetch Stock Markets
   const {data: stockMarketsData} = useQuery({
     queryKey: ['stock-markets-bulk'],
     queryFn: () => fetchAll(api.getMarkets, { type: 'stock' }),
+    enabled: ['selected', 'all_markets', 'all_channels'].includes(targetType),
+    staleTime: 300000,
+    cacheTime: 900000,
+    refetchOnWindowFocus: false,
   });
 
   // Fetch Funds
   const {data: fundsData} = useQuery({
     queryKey: ['funds-list-bulk'],
     queryFn: () => fetchAll(api.getFunds),
+    enabled: ['selected', 'all_channels', 'all_funds'].includes(targetType),
+    staleTime: 300000,
+    cacheTime: 900000,
+    refetchOnWindowFocus: false,
   });
 
   const {mutateAsync, isPending} = useMutation({
@@ -391,7 +413,6 @@ const BulkMessage = () => {
     }
   };
 
-  const targetType = watch('targetType');
   const selectedChannels = watch('selectedChannels') || [];
 
   // Calculate target channel count
@@ -882,17 +903,19 @@ const BulkMessage = () => {
                   </PopoverTrigger>
                   <PopoverContent width="350px" border="none" boxShadow="xl">
                     <PopoverBody p="0">
-                      <EmojiPicker
-                        onEmojiClick={(emojiData) => {
-                          const currentValue = watch('message') || '';
-                          setValue('message', currentValue + emojiData.emoji);
-                          setShowEmojiPicker(false);
-                        }}
-                        width="100%"
-                        height="350px"
-                        searchPlaceholder="Emoji ara..."
-                        previewConfig={{ showPreview: false }}
-                      />
+                      <React.Suspense fallback={<Box p="4"><Spinner size="sm" /></Box>}>
+                        <EmojiPickerLazy
+                          onEmojiClick={(emojiData) => {
+                            const currentValue = watch('message') || '';
+                            setValue('message', currentValue + emojiData.emoji);
+                            setShowEmojiPicker(false);
+                          }}
+                          width="100%"
+                          height="350px"
+                          searchPlaceholder="Emoji ara..."
+                          previewConfig={{ showPreview: false }}
+                        />
+                      </React.Suspense>
                     </PopoverBody>
                   </PopoverContent>
                 </Popover>

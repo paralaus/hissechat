@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import {
   Box,
   VStack,
@@ -38,7 +38,6 @@ import {
   AlertTitle,
   AlertDescription,
   useClipboard,
-  Code,
   Textarea,
   Modal,
   ModalOverlay,
@@ -53,7 +52,7 @@ import {
   Progress,
   Icon,
 } from '@chakra-ui/react';
-import { FiCopy, FiDownload, FiSearch, FiRefreshCw, FiSmartphone, FiUpload, FiCheck, FiX } from 'react-icons/fi';
+import { FiCopy, FiDownload, FiSearch, FiRefreshCw, FiSmartphone, FiUpload } from 'react-icons/fi';
 import { FaApple, FaAndroid } from 'react-icons/fa';
 import { Page } from '../../../components';
 import { api } from '../../../api';
@@ -66,6 +65,7 @@ const AppDistribution = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedPlatform, setSelectedPlatform] = useState('all');
   const [chunkSize, setChunkSize] = useState('500');
+  const [debouncedChunkSize, setDebouncedChunkSize] = useState('500');
   const toast = useToast();
   
   // Upload modal state
@@ -77,10 +77,13 @@ const AppDistribution = () => {
   const [uploadResult, setUploadResult] = useState(null);
   const fileInputRef = useRef(null);
 
-  const fetchTesters = async () => {
+  const fetchTesters = useCallback(async () => {
     setLoading(true);
     try {
-      const response = await api.getTesters(selectedPlatform, parseInt(chunkSize, 10) || undefined);
+      const response = await api.getTesters(
+        selectedPlatform,
+        parseInt(debouncedChunkSize, 10) || undefined
+      );
       setTesters(response.data);
     } catch (error) {
       toast({
@@ -92,25 +95,43 @@ const AppDistribution = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [selectedPlatform, debouncedChunkSize, toast]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedChunkSize(chunkSize);
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [chunkSize]);
 
   useEffect(() => {
     fetchTesters();
-  }, [selectedPlatform, chunkSize]);
+  }, [fetchTesters]);
 
-  // Filter users by search term
-  const filteredUsers = testers?.users?.filter(user => 
-    user.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    user.fullname?.toLowerCase().includes(searchTerm.toLowerCase())
-  ) || [];
+  const filteredUsers = useMemo(() => {
+    if (!testers?.users) return [];
+    const term = searchTerm.toLowerCase();
+    if (!term) return testers.users;
+    return testers.users.filter((user) => {
+      return (
+        user.email?.toLowerCase().includes(term) ||
+        user.fullname?.toLowerCase().includes(term)
+      );
+    });
+  }, [testers, searchTerm]);
 
-  // Get emails for copy
-  const getEmailsForCopy = (platform) => {
-    if (!testers) return '';
-    if (platform === 'ios') return testers.ios?.emails?.join(', ') || '';
-    if (platform === 'android') return testers.android?.emails?.join(', ') || '';
-    return [...(testers.ios?.emails || []), ...(testers.android?.emails || [])].join(', ');
-  };
+  const getEmailsForCopy = useCallback(
+    (platform) => {
+      if (!testers) return '';
+      if (platform === 'ios') return testers.ios?.emails?.join(', ') || '';
+      if (platform === 'android') return testers.android?.emails?.join(', ') || '';
+      return [
+        ...(testers.ios?.emails || []),
+        ...(testers.android?.emails || []),
+      ].join(', ');
+    },
+    [testers]
+  );
 
   const { hasCopied: hasCopiedIos, onCopy: onCopyIos } = useClipboard(getEmailsForCopy('ios'));
   const { hasCopied: hasCopiedAndroid, onCopy: onCopyAndroid } = useClipboard(getEmailsForCopy('android'));
