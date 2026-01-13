@@ -25,7 +25,7 @@ import {
   Alert,
   AlertIcon
 } from '@chakra-ui/react';
-import Page from '../../components/common/Page';
+import Page from '../../../components/common/Page';
 import axios from 'axios';
 
 const DbStats = () => {
@@ -35,6 +35,8 @@ const DbStats = () => {
   
   const bgColor = useColorModeValue('white', 'gray.800');
   const borderColor = useColorModeValue('gray.200', 'gray.700');
+  const theadBg = useColorModeValue('gray.50', 'gray.900');
+  const theadBgDark = useColorModeValue('gray.900', 'gray.50'); // Just in case, but we use the first one
 
   const fetchData = async () => {
     setLoading(true);
@@ -125,7 +127,7 @@ const DbStats = () => {
                 <Card bg={bgColor} borderColor={borderColor} borderWidth="1px" overflow="hidden">
                     <Box overflowX="auto">
                         <Table variant="simple">
-                            <Thead bg={useColorModeValue('gray.50', 'gray.900')}>
+                            <Thead bg={theadBg}>
                                 <Tr>
                                     <Th>Koleksiyon</Th>
                                     <Th isNumeric>Kayıt Sayısı</Th>
