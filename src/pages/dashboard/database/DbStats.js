@@ -136,14 +136,23 @@ const DbStats = () => {
       <Stack spacing={6}>
         <Flex justify="space-between" align="center">
             <Heading size="md">MongoDB İstatistikleri</Heading>
-            <Button 
-                colorScheme="blue" 
-                onClick={fetchData} 
-                isLoading={loading}
-                loadingText="Yükleniyor"
-            >
-                Yenile
-            </Button>
+            <HStack spacing={2}>
+                <Button 
+                    leftIcon={<Icon as={FiDownload} />}
+                    colorScheme="green"
+                    onClick={() => window.location.href = 'http://localhost:3001/backup'}
+                >
+                    Veritabanını Yedekle
+                </Button>
+                <Button 
+                    colorScheme="blue" 
+                    onClick={fetchData} 
+                    isLoading={loading}
+                    loadingText="Yükleniyor"
+                >
+                    Yenile
+                </Button>
+            </HStack>
         </Flex>
 
         {error && (
