@@ -35,8 +35,11 @@ import {
   ModalFooter,
   ModalBody,
   ModalCloseButton,
-  useDisclosure
+  useDisclosure,
+  Icon,
+  HStack
 } from '@chakra-ui/react';
+import { FiDownload } from 'react-icons/fi';
 import Page from '../../../components/common/Page';
 import axios from 'axios';
 
