@@ -52,6 +52,7 @@ import AppDistribution from '../pages/dashboard/distribution/AppDistribution';
 import Moderation from '../pages/dashboard/moderation/Moderation';
 import ArchivedMessages from '../pages/dashboard/messaging/ArchivedMessages';
 import Conferences from '../pages/dashboard/conferences/Conferences';
+import DbStats from '../pages/dashboard/database/DbStats';
 
 const rootLoader = async ({request}) => {
   const {pathname} = new URL(request.url);
@@ -110,6 +111,13 @@ const router = createBrowserRouter(
           />
           <Route index element={<Users />} />
         </Route>
+        <Route
+          path="database-stats"
+          element={<DbStats />}
+          handle={{
+            crumb: () => <Text>DB İstatistikleri</Text>,
+          }}
+        />
         <Route
           path="markets"
           handle={{

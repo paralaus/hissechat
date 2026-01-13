@@ -122,4 +122,7 @@ export const routes = {
   conferences: {
     path: '/dashboard/conferences',
   },
+  databaseStats: {
+    path: '/dashboard/database-stats',
+  },
 };

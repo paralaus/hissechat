@@ -1,4 +1,4 @@
-import { FiHome, FiSettings, FiUsers, FiBell, FiSend, FiMessageCircle, FiSmartphone, FiShield, FiTrendingUp, FiCpu, FiActivity, FiPieChart, FiLayers, FiVideo } from 'react-icons/fi';
+import { FiHome, FiSettings, FiUsers, FiBell, FiSend, FiMessageCircle, FiSmartphone, FiShield, FiTrendingUp, FiCpu, FiActivity, FiPieChart, FiLayers, FiVideo, FiDatabase } from 'react-icons/fi';
 import {
   AiOutlineUserAdd,
   AiOutlineProduct,
@@ -18,6 +18,13 @@ export const sidebarRoutes = [
     name: 'Anasayfa',
     icon: FiHome,
     path: routes.dashboard.path,
+    exact: true,
+    group: 'Genel',
+  },
+  {
+    name: 'DB İstatistikleri',
+    icon: FiDatabase,
+    path: routes.databaseStats.path,
     exact: true,
     group: 'Genel',
   },
