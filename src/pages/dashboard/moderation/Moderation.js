@@ -63,10 +63,11 @@ const MessageCard = ({message, onBlock, onUnblock, onBanUser, onUnbanUser, isBlo
   const {isOpen, onOpen, onClose} = useDisclosure();
   const banModal = useDisclosure();
   const [blockReason, setBlockReason] = useState('');
-  const [banDuration, setBanDuration] = useState('24h'); // 1h, 12h, 24h, 3d, 1w, perm
+  const [banDuration, setBanDuration] = useState('24h');
+  const [customHours, setCustomHours] = useState('6');
 
   const handleBan = () => {
-    onBanUser(message.user?.id || message.user?._id, banDuration);
+    onBanUser(message.user?.id || message.user?._id, banDuration, customHours);
     banModal.onClose();
   };
 
@@ -286,13 +287,27 @@ const MessageCard = ({message, onBlock, onUnblock, onBanUser, onUnbanUser, isBlo
               <FormLabel>Ban Süresi</FormLabel>
               <Select value={banDuration} onChange={(e) => setBanDuration(e.target.value)}>
                 <option value="1h">1 Saat</option>
+                <option value="6h">6 Saat</option>
                 <option value="12h">12 Saat</option>
                 <option value="24h">1 Gün</option>
                 <option value="3d">3 Gün</option>
                 <option value="1w">1 Hafta</option>
                 <option value="perm">Süresiz (Permanent)</option>
+                <option value="custom">Özel (Saat)</option>
               </Select>
             </FormControl>
+            {banDuration === 'custom' && (
+              <FormControl mt={3}>
+                <FormLabel>Özel Süre (Saat)</FormLabel>
+                <Input
+                  value={customHours}
+                  onChange={(e) => setCustomHours(e.target.value)}
+                  placeholder="Örn: 8"
+                  type="number"
+                  min={1}
+                />
+              </FormControl>
+            )}
             <Alert status="warning" mt={4} borderRadius="md">
               <AlertIcon />
               <Text fontSize="sm">
@@ -612,9 +627,9 @@ const Moderation = () => {
   };
 
   const banUserMutation = useMutation({
-    mutationFn: ({userId, banExpiresAt}) => api.manageUser(userId, {
+    mutationFn: ({userId, banDuration}) => api.manageUser(userId, {
       isBanned: true,
-      banExpiresAt: banExpiresAt
+      banDuration,
     }),
     onSuccess: () => {
       toast({
@@ -634,21 +649,24 @@ const Moderation = () => {
     },
   });
 
-  const handleBanUser = (userId, duration) => {
-    let banExpiresAt = null;
-    const now = new Date();
-    
+  const handleBanUser = (userId, duration, customHours) => {
+    let hours = null;
     switch (duration) {
-      case '1h': banExpiresAt = add(now, {hours: 1}); break;
-      case '12h': banExpiresAt = add(now, {hours: 12}); break;
-      case '24h': banExpiresAt = add(now, {hours: 24}); break;
-      case '3d': banExpiresAt = add(now, {days: 3}); break;
-      case '1w': banExpiresAt = add(now, {weeks: 1}); break;
-      case 'perm': banExpiresAt = null; break;
-      default: banExpiresAt = add(now, {hours: 24});
+      case '1h': hours = 1; break;
+      case '6h': hours = 6; break;
+      case '12h': hours = 12; break;
+      case '24h': hours = 24; break;
+      case '3d': hours = 72; break;
+      case '1w': hours = 168; break;
+      case 'perm': hours = null; break;
+      case 'custom': {
+        const val = parseInt(String(customHours || '0'), 10);
+        hours = isNaN(val) || val <= 0 ? 6 : val;
+        break;
+      }
+      default: hours = 24;
     }
-
-    banUserMutation.mutate({userId, banExpiresAt});
+    banUserMutation.mutate({userId, banDuration: hours});
   };
 
   // Unban user mutation
