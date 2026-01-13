@@ -1,4 +1,4 @@
-import {Text, Badge, HStack, Button, Box, IconButton, Tooltip, useToast} from '@chakra-ui/react';
+import {Text, Badge, HStack, Button, Box, IconButton, Tooltip, useToast, Select} from '@chakra-ui/react';
 import {DataTable, Page} from '../../../components';
 import {useNavigate} from 'react-router-dom';
 import {api} from '../../../api';
@@ -7,6 +7,8 @@ import {routes} from '../../../config/routes';
 import {useState} from 'react';
 import {useMutation, useQueryClient} from '@tanstack/react-query';
 import {FiStar} from 'react-icons/fi';
+import { format } from 'date-fns';
+import { tr } from 'date-fns/locale';
 
 const fetchData = async options => {
   const response = await api.getUsers(options);
@@ -43,20 +45,39 @@ const Users = () => {
     navigate(routes.editUser.getPath(item.id));
   };
 
-  const handleFilter = (type) => {
+  const handleRoleFilter = (type) => {
+    const newParams = { ...filterParams };
+    delete newParams.role;
+    delete newParams.isPrivileged;
+
     switch (type) {
       case 'admin':
-        setFilterParams({ role: 'admin' });
+        newParams.role = 'admin';
         break;
       case 'privileged':
-        setFilterParams({ isPrivileged: true });
+        newParams.isPrivileged = true;
         break;
       case 'user':
-        setFilterParams({ role: 'user' });
+        newParams.role = 'user';
         break;
       default:
-        setFilterParams({});
+        break;
     }
+    setFilterParams(newParams);
+  };
+
+  const handleActivityFilter = (e) => {
+    const value = e.target.value;
+    const newParams = { ...filterParams };
+    
+    if (value) {
+        const date = new Date();
+        date.setDate(date.getDate() - parseInt(value));
+        newParams.lastActiveAfter = date.toISOString();
+    } else {
+        delete newParams.lastActiveAfter;
+    }
+    setFilterParams(newParams);
   };
 
   const getActiveFilter = () => {
@@ -71,35 +92,47 @@ const Users = () => {
   return (
     <Page>
       <Box mb={4}>
-        <HStack spacing={2}>
-          <Button
-            size="sm"
-            colorScheme={activeFilter === 'all' ? 'blue' : 'gray'}
-            onClick={() => handleFilter('all')}
-          >
-            Tümü
-          </Button>
-          <Button
-            size="sm"
-            colorScheme={activeFilter === 'admin' ? 'blue' : 'gray'}
-            onClick={() => handleFilter('admin')}
-          >
-            Yöneticiler
-          </Button>
-          <Button
-            size="sm"
-            colorScheme={activeFilter === 'privileged' ? 'blue' : 'gray'}
-            onClick={() => handleFilter('privileged')}
-          >
-            Ayrıcalıklı Üyeler
-          </Button>
-          <Button
-            size="sm"
-            colorScheme={activeFilter === 'user' ? 'blue' : 'gray'}
-            onClick={() => handleFilter('user')}
-          >
-            Kullanıcılar
-          </Button>
+        <HStack spacing={4} justify="space-between">
+            <HStack spacing={2}>
+            <Button
+                size="sm"
+                colorScheme={activeFilter === 'all' ? 'blue' : 'gray'}
+                onClick={() => handleRoleFilter('all')}
+            >
+                Tümü
+            </Button>
+            <Button
+                size="sm"
+                colorScheme={activeFilter === 'admin' ? 'blue' : 'gray'}
+                onClick={() => handleRoleFilter('admin')}
+            >
+                Yöneticiler
+            </Button>
+            <Button
+                size="sm"
+                colorScheme={activeFilter === 'privileged' ? 'blue' : 'gray'}
+                onClick={() => handleRoleFilter('privileged')}
+            >
+                Ayrıcalıklı Üyeler
+            </Button>
+            <Button
+                size="sm"
+                colorScheme={activeFilter === 'user' ? 'blue' : 'gray'}
+                onClick={() => handleRoleFilter('user')}
+            >
+                Kullanıcılar
+            </Button>
+            </HStack>
+
+            <Box width="200px">
+                <Select size="sm" placeholder="Son Aktivite: Tümü" onChange={handleActivityFilter}>
+                    <option value="1">Son 24 Saat</option>
+                    <option value="3">Son 3 Gün</option>
+                    <option value="7">Son 7 Gün</option>
+                    <option value="30">Son 30 Gün</option>
+                    <option value="90">Son 3 Ay</option>
+                </Select>
+            </Box>
         </HStack>
       </Box>
       <DataTable
@@ -129,6 +162,19 @@ const Users = () => {
               else if (isPrivileged) colorScheme = 'orange';
               
               return <Badge colorScheme={colorScheme}>{label}</Badge>;
+            },
+          },
+          {
+            header: 'Son Aktivite',
+            accessorKey: 'lastActivityAt',
+            cell: ({getValue}) => {
+              const value = getValue();
+              if (!value) return <Text fontSize="sm" color="gray.500">-</Text>;
+              return (
+                <Text fontSize="sm">
+                  {format(new Date(value), 'dd MMM yyyy HH:mm', { locale: tr })}
+                </Text>
+              );
             },
           },
           {
