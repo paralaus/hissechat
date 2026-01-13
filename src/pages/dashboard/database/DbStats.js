@@ -23,7 +23,19 @@ import {
   StatHelpText,
   Badge,
   Alert,
-  AlertIcon
+  AlertIcon,
+  Select,
+  FormControl,
+  FormLabel,
+  useToast,
+  Modal,
+  ModalOverlay,
+  ModalContent,
+  ModalHeader,
+  ModalFooter,
+  ModalBody,
+  ModalCloseButton,
+  useDisclosure
 } from '@chakra-ui/react';
 import Page from '../../../components/common/Page';
 import axios from 'axios';
@@ -32,6 +44,13 @@ const DbStats = () => {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  
+  // Cleanup states
+  const [selectedCollection, setSelectedCollection] = useState('');
+  const [selectedDays, setSelectedDays] = useState('30');
+  const [cleaning, setCleaning] = useState(false);
+  const { isOpen, onOpen, onClose } = useDisclosure();
+  const toast = useToast();
   
   const bgColor = useColorModeValue('white', 'gray.800');
   const borderColor = useColorModeValue('gray.200', 'gray.700');
@@ -61,6 +80,54 @@ const DbStats = () => {
 
   const toMB = (bytes) => (bytes / (1024 * 1024)).toFixed(2);
 
+  const SAFE_COLLECTIONS = [
+    { id: 'notifications', label: 'Bildirimler (notifications)' },
+    { id: 'logs', label: 'Loglar (logs)' },
+    { id: 'system_logs', label: 'Sistem Logları (system_logs)' },
+    { id: 'audit_logs', label: 'Denetim Logları (audit_logs)' },
+    { id: 'activity_logs', label: 'Aktivite Logları (activity_logs)' },
+    { id: 'otp_codes', label: 'OTP Kodları (otp_codes)' },
+    { id: 'email_logs', label: 'Email Logları (email_logs)' },
+    { id: 'sms_logs', label: 'SMS Logları (sms_logs)' },
+    { id: 'archived_messages', label: 'Arşivlenmiş Mesajlar (archived_messages)' },
+    { id: 'price_alerts', label: 'Fiyat Alarmları (price_alerts)' },
+  ];
+
+  const handleCleanup = async () => {
+    if (!selectedCollection) return;
+    
+    setCleaning(true);
+    try {
+        const response = await axios.post('http://localhost:3001/cleanup', {
+            collection: selectedCollection,
+            days: parseInt(selectedDays)
+        }, {
+            headers: { 'Content-Type': 'application/json' }
+        });
+        
+        toast({
+            title: 'Başarılı',
+            description: response.data.message,
+            status: 'success',
+            duration: 5000,
+            isClosable: true,
+        });
+        
+        onClose();
+        fetchData(); // Refresh stats
+    } catch (err) {
+        toast({
+            title: 'Hata',
+            description: err.response?.data?.error || 'Temizlik işlemi başarısız oldu.',
+            status: 'error',
+            duration: 5000,
+            isClosable: true,
+        });
+    } finally {
+        setCleaning(false);
+    }
+  };
+
   return (
     <Page title="Veritabanı İstatistikleri">
       <Stack spacing={6}>
@@ -85,6 +152,50 @@ const DbStats = () => {
 
         {data && (
             <>
+                {/* Cleanup Section */}
+                <Card bg={bgColor} borderColor={borderColor} borderWidth="1px">
+                    <CardBody>
+                        <Heading size="sm" mb={4}>Veri Temizliği</Heading>
+                        <Text fontSize="sm" color="gray.500" mb={4}>
+                            Sadece güvenli olarak işaretlenmiş, ilişkisel bütünlüğü bozmayacak tablolar (loglar, bildirimler vb.) temizlenebilir.
+                        </Text>
+                        <SimpleGrid columns={{ base: 1, md: 3 }} spacing={4} alignItems="end">
+                            <FormControl>
+                                <FormLabel>Koleksiyon</FormLabel>
+                                <Select 
+                                    placeholder="Seçiniz" 
+                                    value={selectedCollection}
+                                    onChange={(e) => setSelectedCollection(e.target.value)}
+                                >
+                                    {SAFE_COLLECTIONS.map(col => (
+                                        <option key={col.id} value={col.id}>{col.label}</option>
+                                    ))}
+                                </Select>
+                            </FormControl>
+                            <FormControl>
+                                <FormLabel>Zaman Aralığı</FormLabel>
+                                <Select 
+                                    value={selectedDays}
+                                    onChange={(e) => setSelectedDays(e.target.value)}
+                                >
+                                    <option value="7">7 Günden Eski</option>
+                                    <option value="30">30 Günden Eski</option>
+                                    <option value="90">3 Ay (90 Gün)dan Eski</option>
+                                    <option value="180">6 Ay (180 Gün)dan Eski</option>
+                                    <option value="365">1 Yıldan Eski</option>
+                                </Select>
+                            </FormControl>
+                            <Button 
+                                colorScheme="red" 
+                                onClick={onOpen}
+                                isDisabled={!selectedCollection}
+                            >
+                                Temizle
+                            </Button>
+                        </SimpleGrid>
+                    </CardBody>
+                </Card>
+
                 <SimpleGrid columns={{ base: 1, md: 2, lg: 4 }} spacing={5}>
                     <Card bg={bgColor} borderColor={borderColor} borderWidth="1px">
                         <CardBody>
@@ -169,6 +280,34 @@ const DbStats = () => {
                 </Card>
             </>
         )}
+
+        {/* Confirmation Modal */}
+        <Modal isOpen={isOpen} onClose={onClose}>
+            <ModalOverlay />
+            <ModalContent>
+                <ModalHeader>Veri Silme Onayı</ModalHeader>
+                <ModalCloseButton />
+                <ModalBody>
+                    <Alert status="warning" mb={4}>
+                        <AlertIcon />
+                        Bu işlem geri alınamaz!
+                    </Alert>
+                    <Text>
+                        <b>{SAFE_COLLECTIONS.find(c => c.id === selectedCollection)?.label}</b> koleksiyonundan 
+                        <b> {selectedDays} günden eski</b> verileri silmek istediğinize emin misiniz?
+                    </Text>
+                </ModalBody>
+
+                <ModalFooter>
+                    <Button variant="ghost" mr={3} onClick={onClose}>
+                        İptal
+                    </Button>
+                    <Button colorScheme="red" onClick={handleCleanup} isLoading={cleaning}>
+                        Evet, Sil
+                    </Button>
+                </ModalFooter>
+            </ModalContent>
+        </Modal>
       </Stack>
     </Page>
   );
