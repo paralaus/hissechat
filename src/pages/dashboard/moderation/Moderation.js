@@ -52,6 +52,7 @@ import {
   FiMusic,
   FiFile,
   FiUserX,
+  FiSlash,
 } from 'react-icons/fi';
 import {getCombinedLogoUrl} from '../../../utils/image';
 import {format} from 'date-fns';
@@ -59,16 +60,26 @@ import {add} from 'date-fns';
 import {tr} from 'date-fns/locale';
 import { useLocation, useNavigate } from 'react-router-dom';
 
-const MessageCard = ({message, onBlock, onUnblock, onBanUser, onUnbanUser, isBlocking, isBanning, isUnbanning}) => {
+const MessageCard = ({message, onBlock, onUnblock, onBanUser, onUnbanUser, onAddToBlacklist, isBlocking, isBanning, isUnbanning}) => {
   const {isOpen, onOpen, onClose} = useDisclosure();
   const banModal = useDisclosure();
+  const blacklistModal = useDisclosure();
   const [blockReason, setBlockReason] = useState('');
   const [banDuration, setBanDuration] = useState('24h');
   const [customHours, setCustomHours] = useState('6');
+  const [blacklistWord, setBlacklistWord] = useState('');
 
   const handleBan = () => {
     onBanUser(message.user?.id || message.user?._id, banDuration, customHours);
     banModal.onClose();
+  };
+
+  const handleBlacklist = () => {
+    if (blacklistWord) {
+        onAddToBlacklist(blacklistWord);
+        blacklistModal.onClose();
+        setBlacklistWord('');
+    }
   };
 
   const handleBlock = () => {
@@ -205,6 +216,15 @@ const MessageCard = ({message, onBlock, onUnblock, onBanUser, onUnbanUser, isBlo
             <HStack justify="flex-end" spacing={2}>
               <Button
                 size="sm"
+                colorScheme="gray"
+                variant="outline"
+                leftIcon={<FiSlash />}
+                onClick={blacklistModal.onOpen}
+              >
+                Kelime Yasakla
+              </Button>
+              <Button
+                size="sm"
                 colorScheme="purple"
                 variant="outline"
                 leftIcon={<FiUserX />}
@@ -268,6 +288,36 @@ const MessageCard = ({message, onBlock, onUnblock, onBanUser, onUnbanUser, isBlo
             </Button>
             <Button colorScheme="red" onClick={handleBlock}>
               Engelle
+            </Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
+
+      {/* Blacklist Modal */}
+      <Modal isOpen={blacklistModal.isOpen} onClose={blacklistModal.onClose}>
+        <ModalOverlay />
+        <ModalContent>
+          <ModalHeader>Kelimeyi Kara Listeye Ekle</ModalHeader>
+          <ModalCloseButton />
+          <ModalBody>
+            <Text mb={4} fontSize="sm" color="gray.600">
+                Bu kelimeyi içeren mesajlar gelecekte otomatik olarak işaretlenecek veya engellenecektir.
+            </Text>
+            <FormControl>
+              <FormLabel>Yasaklanacak Kelime/İfade</FormLabel>
+              <Input
+                value={blacklistWord}
+                onChange={(e) => setBlacklistWord(e.target.value)}
+                placeholder="Örn: küfür"
+              />
+            </FormControl>
+          </ModalBody>
+          <ModalFooter>
+            <Button variant="ghost" mr={3} onClick={blacklistModal.onClose}>
+              İptal
+            </Button>
+            <Button colorScheme="red" onClick={handleBlacklist} isDisabled={!blacklistWord}>
+              Ekle
             </Button>
           </ModalFooter>
         </ModalContent>
@@ -697,6 +747,35 @@ const Moderation = () => {
     unbanUserMutation.mutate(userId);
   };
 
+  // Create Blacklist Mutation
+  const createBlacklistMutation = useMutation({
+    mutationFn: (word) => api.createBlacklist({
+      scope: 'channel-message',
+      type: 'text',
+      value: word,
+      isActive: true
+    }),
+    onSuccess: () => {
+      toast({
+        title: 'Kelime kara listeye eklendi',
+        status: 'success',
+        duration: 2000,
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: 'Hata',
+        description: error.response?.data?.message || 'Kelime kara listeye eklenemedi',
+        status: 'error',
+        duration: 3000,
+      });
+    },
+  });
+
+  const handleAddToBlacklist = (word) => {
+    createBlacklistMutation.mutate(word);
+  };
+
   // Stats
   const blockedCount = messages.filter(m => m.isBlocked).length;
   const flaggedCount = messages.filter(m => m.isFlagged && !m.isBlocked).length;
@@ -817,6 +896,7 @@ const Moderation = () => {
                 onUnblock={handleUnblock}
                 onBanUser={handleBanUser}
                 onUnbanUser={handleUnbanUser}
+                onAddToBlacklist={handleAddToBlacklist}
                 isBlocking={blockingMessageId === (message.id || message._id)}
                 isBanning={banUserMutation.isPending}
                 isUnbanning={unbanUserMutation.isPending}
