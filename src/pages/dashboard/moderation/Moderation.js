@@ -428,11 +428,52 @@ const BannedUserCard = ({ blacklistEntry, onUnban, isUnbanning }) => {
     );
   }
 
-  if (!user) return null;
-
   const isPermanent = !blacklistEntry.expiresAt;
   const expiresDate = blacklistEntry.expiresAt ? new Date(blacklistEntry.expiresAt) : null;
   const isExpired = expiresDate && expiresDate <= new Date();
+
+  if (!user && !isLoading) {
+    return (
+      <Card borderWidth="1px" borderColor="red.300" bg="red.50">
+        <CardBody>
+          <VStack align="stretch" spacing={3}>
+            <HStack justify="space-between">
+              <VStack align="start" spacing={0}>
+                <Text fontWeight="bold" fontSize="sm">
+                  Bilinmeyen Kullanıcı
+                </Text>
+                <Text fontSize="xs" color="gray.500">
+                  ID: {blacklistEntry.value}
+                </Text>
+              </VStack>
+              <Badge colorScheme="red">Banlı</Badge>
+            </HStack>
+            <Alert status="error" size="sm" borderRadius="md">
+              <AlertIcon />
+              <Box>
+                <Text fontSize="xs" fontWeight="bold">Ban Süresi:</Text>
+                <Text fontSize="xs">
+                  {isPermanent ? 'Süresiz' : (expiresDate ? format(expiresDate, 'dd MMM yyyy HH:mm', {locale: tr}) : '-')}
+                </Text>
+              </Box>
+            </Alert>
+            <Button
+              size="sm"
+              colorScheme="green"
+              leftIcon={<FiCheck />}
+              onClick={() => onUnban(blacklistEntry.value)}
+              isLoading={isUnbanning}
+              width="full"
+            >
+              Banı Kaldır
+            </Button>
+          </VStack>
+        </CardBody>
+      </Card>
+    );
+  }
+
+  if (!user) return null;
 
   return (
     <Card borderWidth="1px" borderColor="red.300" bg="red.50">
