@@ -36,8 +36,10 @@ import {
   Input,
   InputGroup,
   InputLeftElement,
+  Heading,
+  Divider,
 } from '@chakra-ui/react';
-import {useQuery, useMutation, useQueryClient} from '@tanstack/react-query';
+import {useQuery, useMutation, useQueryClient, useInfiniteQuery} from '@tanstack/react-query';
 import {api} from '../../../api';
 import {Page} from '../../../components';
 import {
@@ -379,7 +381,7 @@ const MessageCard = ({message, onBlock, onUnblock, onBanUser, onUnbanUser, onAdd
   );
 };
 
-  // Helper to fetch all items with pagination
+  // Fetch all items with pagination
   const fetchAll = async (apiFunc, params = {}) => {
     const limit = 100; // Max limit allowed by API
     const firstRes = await apiFunc({ ...params, limit, page: 1 });
@@ -405,6 +407,82 @@ const MessageCard = ({message, onBlock, onUnblock, onBanUser, onUnbanUser, onAdd
     
     return allResults;
   };
+
+const BannedUserCard = ({ blacklistEntry, onUnban, isUnbanning }) => {
+  const { data: user, isLoading } = useQuery({
+    queryKey: ['user', blacklistEntry.value],
+    queryFn: () => api.getUser(blacklistEntry.value).then(res => res.data),
+    enabled: !!blacklistEntry.value,
+    staleTime: 1000 * 60 * 5, // 5 minutes
+  });
+
+  if (isLoading) {
+    return (
+      <Card borderWidth="1px" borderColor="red.200" bg="red.50">
+        <CardBody>
+          <Flex justify="center" align="center" h="100px">
+            <Spinner size="sm" />
+          </Flex>
+        </CardBody>
+      </Card>
+    );
+  }
+
+  if (!user) return null;
+
+  const isPermanent = !blacklistEntry.expiresAt;
+  const expiresDate = blacklistEntry.expiresAt ? new Date(blacklistEntry.expiresAt) : null;
+  const isExpired = expiresDate && expiresDate <= new Date();
+
+  return (
+    <Card borderWidth="1px" borderColor="red.300" bg="red.50">
+      <CardBody>
+        <VStack align="stretch" spacing={3}>
+          <HStack justify="space-between">
+            <HStack>
+              <Avatar 
+                size="sm" 
+                src={getCombinedLogoUrl(user.thumbnail)} 
+                name={user.fullname}
+              />
+              <VStack align="start" spacing={0}>
+                <Text fontWeight="bold" fontSize="sm">
+                  {user.fullname}
+                </Text>
+                <Text fontSize="xs" color="gray.500">
+                  {user.email}
+                </Text>
+              </VStack>
+            </HStack>
+            <Badge colorScheme="red">Banlı</Badge>
+          </HStack>
+
+          <Alert status="error" size="sm" borderRadius="md">
+            <AlertIcon />
+            <Box>
+              <Text fontSize="xs" fontWeight="bold">Ban Süresi:</Text>
+              <Text fontSize="xs">
+                {isPermanent ? 'Süresiz' : format(expiresDate, 'dd MMM yyyy HH:mm', {locale: tr})}
+              </Text>
+              {isExpired && <Text fontSize="xs" fontWeight="bold">(Süresi Dolmuş)</Text>}
+            </Box>
+          </Alert>
+
+          <Button
+            size="sm"
+            colorScheme="green"
+            leftIcon={<FiCheck />}
+            onClick={() => onUnban(user.id || user._id)}
+            isLoading={isUnbanning}
+            width="full"
+          >
+            Banı Kaldır
+          </Button>
+        </VStack>
+      </CardBody>
+    </Card>
+  );
+};
 
 const Moderation = () => {
   const toast = useToast();
@@ -542,12 +620,19 @@ const Moderation = () => {
   }, [marketChannels, viopChannels, fundChannels, cryptoChannels, vipChannels, otherChannels]);
 
   // Fetch messages for moderation
-  const {data: messagesData, isLoading, refetch} = useQuery({
+  const {
+    data: messagesData,
+    isLoading,
+    refetch,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage
+  } = useInfiniteQuery({
     queryKey: ['moderation-messages', selectedChannel, filterType],
-    queryFn: async () => {
+    queryFn: async ({ pageParam = 1 }) => {
       const params = {
         limit: 100,
-        page: 1,
+        page: pageParam,
       };
       
       if (selectedChannel) {
@@ -565,6 +650,23 @@ const Moderation = () => {
       const res = await api.getMessagesForModeration(params);
       return res.data;
     },
+    getNextPageParam: (lastPage) => {
+      if (!lastPage || !lastPage.totalPages) return undefined;
+      const nextPage = lastPage.page + 1;
+      return nextPage <= lastPage.totalPages ? nextPage : undefined;
+    },
+    initialPageParam: 1,
+  });
+
+  // Fetch banned users if filter is blocked
+  const {data: bannedUsersData, isLoading: isBannedUsersLoading} = useQuery({
+    queryKey: ['banned-users-moderation'],
+    queryFn: () => fetchAll(api.getBlacklists, { 
+      type: 'user-id', 
+      scope: 'access', 
+      isActive: true 
+    }),
+    enabled: filterType === 'blocked',
   });
 
   // Sync filterType with query string changes - only on initial load
@@ -607,7 +709,7 @@ const Moderation = () => {
     }
   }, [location.search, selectedChannel, searchTerm]);
 
-  const messages = messagesData?.results || [];
+  const messages = messagesData?.pages.flatMap(page => page.results || []) || [];
 
   // Filter by search term
   const filteredMessages = messages.filter(msg => {
@@ -789,7 +891,7 @@ const Moderation = () => {
             <CardBody>
               <Stat>
                 <StatLabel>Toplam Mesaj</StatLabel>
-                <StatNumber>{messagesData?.totalResults || 0}</StatNumber>
+                <StatNumber>{messagesData?.pages?.[0]?.totalResults || 0}</StatNumber>
               </Stat>
             </CardBody>
           </Card>
@@ -868,6 +970,25 @@ const Moderation = () => {
           </CardBody>
         </Card>
 
+        {/* Banned Users Section */}
+        {filterType === 'blocked' && bannedUsersData && bannedUsersData.length > 0 && (
+          <Box>
+            <Heading size="md" mb={4} color="red.600">Engellenen Kullanıcılar ({bannedUsersData.length})</Heading>
+            <SimpleGrid columns={{base: 1, md: 2, lg: 3}} spacing={4} mb={8}>
+              {bannedUsersData.map(entry => (
+                <BannedUserCard
+                  key={entry.id || entry._id}
+                  blacklistEntry={entry}
+                  onUnban={handleUnbanUser}
+                  isUnbanning={unbanUserMutation.isPending}
+                />
+              ))}
+            </SimpleGrid>
+            <Divider mb={8} borderColor="gray.300" />
+            <Heading size="md" mb={4} color="gray.700">Engellenen Mesajlar</Heading>
+          </Box>
+        )}
+
         {/* Messages */}
         {isLoading ? (
           <Flex justify="center" py={10}>
@@ -903,6 +1024,23 @@ const Moderation = () => {
               />
             ))}
           </SimpleGrid>
+        )}
+        
+        {/* Load More Button */}
+        {hasNextPage && (
+          <Flex justify="center" mt={4} mb={8}>
+            <Button
+              onClick={() => fetchNextPage()}
+              isLoading={isFetchingNextPage}
+              loadingText="Yükleniyor..."
+              colorScheme="blue"
+              variant="outline"
+              size="md"
+              width="200px"
+            >
+              Daha Fazla Yükle
+            </Button>
+          </Flex>
         )}
       </VStack>
     </Page>
