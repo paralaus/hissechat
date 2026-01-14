@@ -41,6 +41,7 @@ export const PolicyType = {
   Terms: 'terms',
   Consent: 'consent',
   About: 'about',
+  AppSettings: 'app-settings',
 };
 
 export const PolicyTypeLabel = {
@@ -48,16 +49,19 @@ export const PolicyTypeLabel = {
   [PolicyType.Terms]: 'Şartlar',
   [PolicyType.Consent]: 'Rıza',
   [PolicyType.About]: 'Hakkımızda',
+  [PolicyType.AppSettings]: 'Uygulama Ayarları',
 };
 
 export const policyTypes = Object.values(PolicyType);
 
 export const SuggestionType = {
   Suggestion: 'suggestion',
+  Headline: 'headline',
 };
 
 export const SuggestionTypeLabel = {
   [SuggestionType.Suggestion]: 'Öneri',
+  [SuggestionType.Headline]: 'Manşet',
 };
 
 export const suggestionTypes = Object.values(SuggestionType);

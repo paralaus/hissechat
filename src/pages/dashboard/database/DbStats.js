@@ -43,6 +43,9 @@ import { FiDownload } from 'react-icons/fi';
 import Page from '../../../components/common/Page';
 import axios from 'axios';
 
+const DB_STATS_URL =
+  process.env.REACT_APP_DB_STATS_URL || `${process.env.REACT_APP_API_URL?.replace(/\/v1$/, '')}/v1/db-stats`;
+
 const DbStats = () => {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -64,8 +67,7 @@ const DbStats = () => {
     setLoading(true);
     setError(null);
     try {
-      // Localhost:3001'deki geçici sunucudan veri çek
-      const response = await axios.get('http://localhost:3001/', {
+      const response = await axios.get(`${DB_STATS_URL}/`, {
         headers: { 'Accept': 'application/json' }
       });
       setData(response.data);
@@ -101,7 +103,7 @@ const DbStats = () => {
     
     setCleaning(true);
     try {
-        const response = await axios.post('http://localhost:3001/cleanup', {
+        const response = await axios.post(`${DB_STATS_URL}/cleanup`, {
             collection: selectedCollection,
             days: parseInt(selectedDays)
         }, {
@@ -140,7 +142,7 @@ const DbStats = () => {
                 <Button 
                     leftIcon={<Icon as={FiDownload} />}
                     colorScheme="green"
-                    onClick={() => window.location.href = 'http://localhost:3001/backup'}
+                    onClick={() => window.location.href = `${DB_STATS_URL}/backup`}
                 >
                     Veritabanını Yedekle
                 </Button>

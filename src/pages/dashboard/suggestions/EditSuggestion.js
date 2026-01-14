@@ -35,6 +35,7 @@ import {
 import {api} from '../../../api';
 import {pick} from '../../../utils/object';
 import { SuggestionTypeLabel, suggestionTypes } from '../../../config';
+import useFileInput from '../../../hooks/useFileInput';
 
 applyGoogleTranslateFix();
 
@@ -42,6 +43,9 @@ const object = {
   title: yup.string().required('Bu alan zorunludur.'),
   content: yup.string().required('Bu alan zorunludur.'),
   type: yup.string(),
+  imageUrl: yup.string(),
+  videoUrl: yup.string(),
+  audioUrl: yup.string(),
 };
 
 const schema = yup.object().shape(object);
@@ -53,11 +57,26 @@ const EditSuggestion = ({id}) => {
   const cancelRef = useRef();
   const navigate = useNavigate();
   const {
+    input: imageInput,
+    open: openImage,
+    file: imageFile,
+    upload: uploadImage,
+    isUploading: isUploadingImage,
+  } = useFileInput({ accept: 'image/*' });
+  const {
+    input: mediaInput,
+    open: openMedia,
+    file: mediaFile,
+    upload: uploadMedia,
+    isUploading: isUploadingMedia,
+  } = useFileInput({ accept: 'video/*,audio/*' });
+  const {
     register,
     handleSubmit,
     formState: {errors},
     setValue,
     reset,
+    watch,
   } = useForm({
     resolver: yupResolver(schema),
   });
@@ -85,9 +104,50 @@ const EditSuggestion = ({id}) => {
         }),
   });
 
+  const imageUrlValue = watch('imageUrl');
+  const videoUrlValue = watch('videoUrl');
+  const audioUrlValue = watch('audioUrl');
+
   const onSubmit = async values => {
     try {
-      const {data} = await mutateAsync(values);
+      const submissionValues = {...values};
+      if (imageFile) {
+        const url = await uploadImage();
+        if (!url) {
+          toast({
+            title: 'Görsel yüklenemedi.',
+            status: 'error',
+            position: 'top',
+          });
+          return;
+        }
+        submissionValues.imageUrl = url;
+      }
+      if (mediaFile) {
+        const url = await uploadMedia();
+        if (!url) {
+          toast({
+            title: 'Medya yüklenemedi.',
+            status: 'error',
+            position: 'top',
+          });
+          return;
+        }
+        const mimeType = mediaFile.type || '';
+        const fileName = mediaFile.name ? mediaFile.name.toLowerCase() : '';
+        const videoExtensions = ['.mp4', '.mov', '.avi', '.mkv', '.webm'];
+        const audioExtensions = ['.mp3', '.wav', '.m4a', '.aac', '.ogg'];
+        const isVideo = mimeType.startsWith('video/') || videoExtensions.some(ext => fileName.endsWith(ext));
+        const isAudio = mimeType.startsWith('audio/') || audioExtensions.some(ext => fileName.endsWith(ext));
+        if (isVideo) {
+          submissionValues.videoUrl = url;
+        } else if (isAudio) {
+          submissionValues.audioUrl = url;
+        } else {
+          submissionValues.imageUrl = url;
+        }
+      }
+      const {data} = await mutateAsync(submissionValues);
       if (data) {
         toast({
           title: 'Bilgiler kaydedildi.',
@@ -203,6 +263,67 @@ const EditSuggestion = ({id}) => {
                 })}
               </Select>
               <FormErrorMessage>{errors.type?.message}</FormErrorMessage>
+            </FormControl>
+            <FormControl mb="4" key={3}>
+              <FormLabel
+                display="flex"
+                ms="4px"
+                fontSize="sm"
+                fontWeight="500"
+                mb="8px">
+                Manşet Görseli (opsiyonel)
+              </FormLabel>
+              <Button
+                onClick={openImage}
+                isLoading={isUploadingImage}
+                loadingText="Yükleniyor"
+                variant="outline"
+                mb="2"
+              >
+                Görsel Seç
+              </Button>
+              {imageInput}
+              <Input type="hidden" {...register('imageUrl')} />
+              {(imageUrlValue || imageFile) && (
+                <Box mt="1" fontSize="xs" color="green.500">
+                  Görsel mevcut
+                </Box>
+              )}
+            </FormControl>
+            <FormControl mb="4" key={4}>
+              <FormLabel
+                display="flex"
+                ms="4px"
+                fontSize="sm"
+                fontWeight="500"
+                mb="8px">
+                Video / Ses (opsiyonel)
+              </FormLabel>
+              <Button
+                onClick={openMedia}
+                isLoading={isUploadingMedia}
+                loadingText="Yükleniyor"
+                variant="outline"
+                mb="2"
+              >
+                Video veya Ses Seç
+              </Button>
+              {mediaInput}
+              <Input type="hidden" {...register('videoUrl')} />
+              <Input type="hidden" {...register('audioUrl')} />
+              {(videoUrlValue || audioUrlValue || mediaFile) && (
+                <Box mt="1" fontSize="xs" color="blue.500">
+                  {mediaFile
+                    ? mediaFile.type?.startsWith('audio/')
+                      ? 'Ses seçildi'
+                      : mediaFile.type?.startsWith('video/')
+                      ? 'Video seçildi'
+                      : 'Medya seçildi'
+                    : videoUrlValue
+                    ? 'Video mevcut'
+                    : 'Ses mevcut'}
+                </Box>
+              )}
             </FormControl>
             <Condition condition={!isNew}>
               <ReadOnlyInfo

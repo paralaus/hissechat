@@ -36,6 +36,7 @@ import { ReadOnlyInfo } from '../../components';
 import { useUserStore } from '../../store';
 import useBrowserNotification from '../../hooks/useBrowserNotification';
 import { playNotificationSound } from '../../utils/sound';
+import { PolicyType } from '../../config';
 
 // --- Profile Settings Component ---
 const profileSchema = yup.object({
@@ -401,6 +402,134 @@ const SecuritySettings = ({ user }) => {
   );
 };
 
+const appVersionSchema = yup.object({
+  androidMinVersion: yup.string().required('Bu alan zorunludur.'),
+  androidCriticalVersion: yup.string().required('Bu alan zorunludur.'),
+  iosMinVersion: yup.string().required('Bu alan zorunludur.'),
+  iosCriticalVersion: yup.string().required('Bu alan zorunludur.'),
+}).required();
+
+const AppVersionSettings = () => {
+  const toast = useToast();
+  const [isLoading, setIsLoading] = useState(true);
+  const { register, handleSubmit, formState: { errors }, reset } = useForm({
+    resolver: yupResolver(appVersionSchema),
+    defaultValues: {
+      androidMinVersion: '',
+      androidCriticalVersion: '',
+      iosMinVersion: '',
+      iosCriticalVersion: '',
+    },
+  });
+
+  useEffect(() => {
+    let isMounted = true;
+    const load = async () => {
+      try {
+        const response = await api.getPolicy(PolicyType.AppSettings);
+        const data = response?.data;
+        if (data?.content) {
+          try {
+            const parsed = JSON.parse(data.content);
+            const android = parsed?.android || {};
+            const ios = parsed?.ios || {};
+            if (isMounted) {
+              reset({
+                androidMinVersion: android.minVersion || '',
+                androidCriticalVersion: android.criticalVersion || '',
+                iosMinVersion: ios.minVersion || '',
+                iosCriticalVersion: ios.criticalVersion || '',
+              });
+            }
+          } catch {
+          }
+        }
+      } catch {
+      } finally {
+        if (isMounted) {
+          setIsLoading(false);
+        }
+      }
+    };
+    load();
+    return () => {
+      isMounted = false;
+    };
+  }, [reset]);
+
+  const onSubmit = async values => {
+    try {
+      const payload = {
+        type: PolicyType.AppSettings,
+        title: 'Uygulama Ayarları',
+        content: JSON.stringify({
+          android: {
+            minVersion: values.androidMinVersion,
+            criticalVersion: values.androidCriticalVersion,
+          },
+          ios: {
+            minVersion: values.iosMinVersion,
+            criticalVersion: values.iosCriticalVersion,
+          },
+        }),
+      };
+      await api.createPolicy(payload);
+      toast({
+        title: 'Uygulama ayarları kaydedildi.',
+        status: 'success',
+        position: 'top',
+      });
+    } catch (error) {
+      toast({
+        title: getErrorMessage(error),
+        status: 'error',
+        position: 'top',
+      });
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit(onSubmit)}>
+      <VStack spacing={6} align="stretch">
+        <Text fontSize="lg" fontWeight="bold">Uygulama Sürüm Ayarları</Text>
+        <VStack spacing={4} align="stretch">
+          <Text fontSize="md" fontWeight="semibold">Android</Text>
+          <FormControl isInvalid={!!errors.androidMinVersion}>
+            <FormLabel fontSize="sm">Minimum Sürüm</FormLabel>
+            <Input placeholder="Örn: 1.3.40" {...register('androidMinVersion')} />
+            <FormErrorMessage>{errors.androidMinVersion?.message}</FormErrorMessage>
+          </FormControl>
+          <FormControl isInvalid={!!errors.androidCriticalVersion}>
+            <FormLabel fontSize="sm">Kritik Sürüm</FormLabel>
+            <Input placeholder="Örn: 1.3.46" {...register('androidCriticalVersion')} />
+            <FormErrorMessage>{errors.androidCriticalVersion?.message}</FormErrorMessage>
+          </FormControl>
+        </VStack>
+
+        <Divider />
+
+        <VStack spacing={4} align="stretch">
+          <Text fontSize="md" fontWeight="semibold">iOS</Text>
+          <FormControl isInvalid={!!errors.iosMinVersion}>
+            <FormLabel fontSize="sm">Minimum Sürüm</FormLabel>
+            <Input placeholder="Örn: 1.3.40" {...register('iosMinVersion')} />
+            <FormErrorMessage>{errors.iosMinVersion?.message}</FormErrorMessage>
+          </FormControl>
+          <FormControl isInvalid={!!errors.iosCriticalVersion}>
+            <FormLabel fontSize="sm">Kritik Sürüm</FormLabel>
+            <Input placeholder="Örn: 1.3.46" {...register('iosCriticalVersion')} />
+            <FormErrorMessage>{errors.iosCriticalVersion?.message}</FormErrorMessage>
+          </FormControl>
+        </VStack>
+
+        <Button type="submit" colorScheme="primary" isLoading={isLoading}>
+          Kaydet
+        </Button>
+      </VStack>
+    </form>
+  );
+};
+
 // --- Main Settings Page ---
 const Settings = () => {
   const { user } = useUserStore();
@@ -425,6 +554,9 @@ const Settings = () => {
             <Tab justifyContent="flex-start" mb={2}>
               <Icon as={FiLock} mr={2} /> Güvenlik
             </Tab>
+            <Tab justifyContent="flex-start" mb={2}>
+              <Icon as={FiLock} mr={2} /> Uygulama Ayarları
+            </Tab>
           </TabList>
 
           <TabPanels>
@@ -441,6 +573,11 @@ const Settings = () => {
             <TabPanel px={0} py={0}>
               <Box maxW="600px">
                 <SecuritySettings user={user} />
+              </Box>
+            </TabPanel>
+            <TabPanel px={0} py={0}>
+              <Box maxW="600px">
+                <AppVersionSettings />
               </Box>
             </TabPanel>
           </TabPanels>
