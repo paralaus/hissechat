@@ -903,7 +903,7 @@ const Moderation = () => {
   // Create Blacklist Mutation
   const createBlacklistMutation = useMutation({
     mutationFn: (word) => api.createBlacklist({
-      scope: 'channel-message',
+      scope: 'banned-text',
       type: 'text',
       value: word,
       isActive: true
