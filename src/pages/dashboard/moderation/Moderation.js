@@ -699,15 +699,16 @@ const Moderation = () => {
     initialPageParam: 1,
   });
 
-  // Fetch banned users if filter is blocked
+  // Fetch banned users
   const {data: bannedUsersData, isLoading: isBannedUsersLoading} = useQuery({
-    queryKey: ['banned-users-moderation'],
-    queryFn: () => fetchAll(api.getBlacklists, { 
-      type: 'user-id', 
-      scope: 'access', 
-      isActive: true 
+    queryKey: ['banned-users-moderation', 'access', 'user-id'],
+    queryFn: () => fetchAll(api.getBlacklists, {
+      type: 'user-id',
+      scope: 'access',
+      isActive: true,
+      sortBy: 'createdAt:desc',
     }),
-    enabled: filterType === 'blocked',
+    staleTime: 30000,
   });
 
   // Sync filterType with query string changes - only on initial load
@@ -751,6 +752,15 @@ const Moderation = () => {
   }, [location.search, selectedChannel, searchTerm]);
 
   const messages = messagesData?.pages.flatMap(page => page.results || []) || [];
+  const activeBannedUsers = React.useMemo(() => {
+    const list = bannedUsersData || [];
+    return list.filter(entry => {
+      if (!entry?.isActive) return false;
+      const exp = entry?.expiresAt ? new Date(entry.expiresAt).getTime() : null;
+      if (!exp) return true;
+      return exp > Date.now();
+    });
+  }, [bannedUsersData]);
 
   // Filter by search term
   const filteredMessages = messages.filter(msg => {
@@ -1012,19 +1022,32 @@ const Moderation = () => {
         </Card>
 
         {/* Banned Users Section */}
-        {filterType === 'blocked' && bannedUsersData && bannedUsersData.length > 0 && (
+        {filterType === 'blocked' && (
           <Box>
-            <Heading size="md" mb={4} color="red.600">Engellenen Kullanıcılar ({bannedUsersData.length})</Heading>
-            <SimpleGrid columns={{base: 1, md: 2, lg: 3}} spacing={4} mb={8}>
-              {bannedUsersData.map(entry => (
-                <BannedUserCard
-                  key={entry.id || entry._id}
-                  blacklistEntry={entry}
-                  onUnban={handleUnbanUser}
-                  isUnbanning={unbanUserMutation.isPending}
-                />
-              ))}
-            </SimpleGrid>
+            <Heading size="md" mb={4} color="red.600">
+              Engellenen Kullanıcılar ({activeBannedUsers.length})
+            </Heading>
+            {isBannedUsersLoading ? (
+              <Flex justify="center" py={6}>
+                <Spinner size="lg" />
+              </Flex>
+            ) : activeBannedUsers.length === 0 ? (
+              <Alert status="info" borderRadius="md" mb={6}>
+                <AlertIcon />
+                <Text>Aktif banlı kullanıcı bulunamadı.</Text>
+              </Alert>
+            ) : (
+              <SimpleGrid columns={{base: 1, md: 2, lg: 3}} spacing={4} mb={8}>
+                {activeBannedUsers.map(entry => (
+                  <BannedUserCard
+                    key={entry.id || entry._id || entry.value}
+                    blacklistEntry={entry}
+                    onUnban={handleUnbanUser}
+                    isUnbanning={unbanUserMutation.isPending}
+                  />
+                ))}
+              </SimpleGrid>
+            )}
             <Divider mb={8} borderColor="gray.300" />
             <Heading size="md" mb={4} color="gray.700">Engellenen Mesajlar</Heading>
           </Box>
