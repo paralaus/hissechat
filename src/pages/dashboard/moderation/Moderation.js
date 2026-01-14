@@ -538,6 +538,11 @@ const Moderation = () => {
     return allowed.includes(initial) ? initial : 'profanity';
   }); // 'all', 'flagged', 'blocked', 'profanity'
   const [searchTerm, setSearchTerm] = useState('');
+  const [bannedTextSearch, setBannedTextSearch] = useState('');
+  const [bannedTextSearchDebounced, setBannedTextSearchDebounced] = useState('');
+  const [newBannedWord, setNewBannedWord] = useState('');
+  const [bannedTextPage, setBannedTextPage] = useState(1);
+  const [bannedTextLimit, setBannedTextLimit] = useState(50);
   const [blockingMessageId, setBlockingMessageId] = useState(null);
   const [initialLoadDone, setInitialLoadDone] = useState(false);
 
@@ -711,6 +716,29 @@ const Moderation = () => {
     staleTime: 30000,
   });
 
+  // Fetch banned text entries
+  const {
+    data: bannedTextData,
+    isLoading: isBannedTextLoading,
+    refetch: refetchBannedText,
+  } = useQuery({
+    queryKey: ['banned-text-blacklist', bannedTextPage, bannedTextLimit, bannedTextSearchDebounced],
+    queryFn: async () => {
+      const res = await api.getBlacklists({
+        type: 'text',
+        scope: 'banned-text',
+        isActive: true,
+        sortBy: 'createdAt:desc',
+        limit: bannedTextLimit,
+        page: bannedTextPage,
+        value: bannedTextSearchDebounced || undefined,
+      });
+      return res.data;
+    },
+    keepPreviousData: true,
+    staleTime: 30000,
+  });
+
   // Sync filterType with query string changes - only on initial load
   useEffect(() => {
     if (initialLoadDone) return; // Skip after initial load
@@ -723,6 +751,15 @@ const Moderation = () => {
     }
     setInitialLoadDone(true);
   }, [location.search]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    const handle = setTimeout(() => {
+      const trimmed = bannedTextSearch.trim();
+      setBannedTextSearchDebounced(trimmed);
+      setBannedTextPage(1);
+    }, 300);
+    return () => clearTimeout(handle);
+  }, [bannedTextSearch]);
 
   // Update URL when filterType changes (after initial load)
   const handleFilterTypeChange = (newFilter) => {
@@ -761,6 +798,18 @@ const Moderation = () => {
       return exp > Date.now();
     });
   }, [bannedUsersData]);
+
+  const bannedTextEntries = React.useMemo(() => {
+    const items = (bannedTextData?.results || []).filter(entry => entry?.value);
+    return items;
+  }, [bannedTextData]);
+
+  const bannedTextTotal = bannedTextData?.totalResults || 0;
+  const bannedTextTotalPages = bannedTextData?.totalPages || 1;
+
+  const filteredBannedTextEntries = React.useMemo(() => {
+    return bannedTextEntries;
+  }, [bannedTextEntries]);
 
   // Filter by search term
   const filteredMessages = messages.filter(msg => {
@@ -914,6 +963,8 @@ const Moderation = () => {
         status: 'success',
         duration: 2000,
       });
+      queryClient.invalidateQueries(['banned-text-blacklist']);
+      setNewBannedWord('');
     },
     onError: (error) => {
       toast({
@@ -927,6 +978,35 @@ const Moderation = () => {
 
   const handleAddToBlacklist = (word) => {
     createBlacklistMutation.mutate(word);
+  };
+
+  const removeBannedTextMutation = useMutation({
+    mutationFn: (id) => api.updateBlacklist(id, { isActive: false }),
+    onSuccess: () => {
+      toast({
+        title: 'Kelime kaldırıldı',
+        status: 'success',
+        duration: 2000,
+      });
+      if (bannedTextEntries.length === 1 && bannedTextPage > 1) {
+        setBannedTextPage(prev => Math.max(1, prev - 1));
+      }
+      queryClient.invalidateQueries(['banned-text-blacklist']);
+    },
+    onError: (error) => {
+      toast({
+        title: 'Hata',
+        description: error.response?.data?.message || 'Kelime kaldırılamadı',
+        status: 'error',
+        duration: 3000,
+      });
+    },
+  });
+
+  const handleRemoveBannedText = (entry) => {
+    const id = entry?.id || entry?._id;
+    if (!id) return;
+    removeBannedTextMutation.mutate(id);
   };
 
   // Stats
@@ -1018,6 +1098,142 @@ const Moderation = () => {
                 />
               </Tooltip>
             </HStack>
+          </CardBody>
+        </Card>
+
+        {/* Banned Text Section */}
+        <Card>
+          <CardBody>
+            <VStack align="stretch" spacing={4}>
+              <HStack justify="space-between" align="center">
+                <Heading size="md" color="purple.600">
+                  Yasaklı Kelimeler ({bannedTextTotal})
+                </Heading>
+                <Tooltip label="Yenile">
+                  <IconButton
+                    icon={<FiRefreshCw />}
+                    onClick={() => refetchBannedText()}
+                    isLoading={isBannedTextLoading}
+                    aria-label="Yasaklı kelimeleri yenile"
+                    size="sm"
+                  />
+                </Tooltip>
+              </HStack>
+
+              <HStack spacing={4} flexWrap="wrap">
+                <InputGroup maxW="300px">
+                  <InputLeftElement>
+                    <FiSearch color="gray" />
+                  </InputLeftElement>
+                  <Input
+                    placeholder="Yasaklı kelime ara..."
+                    value={bannedTextSearch}
+                    onChange={(e) => setBannedTextSearch(e.target.value)}
+                  />
+                </InputGroup>
+
+                <InputGroup maxW="300px">
+                  <Input
+                    placeholder="Yeni yasaklı kelime ekle..."
+                    value={newBannedWord}
+                    onChange={(e) => setNewBannedWord(e.target.value)}
+                  />
+                </InputGroup>
+                <Button
+                  colorScheme="red"
+                  onClick={() => {
+                    const trimmed = (newBannedWord || '').trim();
+                    if (!trimmed) return;
+                    handleAddToBlacklist(trimmed);
+                  }}
+                  isLoading={createBlacklistMutation.isPending}
+                  isDisabled={!newBannedWord.trim()}
+                >
+                  Ekle
+                </Button>
+
+                <HStack spacing={2} align="center">
+                  <Text fontSize="xs" color="gray.600">
+                    Sayfa boyutu:
+                  </Text>
+                  <Select
+                    size="sm"
+                    maxW="100px"
+                    value={String(bannedTextLimit)}
+                    onChange={(e) => {
+                      const value = parseInt(e.target.value, 10);
+                      setBannedTextPage(1);
+                      setBannedTextLimit(Number.isNaN(value) ? 50 : value);
+                    }}
+                  >
+                    <option value="20">20</option>
+                    <option value="50">50</option>
+                    <option value="100">100</option>
+                  </Select>
+                </HStack>
+              </HStack>
+
+              {isBannedTextLoading ? (
+                <Flex justify="center" py={4}>
+                  <Spinner size="md" />
+                </Flex>
+              ) : filteredBannedTextEntries.length === 0 ? (
+                <Alert status="info" borderRadius="md">
+                  <AlertIcon />
+                  <Text>Herhangi bir yasaklı kelime bulunamadı.</Text>
+                </Alert>
+              ) : (
+                <VStack align="stretch" spacing={2} maxH="300px" overflowY="auto">
+                  {filteredBannedTextEntries.map(entry => (
+                    <HStack
+                      key={entry.id || entry._id || entry.value}
+                      justify="space-between"
+                      borderWidth="1px"
+                      borderColor="gray.200"
+                      borderRadius="md"
+                      px={3}
+                      py={2}
+                    >
+                      <Text fontSize="sm">{entry.value}</Text>
+                      <Button
+                        size="xs"
+                        colorScheme="red"
+                        variant="outline"
+                        leftIcon={<FiX />}
+                        onClick={() => handleRemoveBannedText(entry)}
+                        isLoading={removeBannedTextMutation.isPending}
+                      >
+                        Sil
+                      </Button>
+                    </HStack>
+                  ))}
+                </VStack>
+              )}
+
+              <HStack justify="space-between" align="center" pt={2}>
+                <Text fontSize="xs" color="gray.600">
+                  Sayfa {bannedTextPage} / {bannedTextTotalPages} · {bannedTextTotal} kayıt
+                </Text>
+                <HStack spacing={2}>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setBannedTextPage(prev => Math.max(1, prev - 1))}
+                    isDisabled={bannedTextPage <= 1 || isBannedTextLoading}
+                  >
+                    Önceki
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setBannedTextPage(prev => Math.min(bannedTextTotalPages, prev + 1))}
+                    isDisabled={bannedTextPage >= bannedTextTotalPages || isBannedTextLoading}
+                  >
+                    Sonraki
+                  </Button>
+                </HStack>
+              </HStack>
+            </VStack>
           </CardBody>
         </Card>
 
