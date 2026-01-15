@@ -34,21 +34,36 @@ import {
 } from '../../../components';
 import {api} from '../../../api';
 import {pick} from '../../../utils/object';
-import { SuggestionTypeLabel, suggestionTypes } from '../../../config';
+import { SuggestionTypeLabel, suggestionTypes, SuggestionType } from '../../../config';
 import useFileInput from '../../../hooks/useFileInput';
 
 applyGoogleTranslateFix();
 
 const object = {
-  title: yup.string().required('Bu alan zorunludur.'),
-  content: yup.string().required('Bu alan zorunludur.'),
+  title: yup.string(),
+  content: yup.string(),
   type: yup.string(),
   imageUrl: yup.string(),
   videoUrl: yup.string(),
   audioUrl: yup.string(),
 };
 
-const schema = yup.object().shape(object);
+const schema = yup.object().shape({
+  title: yup.string().nullable().when('type', {
+    is: SuggestionType.Headline,
+    then: yup.string().nullable(),
+    otherwise: yup.string().required('Bu alan zorunludur.'),
+  }),
+  content: yup.string().nullable().when('type', {
+    is: SuggestionType.Headline,
+    then: yup.string().nullable(),
+    otherwise: yup.string().required('Bu alan zorunludur.'),
+  }),
+  type: yup.string().required('Bu alan zorunludur.'),
+  imageUrl: yup.string().nullable(),
+  videoUrl: yup.string().nullable(),
+  audioUrl: yup.string().nullable(),
+});
 
 const EditSuggestion = ({id}) => {
   const isNew = !id || id === 'new';
@@ -110,6 +125,22 @@ const EditSuggestion = ({id}) => {
 
   const onSubmit = async values => {
     try {
+      if (values.type === SuggestionType.Headline) {
+        const hasMedia =
+          !!imageFile ||
+          !!mediaFile ||
+          !!(values.imageUrl && values.imageUrl.trim()) ||
+          !!(values.videoUrl && values.videoUrl.trim()) ||
+          !!(values.audioUrl && values.audioUrl.trim());
+        if (!hasMedia) {
+          toast({
+            title: 'Manşet için en az bir medya zorunludur.',
+            status: 'error',
+            position: 'top',
+          });
+          return;
+        }
+      }
       const submissionValues = {...values};
       if (imageFile) {
         const url = await uploadImage();
