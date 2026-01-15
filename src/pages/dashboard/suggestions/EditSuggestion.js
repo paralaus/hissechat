@@ -49,16 +49,22 @@ const object = {
 };
 
 const schema = yup.object().shape({
-  title: yup.string().nullable().when('type', {
-    is: SuggestionType.Headline,
-    then: yup.string().nullable(),
-    otherwise: yup.string().required('Bu alan zorunludur.'),
-  }),
-  content: yup.string().nullable().when('type', {
-    is: SuggestionType.Headline,
-    then: yup.string().nullable(),
-    otherwise: yup.string().required('Bu alan zorunludur.'),
-  }),
+  title: yup
+    .string()
+    .nullable()
+    .when('type', {
+      is: (val) => val === SuggestionType.Headline,
+      then: yup.string().nullable(),
+      otherwise: yup.string().required('Bu alan zorunludur.'),
+    }),
+  content: yup
+    .string()
+    .nullable()
+    .when('type', {
+      is: (val) => val === SuggestionType.Headline,
+      then: yup.string().nullable(),
+      otherwise: yup.string().required('Bu alan zorunludur.'),
+    }),
   type: yup.string().required('Bu alan zorunludur.'),
   imageUrl: yup.string().nullable(),
   videoUrl: yup.string().nullable(),
@@ -122,17 +128,25 @@ const EditSuggestion = ({id}) => {
   const imageUrlValue = watch('imageUrl');
   const videoUrlValue = watch('videoUrl');
   const audioUrlValue = watch('audioUrl');
+  const typeValue = watch('type');
+  const isHeadline = typeValue === SuggestionType.Headline;
+  const hasMedia =
+    !!imageFile ||
+    !!mediaFile ||
+    !!(imageUrlValue && imageUrlValue.trim()) ||
+    !!(videoUrlValue && videoUrlValue.trim()) ||
+    !!(audioUrlValue && audioUrlValue.trim());
 
   const onSubmit = async values => {
     try {
       if (values.type === SuggestionType.Headline) {
-        const hasMedia =
+        const submitHasMedia =
           !!imageFile ||
           !!mediaFile ||
           !!(values.imageUrl && values.imageUrl.trim()) ||
           !!(values.videoUrl && values.videoUrl.trim()) ||
           !!(values.audioUrl && values.audioUrl.trim());
-        if (!hasMedia) {
+        if (!submitHasMedia) {
           toast({
             title: 'Manşet için en az bir medya zorunludur.',
             status: 'error',
@@ -355,6 +369,9 @@ const EditSuggestion = ({id}) => {
                     : 'Ses mevcut'}
                 </Box>
               )}
+              <FormErrorMessage>
+                {isHeadline && !hasMedia ? 'Manşet için en az bir medya zorunludur.' : ''}
+              </FormErrorMessage>
             </FormControl>
             <Condition condition={!isNew}>
               <ReadOnlyInfo
