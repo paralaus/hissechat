@@ -53,13 +53,13 @@ const schema = yup.object().shape({
     .string()
     .nullable()
     .when('type', (type, schema) =>
-      type === SuggestionType.Headline ? schema.nullable() : schema.required('Bu alan zorunludur.')
+      type === SuggestionType.Headline ? schema.notRequired().nullable() : schema.required('Bu alan zorunludur.')
     ),
   content: yup
     .string()
     .nullable()
     .when('type', (type, schema) =>
-      type === SuggestionType.Headline ? schema.nullable() : schema.required('Bu alan zorunludur.')
+      type === SuggestionType.Headline ? schema.notRequired().nullable() : schema.required('Bu alan zorunludur.')
     ),
   type: yup.string().required('Bu alan zorunludur.'),
   imageUrl: yup.string().nullable(),
@@ -94,6 +94,7 @@ const EditSuggestion = ({id}) => {
     setValue,
     reset,
     watch,
+    clearErrors,
   } = useForm({
     resolver: yupResolver(schema),
   });
@@ -128,10 +129,16 @@ const EditSuggestion = ({id}) => {
   const isHeadline = typeValue === SuggestionType.Headline;
   const hasMedia =
     !!imageFile ||
-    !!mediaFile ||
+   !!mediaFile ||
     !!(imageUrlValue && imageUrlValue.trim()) ||
     !!(videoUrlValue && videoUrlValue.trim()) ||
     !!(audioUrlValue && audioUrlValue.trim());
+
+  React.useEffect(() => {
+    if (isHeadline) {
+      clearErrors(['title', 'content']);
+    }
+  }, [isHeadline, clearErrors]);
 
   const onSubmit = async values => {
     try {
@@ -242,7 +249,7 @@ const EditSuggestion = ({id}) => {
             background="transparent"
             borderRadius="md"
             me="auto">
-            <FormControl isInvalid={!!errors.title} mb="4" key={0}>
+            <FormControl isInvalid={!isHeadline && !!errors.title} mb="4" key={0}>
               <FormLabel
                 display="flex"
                 ms="4px"
@@ -259,9 +266,9 @@ const EditSuggestion = ({id}) => {
                 defaultValue={data?.title}
                 {...register('title')}
               />
-              <FormErrorMessage>{errors.title?.message}</FormErrorMessage>
+              <FormErrorMessage>{!isHeadline ? errors.title?.message : ''}</FormErrorMessage>
             </FormControl>
-            <FormControl isInvalid={!!errors.content} mb="4" key={1}>
+            <FormControl isInvalid={!isHeadline && !!errors.content} mb="4" key={1}>
               <FormLabel
                 display="flex"
                 ms="4px"
@@ -282,7 +289,7 @@ const EditSuggestion = ({id}) => {
                 defaultValue={data?.content}
                 onChange={html => setValue('content', html)}
               />
-              <FormErrorMessage>{errors.content?.message}</FormErrorMessage>
+              <FormErrorMessage>{!isHeadline ? errors.content?.message : ''}</FormErrorMessage>
             </FormControl>
             <FormControl isInvalid={!!errors.type} mb="4" key={2}>
               <FormLabel
