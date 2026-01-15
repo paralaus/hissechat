@@ -49,18 +49,16 @@ const object = {
 };
 
 const schema = yup.object().shape({
-  title: yup
-    .string()
-    .nullable()
-    .when('type', (type, schema) =>
-      type === SuggestionType.Headline ? schema.notRequired().nullable() : schema.required('Bu alan zorunludur.')
-    ),
-  content: yup
-    .string()
-    .nullable()
-    .when('type', (type, schema) =>
-      type === SuggestionType.Headline ? schema.notRequired().nullable() : schema.required('Bu alan zorunludur.')
-    ),
+  title: yup.string().when('type', {
+    is: SuggestionType.Headline,
+    then: schema => schema.nullable().notRequired(),
+    otherwise: schema => schema.required('Bu alan zorunludur.'),
+  }),
+  content: yup.string().when('type', {
+    is: SuggestionType.Headline,
+    then: schema => schema.nullable().notRequired(),
+    otherwise: schema => schema.required('Bu alan zorunludur.'),
+  }),
   type: yup.string().required('Bu alan zorunludur.'),
   imageUrl: yup.string().nullable(),
   videoUrl: yup.string().nullable(),
