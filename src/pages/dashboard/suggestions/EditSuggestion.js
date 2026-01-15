@@ -52,19 +52,15 @@ const schema = yup.object().shape({
   title: yup
     .string()
     .nullable()
-    .when('type', {
-      is: (val) => val === SuggestionType.Headline,
-      then: yup.string().nullable(),
-      otherwise: yup.string().required('Bu alan zorunludur.'),
-    }),
+    .when('type', (type, schema) =>
+      type === SuggestionType.Headline ? schema.nullable() : schema.required('Bu alan zorunludur.')
+    ),
   content: yup
     .string()
     .nullable()
-    .when('type', {
-      is: (val) => val === SuggestionType.Headline,
-      then: yup.string().nullable(),
-      otherwise: yup.string().required('Bu alan zorunludur.'),
-    }),
+    .when('type', (type, schema) =>
+      type === SuggestionType.Headline ? schema.nullable() : schema.required('Bu alan zorunludur.')
+    ),
   type: yup.string().required('Bu alan zorunludur.'),
   imageUrl: yup.string().nullable(),
   videoUrl: yup.string().nullable(),
@@ -335,7 +331,7 @@ const EditSuggestion = ({id}) => {
                 </Box>
               )}
             </FormControl>
-            <FormControl mb="4" key={4}>
+            <FormControl mb="4" key={4} isInvalid={isHeadline && !hasMedia}>
               <FormLabel
                 display="flex"
                 ms="4px"
