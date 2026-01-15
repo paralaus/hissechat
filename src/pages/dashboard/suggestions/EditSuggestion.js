@@ -75,6 +75,7 @@ const EditSuggestion = ({id}) => {
     input: imageInput,
     open: openImage,
     file: imageFile,
+    objectUrl: imageObjectUrl,
     upload: uploadImage,
     isUploading: isUploadingImage,
   } = useFileInput({ accept: 'image/*' });
@@ -82,6 +83,9 @@ const EditSuggestion = ({id}) => {
     input: mediaInput,
     open: openMedia,
     file: mediaFile,
+    objectUrl: mediaObjectUrl,
+    isVideo: isVideoMedia,
+    thumbnail: mediaThumbnail,
     upload: uploadMedia,
     isUploading: isUploadingMedia,
   } = useFileInput({ accept: 'video/*,audio/*' });
@@ -331,8 +335,16 @@ const EditSuggestion = ({id}) => {
               {imageInput}
               <Input type="hidden" {...register('imageUrl')} />
               {(imageUrlValue || imageFile) && (
-                <Box mt="1" fontSize="xs" color="green.500">
-                  Görsel mevcut
+                <Box mt="2">
+                  <Box
+                    as="img"
+                    src={imageFile ? imageObjectUrl : imageUrlValue}
+                    maxH="150px"
+                    borderRadius="md"
+                    borderWidth="1px"
+                    borderColor="gray.200"
+                    objectFit="cover"
+                  />
                 </Box>
               )}
             </FormControl>
@@ -358,16 +370,64 @@ const EditSuggestion = ({id}) => {
               <Input type="hidden" {...register('videoUrl')} />
               <Input type="hidden" {...register('audioUrl')} />
               {(videoUrlValue || audioUrlValue || mediaFile) && (
-                <Box mt="1" fontSize="xs" color="blue.500">
-                  {mediaFile
-                    ? mediaFile.type?.startsWith('audio/')
-                      ? 'Ses seçildi'
-                      : mediaFile.type?.startsWith('video/')
-                      ? 'Video seçildi'
-                      : 'Medya seçildi'
-                    : videoUrlValue
-                    ? 'Video mevcut'
-                    : 'Ses mevcut'}
+                <Box mt="2">
+                  {mediaFile ? (
+                    isVideoMedia ? (
+                      <Box>
+                        {mediaThumbnail ? (
+                          <Box
+                            as="img"
+                            src={mediaThumbnail}
+                            maxH="150px"
+                            borderRadius="md"
+                            borderWidth="1px"
+                            borderColor="gray.200"
+                            objectFit="cover"
+                          />
+                        ) : (
+                          <Box
+                            as="video"
+                            src={mediaObjectUrl}
+                            maxH="200px"
+                            controls
+                            borderRadius="md"
+                            borderWidth="1px"
+                            borderColor="gray.200"
+                          />
+                        )}
+                      </Box>
+                    ) : (
+                      <Box>
+                        <Box
+                          as="audio"
+                          src={mediaObjectUrl}
+                          controls
+                          width="100%"
+                        />
+                      </Box>
+                    )
+                  ) : videoUrlValue ? (
+                    <Box>
+                      <Box
+                        as="video"
+                        src={videoUrlValue}
+                        maxH="200px"
+                        controls
+                        borderRadius="md"
+                        borderWidth="1px"
+                        borderColor="gray.200"
+                      />
+                    </Box>
+                  ) : (
+                    <Box>
+                      <Box
+                        as="audio"
+                        src={audioUrlValue}
+                        controls
+                        width="100%"
+                      />
+                    </Box>
+                  )}
                 </Box>
               )}
               <FormErrorMessage>
