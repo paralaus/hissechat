@@ -704,20 +704,12 @@ const Moderation = () => {
     initialPageParam: 1,
   });
 
-  // Fetch banned users
   const {data: bannedUsersData, isLoading: isBannedUsersLoading} = useQuery({
-    queryKey: ['banned-users-moderation', 'channel-message', selectedChannel],
-    queryFn: async () => {
-      const res = await api.getBlacklists({
-        scope: 'channel-message',
-        isActive: true,
-        sortBy: 'createdAt:desc',
-        limit: 500,
-        page: 1,
-        ...(selectedChannel ? { resource: selectedChannel } : {}),
-      });
-      return res.data;
-    },
+    queryKey: ['banned-users-moderation', selectedChannel],
+    queryFn: () => fetchAll(api.getBlacklists, {
+      isActive: true,
+      sortBy: 'createdAt:desc',
+    }),
     staleTime: 30000,
   });
 
@@ -795,9 +787,21 @@ const Moderation = () => {
 
   const messages = messagesData?.pages.flatMap(page => page.results || []) || [];
   const activeBannedUsers = React.useMemo(() => {
-    const list = bannedUsersData?.results || [];
-    return list.filter(entry => entry?.isActive);
-  }, [bannedUsersData]);
+    const list = bannedUsersData || [];
+    return list.filter(entry => {
+      if (!entry?.isActive) return false;
+      if (entry.scope === 'access' && entry.type === 'user-id') {
+        return true;
+      }
+      if (entry.scope === 'channel-message') {
+        if (!selectedChannel) {
+          return true;
+        }
+        return !entry.resource || entry.resource === selectedChannel;
+      }
+      return false;
+    });
+  }, [bannedUsersData, selectedChannel]);
 
   const bannedTextEntries = React.useMemo(() => {
     const items = (bannedTextData?.results || []).filter(entry => entry?.value);
