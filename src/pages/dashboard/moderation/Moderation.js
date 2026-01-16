@@ -706,9 +706,8 @@ const Moderation = () => {
 
   // Fetch banned users
   const {data: bannedUsersData, isLoading: isBannedUsersLoading} = useQuery({
-    queryKey: ['banned-users-moderation', 'channel-message', 'user-id', selectedChannel],
+    queryKey: ['banned-users-moderation', 'channel-message', selectedChannel],
     queryFn: () => fetchAll(api.getBlacklists, {
-      type: 'user-id',
       scope: 'channel-message',
       isActive: true,
       sortBy: 'createdAt:desc',
