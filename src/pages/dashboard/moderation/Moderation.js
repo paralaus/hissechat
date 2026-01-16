@@ -791,12 +791,7 @@ const Moderation = () => {
   const messages = messagesData?.pages.flatMap(page => page.results || []) || [];
   const activeBannedUsers = React.useMemo(() => {
     const list = bannedUsersData || [];
-    return list.filter(entry => {
-      if (!entry?.isActive) return false;
-      const exp = entry?.expiresAt ? new Date(entry.expiresAt).getTime() : null;
-      if (!exp) return true;
-      return exp > Date.now();
-    });
+    return list.filter(entry => entry?.isActive);
   }, [bannedUsersData]);
 
   const bannedTextEntries = React.useMemo(() => {
