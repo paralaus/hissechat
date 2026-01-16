@@ -77,10 +77,7 @@ const Home = () => {
     queryFn: () => api.getMessagesForModeration({ showBlocked: true, limit: 1, page: 1 }).then(res => res.data),
   });
   
-  const { data: blacklists } = useQuery({
-    queryKey: ['blacklists', 1],
-    queryFn: () => api.getBlacklists({ limit: 1, page: 1 }).then(res => res.data),
-  });
+  // Kara liste artık ayrı bir ekran olarak gösterilmiyor
   
   const { data: products } = useQuery({
     queryKey: ['products', 1],
@@ -244,12 +241,6 @@ const Home = () => {
       amount: blockedMessages?.totalResults || 0,
       icon: <FiShield {...iconProps} />,
       path: `${routes.moderation.path}?filter=blocked`,
-    },
-    {
-      title: 'Kara Liste',
-      amount: blacklists?.totalResults || 0,
-      icon: <MdBlock {...iconProps} />,
-      path: routes.blacklist.path,
     },
   ];
 

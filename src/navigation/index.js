@@ -414,29 +414,6 @@ const router = createBrowserRouter(
           />
           <Route index element={<Reports />} />
         </Route>
-        <Route
-          path="blacklist"
-          handle={{
-            crumb: () => (
-              <NavLink to="/dashboard/blacklist">Kara Liste</NavLink>
-            ),
-          }}>
-          <Route
-            path="new"
-            element={<EditBlacklist />}
-            handle={{
-              crumb: () => <Text>Ekle</Text>,
-            }}
-          />
-          <Route
-            path=":id"
-            element={<EditBlacklist />}
-            handle={{
-              crumb: () => <Text>Düzenle</Text>,
-            }}
-          />
-          <Route index element={<Blacklist />} />
-        </Route>
         <Route index element={<Home />} />
       </Route>
     </Route>,

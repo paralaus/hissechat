@@ -71,12 +71,6 @@ export const routes = {
   sendPushNotification: {
     path: '/dashboard/send-push-notification',
   },
-  blacklist: {
-    path: '/dashboard/blacklist',
-  },
-  editBlacklist: {
-    getPath: id => `/dashboard/blacklist/${id}`,
-  },
   reports: {
     path: '/dashboard/reports',
   },

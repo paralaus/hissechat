@@ -61,26 +61,6 @@ export const sidebarRoutes = [
       },
     ],
   },
-  {
-    name: 'Kara Liste',
-    icon: MdBlock,
-    group: 'Kullanıcı Yönetimi',
-    children: [
-      {
-        name: 'Tümü',
-        path: routes.blacklist.path,
-        icon: GoListUnordered,
-        exact: true,
-      },
-      {
-        name: 'Yeni Ekle',
-        path: routes.editBlacklist.getPath('new'),
-        icon: IoMdAdd,
-        exact: true,
-      },
-    ],
-  },
-
   // İçerik Yönetimi
   {
     name: 'Piyasalar',
