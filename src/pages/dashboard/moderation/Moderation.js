@@ -706,14 +706,9 @@ const Moderation = () => {
 
   const {data: bannedUsersData, isLoading: isBannedUsersLoading} = useQuery({
     queryKey: ['banned-users-moderation', selectedChannel],
-    queryFn: async () => {
-      const res = await api.getBlacklists({
-        sortBy: 'createdAt:desc',
-        limit: 500,
-        page: 1,
-      });
-      return res.data;
-    },
+    queryFn: () => fetchAll(api.getBlacklists, {
+      sortBy: 'createdAt:desc',
+    }),
     staleTime: 30000,
   });
 
@@ -791,7 +786,7 @@ const Moderation = () => {
 
   const messages = messagesData?.pages.flatMap(page => page.results || []) || [];
   const activeBannedUsers = React.useMemo(() => {
-    const list = bannedUsersData?.results || [];
+    const list = bannedUsersData || [];
     return list.filter(entry => {
       if (!entry?.isActive) return false;
       if (entry.scope === 'access' && entry.type === 'user-id') {
