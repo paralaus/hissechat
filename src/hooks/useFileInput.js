@@ -1,11 +1,7 @@
 import {useMemo, useRef, useState, useCallback} from 'react';
 import {useMutation} from '@tanstack/react-query';
-import {uploadFile, uploadFileWithProgress} from '../api/api';
-import {
-  validateVideo,
-  processVideoForUpload,
-  VIDEO_LIMITS,
-} from '../utils/video';
+import {uploadFileWithProgress} from '../api/api';
+import {processVideoForUpload, VIDEO_LIMITS} from '../utils/video';
 
 const useFileInput = (options = {}) => {
   const {accept, validateOnSelect = true, maxSizeMB = 100} = options;

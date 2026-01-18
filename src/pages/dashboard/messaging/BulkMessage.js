@@ -50,7 +50,6 @@ import {Page} from '../../../components';
 import {
   FiSend,
   FiMessageCircle,
-  FiUsers,
   FiTrendingUp,
   FiImage,
   FiVideo,

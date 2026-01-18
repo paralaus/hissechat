@@ -35,8 +35,6 @@ import {
   FiActivity,
   FiCpu,
 } from 'react-icons/fi';
-import {formatDistanceToNow} from 'date-fns';
-import {tr} from 'date-fns/locale';
 import {api} from '../../api'; // Adjust path as needed
 import {getCombinedLogoUrl} from '../../utils/image'; // Adjust path as needed
 
@@ -201,25 +199,7 @@ const ForwardMessageModal = ({isOpen, onClose, messageToForward}) => {
     enabled: isOpen,
   });
 
-  // --- 2. Fetch VIP Channels ---
-  const {
-    data: vipChannelsPages,
-    isLoading: isLoadingVip,
-    fetchNextPage: fetchNextVipChannels,
-    hasNextPage: hasNextVipChannels,
-    isFetchingNextPage: isFetchingNextVipChannels,
-  } = useInfiniteQuery({
-    queryKey: ['vip-channels-forward'],
-    queryFn: async ({pageParam = 1}) => {
-      const res = await api.getVipChannels({limit: PAGE_SIZE, page: pageParam});
-      return res.data;
-    },
-    getNextPageParam: lastPage =>
-      lastPage.page < lastPage.totalPages ? lastPage.page + 1 : undefined,
-    enabled: isOpen,
-  });
-
-  // --- 3. Fetch VİOP ---
+  // --- 2. Fetch VİOP ---
   const {
     data: viopPages,
     isLoading: isLoadingViop,
@@ -241,7 +221,7 @@ const ForwardMessageModal = ({isOpen, onClose, messageToForward}) => {
     enabled: isOpen,
   });
 
-  // --- 4. Fetch Crypto ---
+  // --- 3. Fetch Crypto ---
   const {
     data: cryptoPages,
     isLoading: isLoadingCrypto,
@@ -263,7 +243,7 @@ const ForwardMessageModal = ({isOpen, onClose, messageToForward}) => {
     enabled: isOpen,
   });
 
-  // --- 5. Fetch Stocks ---
+  // --- 4. Fetch Stocks ---
   const {
     data: stockPages,
     isLoading: isLoadingStock,
@@ -285,7 +265,7 @@ const ForwardMessageModal = ({isOpen, onClose, messageToForward}) => {
     enabled: isOpen,
   });
 
-  // --- 6. Fetch Funds ---
+  // --- 5. Fetch Funds ---
   const {
     data: fundPages,
     isLoading: isLoadingFunds,
@@ -311,21 +291,15 @@ const ForwardMessageModal = ({isOpen, onClose, messageToForward}) => {
     () => flatten(allChannelsPages),
     [allChannelsPages],
   );
-  const vipChannelsData = useMemo(
-    () => flatten(vipChannelsPages),
-    [vipChannelsPages],
-  );
   const viopMarketsData = useMemo(() => flatten(viopPages), [viopPages]);
   const cryptoMarketsData = useMemo(() => flatten(cryptoPages), [cryptoPages]);
   const stockMarketsData = useMemo(() => flatten(stockPages), [stockPages]);
   const fundsData = useMemo(() => flatten(fundPages), [fundPages]);
 
   // Helper to merge market data with existing channels
-  const mergeChannels = (marketData, type, codeKey) => {
+  const mergeChannels = (marketData, channels, type, codeKey) => {
     return marketData.map(item => {
-      const existingChannel = allChannelsData.find(
-        c => c[codeKey] === item.code,
-      );
+      const existingChannel = channels.find(c => c[codeKey] === item.code);
       if (existingChannel) return existingChannel;
 
       return {
@@ -340,19 +314,19 @@ const ForwardMessageModal = ({isOpen, onClose, messageToForward}) => {
   };
 
   const mergedViopChannels = useMemo(
-    () => mergeChannels(viopMarketsData, 'market', 'marketCode'),
+    () => mergeChannels(viopMarketsData, allChannelsData, 'market', 'marketCode'),
     [viopMarketsData, allChannelsData],
   );
   const mergedCryptoChannels = useMemo(
-    () => mergeChannels(cryptoMarketsData, 'market', 'marketCode'),
+    () => mergeChannels(cryptoMarketsData, allChannelsData, 'market', 'marketCode'),
     [cryptoMarketsData, allChannelsData],
   );
   const mergedStockChannels = useMemo(
-    () => mergeChannels(stockMarketsData, 'market', 'marketCode'),
+    () => mergeChannels(stockMarketsData, allChannelsData, 'market', 'marketCode'),
     [stockMarketsData, allChannelsData],
   );
   const mergedFundChannels = useMemo(
-    () => mergeChannels(fundsData, 'fund', 'fundCode'),
+    () => mergeChannels(fundsData, allChannelsData, 'fund', 'fundCode'),
     [fundsData, allChannelsData],
   );
 
@@ -551,9 +525,9 @@ const ForwardMessageModal = ({isOpen, onClose, messageToForward}) => {
                 <ChannelList
                   channels={displayedAll}
                   isLoading={isLoadingCombined}
-                  hasNextPage={true} // Simplified for combined
+                  hasNextPage={hasNextAllChannels}
                   fetchNextPage={fetchNextAllCombined}
-                  isFetchingNextPage={false}
+                  isFetchingNextPage={isFetchingNextAllChannels}
                   onSelect={setSelectedChannel}
                   selectedChannel={selectedChannel}
                 />

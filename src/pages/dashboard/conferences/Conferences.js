@@ -21,30 +21,8 @@ import {
   Tabs,
   TabList,
   Tab,
-  TabPanels,
-  TabPanel,
-  Menu,
-  MenuButton,
-  MenuList,
-  MenuItem,
   Tooltip,
   useToast,
-  Modal,
-  ModalOverlay,
-  ModalContent,
-  ModalHeader,
-  ModalBody,
-  ModalFooter,
-  ModalCloseButton,
-  FormControl,
-  FormLabel,
-  Select,
-  NumberInput,
-  NumberInputField,
-  NumberInputStepper,
-  NumberIncrementStepper,
-  NumberDecrementStepper,
-  Switch,
   useDisclosure,
 } from '@chakra-ui/react';
 import {useQuery, useMutation, useQueryClient} from '@tanstack/react-query';
@@ -57,11 +35,7 @@ import {
   FiClock,
   FiCalendar,
   FiPlay,
-  FiMoreVertical,
-  FiPlus,
-  FiExternalLink,
   FiCheckCircle,
-  FiAlertCircle,
 } from 'react-icons/fi';
 import {Page} from '../../../components';
 import CreateConferenceModal from '../../../components/modals/CreateConferenceModal';
@@ -81,7 +55,7 @@ const Conferences = () => {
   const navigate = useNavigate();
   const toast = useToast();
   const queryClient = useQueryClient();
-  const {isOpen, onOpen, onClose} = useDisclosure();
+  const {isOpen, onClose} = useDisclosure();
 
   const createMutation = useMutation({
     mutationFn: data => {
@@ -120,16 +94,12 @@ const Conferences = () => {
 
   const [searchQuery, setSearchQuery] = useState('');
   const [filter, setFilter] = useState('all'); // all, live, upcoming, past
-  const [page, setPage] = useState(1);
-  const limit = 20;
 
   // Colors
   const cardBg = useColorModeValue('white', 'gray.800');
   const borderColor = useColorModeValue('gray.200', 'gray.700');
   const textSecondary = useColorModeValue('gray.600', 'gray.400');
-  const liveBg = useColorModeValue('red.50', 'red.900');
   const liveBadgeBg = useColorModeValue('red.500', 'red.400');
-  const upcomingBg = useColorModeValue('orange.50', 'orange.900');
   const upcomingBadgeBg = useColorModeValue('orange.500', 'orange.400');
   const emptyStateBg = useColorModeValue('gray.100', 'gray.700');
 
@@ -140,7 +110,7 @@ const Conferences = () => {
     refetch,
     isFetching,
   } = useQuery({
-    queryKey: ['conferences', 'all', page, limit],
+    queryKey: ['conferences', 'all'],
     queryFn: () =>
       api
         .getActiveConferences({limit: 100, page: 1, type: 'all'})
@@ -185,7 +155,6 @@ const Conferences = () => {
 
       // Calculate time differences
       const hoursSinceStart = differenceInHours(now, startTime);
-      const minutesSinceStart = differenceInMinutes(now, startTime);
 
       // Default duration: 60 minutes if scheduledEndTime not set
       const DEFAULT_DURATION_MINUTES = 60;
@@ -213,7 +182,6 @@ const Conferences = () => {
 
       // Check if conference is scheduled for the future
       const isFuture = isAfter(startTime, now);
-      const isScheduledConference = conf.isScheduled === true;
 
       // Determine final status
       if (hasEnded) {

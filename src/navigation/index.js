@@ -36,8 +36,6 @@ import EditSuggestion from '../pages/dashboard/suggestions/EditSuggestion';
 import Suggestions from '../pages/dashboard/suggestions/Suggestions';
 import SendPushNotification from '../pages/dashboard/push-notification/SendPushNotification';
 import Reports from '../pages/dashboard/reports/Reports';
-import Blacklist from '../pages/dashboard/blacklist/Blacklist';
-import EditBlacklist from '../pages/dashboard/blacklist/EditBlacklist';
 import ReportDetail from '../pages/dashboard/reports/ReportDetail';
 import EditChannel from '../pages/dashboard/channels/EditChannel';
 import AllChannels from '../pages/dashboard/channels/AllChannels';

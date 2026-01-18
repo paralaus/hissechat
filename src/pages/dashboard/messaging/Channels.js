@@ -897,11 +897,6 @@ const Channels = () => {
   const fundChannels = filterAndSortChannels(mergedFundChannels); // Use merged list
   const vipChannels = filterAndSortChannels(vipChannelsData);
   const privateChannels = filterAndSortChannels(privateChannelsData);
-  const otherChannels = filterAndSortChannels(
-    allChannelsData?.filter(
-      c => c.type !== 'market' && c.type !== 'vip' && c.type !== 'fund',
-    ),
-  );
   const allCombined = React.useMemo(() => {
     // When on Tab 0 (All), we only want to show active channels to avoid performance issues
     // and clutter. If users want to see markets/funds, they should use specific tabs.

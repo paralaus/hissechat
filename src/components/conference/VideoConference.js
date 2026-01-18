@@ -12,15 +12,9 @@ import {
   GridItem,
   Spinner,
   useToast,
-  Modal,
-  ModalOverlay,
-  ModalContent,
-  ModalBody,
-  ModalCloseButton,
   Input,
   Button,
   Flex,
-  Progress,
 } from '@chakra-ui/react';
 import {
   FiMic,
@@ -32,12 +26,10 @@ import {
   FiUsers,
   FiMaximize,
   FiMinimize,
-  FiSettings,
   FiSend,
   FiCornerUpLeft,
   FiX,
   FiPaperclip,
-  FiFile,
   FiDownload,
   FiWifi,
 } from 'react-icons/fi';
@@ -74,8 +66,59 @@ const ADAPTIVE_BITRATE = {
   },
 };
 
-// SFU threshold - switch to SFU mode when participants exceed this
-const SFU_THRESHOLD = 4;
+const cleanupConferenceResources = ({
+  adaptiveTimerRef,
+  sfuProducersRef,
+  sfuConsumersRef,
+  sfuSendTransportRef,
+  sfuRecvTransportRef,
+  sfuDeviceRef,
+  localStreamRef,
+  peersRef,
+  socketRef,
+  initializedRef,
+}) => {
+  if (adaptiveTimerRef.current) {
+    clearInterval(adaptiveTimerRef.current);
+    adaptiveTimerRef.current = null;
+  }
+
+  for (const producer of sfuProducersRef.current.values()) {
+    producer.close();
+  }
+  sfuProducersRef.current.clear();
+
+  for (const consumer of sfuConsumersRef.current.values()) {
+    consumer.close();
+  }
+  sfuConsumersRef.current.clear();
+
+  if (sfuSendTransportRef.current) {
+    sfuSendTransportRef.current.close();
+    sfuSendTransportRef.current = null;
+  }
+  if (sfuRecvTransportRef.current) {
+    sfuRecvTransportRef.current.close();
+    sfuRecvTransportRef.current = null;
+  }
+  sfuDeviceRef.current = null;
+
+  if (localStreamRef.current) {
+    localStreamRef.current.getTracks().forEach(track => track.stop());
+    localStreamRef.current = null;
+  }
+
+  peersRef.current.forEach(pc => pc.close());
+  peersRef.current.clear();
+
+  if (socketRef.current) {
+    socketRef.current.emit('leave-room');
+    socketRef.current.disconnect();
+    socketRef.current = null;
+  }
+
+  initializedRef.current = false;
+};
 
 // Video participant component
 const VideoParticipant = ({
@@ -106,7 +149,7 @@ const VideoParticipant = ({
         .play()
         .catch(e => console.error('[VideoParticipant] Play error:', e));
     }
-  }, [participant.stream, participant.videoEnabled]);
+  }, [participant.stream, participant.videoEnabled, participant.userName]);
 
   return (
     <Box
@@ -810,7 +853,7 @@ const VideoConference = ({roomId, channelId, title, onClose}) => {
     for (const pc of pcs) {
       try {
         const stats = await pc.getStats();
-        stats.forEach(report => {
+        for (const report of stats.values()) {
           if (
             report.type === 'candidate-pair' &&
             report.state === 'succeeded'
@@ -829,7 +872,7 @@ const VideoConference = ({roomId, channelId, title, onClose}) => {
               totalPacketLoss += loss;
             }
           }
-        });
+        }
       } catch (err) {
         console.warn('Error getting stats:', err);
       }
@@ -919,178 +962,6 @@ const VideoConference = ({roomId, channelId, title, onClose}) => {
     }
   }, []);
 
-  // Initialize SFU mode (Mediasoup)
-  const initializeSfuMode = useCallback(async () => {
-    if (!socketRef.current || !localStreamRef.current) {
-      console.error('Cannot initialize SFU: missing socket or stream');
-      return;
-    }
-
-    try {
-      console.log('Initializing SFU mode...');
-
-      // Get RTP capabilities from server
-      const rtpCapabilities = await new Promise((resolve, reject) => {
-        socketRef.current.emit('sfu:get-rtp-capabilities', response => {
-          if (response.error) reject(new Error(response.error));
-          else resolve(response.rtpCapabilities);
-        });
-      });
-
-      // Load device
-      const device = new Device();
-      await device.load({routerRtpCapabilities: rtpCapabilities});
-      sfuDeviceRef.current = device;
-      console.log('SFU Device loaded');
-
-      // Create send transport
-      const sendTransportParams = await new Promise((resolve, reject) => {
-        socketRef.current.emit('sfu:create-send-transport', response => {
-          if (response.error) reject(new Error(response.error));
-          else resolve(response.transport);
-        });
-      });
-
-      const sendTransport = device.createSendTransport({
-        id: sendTransportParams.id,
-        iceParameters: sendTransportParams.iceParameters,
-        iceCandidates: sendTransportParams.iceCandidates,
-        dtlsParameters: sendTransportParams.dtlsParameters,
-      });
-
-      sendTransport.on(
-        'connect',
-        async ({dtlsParameters}, callback, errback) => {
-          try {
-            socketRef.current.emit(
-              'sfu:connect-transport',
-              {
-                transportId: sendTransport.id,
-                dtlsParameters,
-              },
-              res => {
-                if (res.error) errback(new Error(res.error));
-                else callback();
-              },
-            );
-          } catch (err) {
-            errback(err);
-          }
-        },
-      );
-
-      sendTransport.on(
-        'produce',
-        async ({kind, rtpParameters, appData}, callback, errback) => {
-          try {
-            socketRef.current.emit(
-              'sfu:produce',
-              {
-                transportId: sendTransport.id,
-                kind,
-                rtpParameters,
-                appData,
-              },
-              res => {
-                if (res.error) errback(new Error(res.error));
-                else callback({id: res.producerId});
-              },
-            );
-          } catch (err) {
-            errback(err);
-          }
-        },
-      );
-
-      sfuSendTransportRef.current = sendTransport;
-      console.log('SFU Send transport created');
-
-      // Create recv transport
-      const recvTransportParams = await new Promise((resolve, reject) => {
-        socketRef.current.emit('sfu:create-recv-transport', response => {
-          if (response.error) reject(new Error(response.error));
-          else resolve(response.transport);
-        });
-      });
-
-      const recvTransport = device.createRecvTransport({
-        id: recvTransportParams.id,
-        iceParameters: recvTransportParams.iceParameters,
-        iceCandidates: recvTransportParams.iceCandidates,
-        dtlsParameters: recvTransportParams.dtlsParameters,
-      });
-
-      recvTransport.on(
-        'connect',
-        async ({dtlsParameters}, callback, errback) => {
-          try {
-            socketRef.current.emit(
-              'sfu:connect-transport',
-              {
-                transportId: recvTransport.id,
-                dtlsParameters,
-              },
-              res => {
-                if (res.error) errback(new Error(res.error));
-                else callback();
-              },
-            );
-          } catch (err) {
-            errback(err);
-          }
-        },
-      );
-
-      sfuRecvTransportRef.current = recvTransport;
-      console.log('SFU Recv transport created');
-
-      // Produce local tracks
-      const tracks = localStreamRef.current.getTracks();
-      for (const track of tracks) {
-        try {
-          const producer = await sendTransport.produce({
-            track,
-            encodings:
-              track.kind === 'video'
-                ? [
-                    {maxBitrate: 150000, scaleResolutionDownBy: 4},
-                    {maxBitrate: 800000, scaleResolutionDownBy: 1},
-                  ]
-                : undefined,
-            codecOptions: {
-              videoGoogleStartBitrate: 1000,
-            },
-          });
-          sfuProducersRef.current.set(producer.id, producer);
-          console.log(`SFU Produced ${track.kind} track: ${producer.id}`);
-        } catch (err) {
-          console.error(`Failed to produce ${track.kind}:`, err);
-        }
-      }
-
-      // Get existing producers and consume them
-      socketRef.current.emit('sfu:get-producers', async response => {
-        if (response.error) {
-          console.error('Failed to get producers:', response.error);
-          return;
-        }
-
-        for (const producer of response.producers) {
-          await consumeProducer(
-            producer.producerId,
-            producer.producerOdaId,
-            producer.kind,
-          );
-        }
-      });
-
-      console.log('SFU mode initialized successfully');
-    } catch (err) {
-      console.error('Failed to initialize SFU mode:', err);
-      setConferenceMode('mesh');
-    }
-  }, []);
-
   // Consume a producer (receive remote stream)
   const consumeProducer = useCallback(
     async (producerId, producerOdaId, kind) => {
@@ -1175,6 +1046,181 @@ const VideoConference = ({roomId, channelId, title, onClose}) => {
       }
     },
     [],
+  );
+
+  // Initialize SFU mode (Mediasoup)
+  const initializeSfuMode = useCallback(
+    async () => {
+      if (!socketRef.current || !localStreamRef.current) {
+        console.error('Cannot initialize SFU: missing socket or stream');
+        return;
+      }
+
+      try {
+        console.log('Initializing SFU mode...');
+
+        // Get RTP capabilities from server
+        const rtpCapabilities = await new Promise((resolve, reject) => {
+          socketRef.current.emit('sfu:get-rtp-capabilities', response => {
+            if (response.error) reject(new Error(response.error));
+            else resolve(response.rtpCapabilities);
+          });
+        });
+
+        // Load device
+        const device = new Device();
+        await device.load({routerRtpCapabilities: rtpCapabilities});
+        sfuDeviceRef.current = device;
+        console.log('SFU Device loaded');
+
+        // Create send transport
+        const sendTransportParams = await new Promise((resolve, reject) => {
+          socketRef.current.emit('sfu:create-send-transport', response => {
+            if (response.error) reject(new Error(response.error));
+            else resolve(response.transport);
+          });
+        });
+
+        const sendTransport = device.createSendTransport({
+          id: sendTransportParams.id,
+          iceParameters: sendTransportParams.iceParameters,
+          iceCandidates: sendTransportParams.iceCandidates,
+          dtlsParameters: sendTransportParams.dtlsParameters,
+        });
+
+        sendTransport.on(
+          'connect',
+          async ({dtlsParameters}, callback, errback) => {
+            try {
+              socketRef.current.emit(
+                'sfu:connect-transport',
+                {
+                  transportId: sendTransport.id,
+                  dtlsParameters,
+                },
+                res => {
+                  if (res.error) errback(new Error(res.error));
+                  else callback();
+                },
+              );
+            } catch (err) {
+              errback(err);
+            }
+          },
+        );
+
+        sendTransport.on(
+          'produce',
+          async ({kind, rtpParameters, appData}, callback, errback) => {
+            try {
+              socketRef.current.emit(
+                'sfu:produce',
+                {
+                  transportId: sendTransport.id,
+                  kind,
+                  rtpParameters,
+                  appData,
+                },
+                res => {
+                  if (res.error) errback(new Error(res.error));
+                  else callback({id: res.producerId});
+                },
+              );
+            } catch (err) {
+              errback(err);
+            }
+          },
+        );
+
+        sfuSendTransportRef.current = sendTransport;
+        console.log('SFU Send transport created');
+
+        // Create recv transport
+        const recvTransportParams = await new Promise((resolve, reject) => {
+          socketRef.current.emit('sfu:create-recv-transport', response => {
+            if (response.error) reject(new Error(response.error));
+            else resolve(response.transport);
+          });
+        });
+
+        const recvTransport = device.createRecvTransport({
+          id: recvTransportParams.id,
+          iceParameters: recvTransportParams.iceParameters,
+          iceCandidates: recvTransportParams.iceCandidates,
+          dtlsParameters: recvTransportParams.dtlsParameters,
+        });
+
+        recvTransport.on(
+          'connect',
+          async ({dtlsParameters}, callback, errback) => {
+            try {
+              socketRef.current.emit(
+                'sfu:connect-transport',
+                {
+                  transportId: recvTransport.id,
+                  dtlsParameters,
+                },
+                res => {
+                  if (res.error) errback(new Error(res.error));
+                  else callback();
+                },
+              );
+            } catch (err) {
+              errback(err);
+            }
+          },
+        );
+
+        sfuRecvTransportRef.current = recvTransport;
+        console.log('SFU Recv transport created');
+
+        // Produce local tracks
+        const tracks = localStreamRef.current.getTracks();
+        for (const track of tracks) {
+          try {
+            const producer = await sendTransport.produce({
+              track,
+              encodings:
+                track.kind === 'video'
+                  ? [
+                      {maxBitrate: 150000, scaleResolutionDownBy: 4},
+                      {maxBitrate: 800000, scaleResolutionDownBy: 1},
+                    ]
+                  : undefined,
+              codecOptions: {
+                videoGoogleStartBitrate: 1000,
+              },
+            });
+            sfuProducersRef.current.set(producer.id, producer);
+            console.log(`SFU Produced ${track.kind} track: ${producer.id}`);
+          } catch (err) {
+            console.error(`Failed to produce ${track.kind}:`, err);
+          }
+        }
+
+        // Get existing producers and consume them
+        socketRef.current.emit('sfu:get-producers', async response => {
+          if (response.error) {
+            console.error('Failed to get producers:', response.error);
+            return;
+          }
+
+          for (const producer of response.producers) {
+            await consumeProducer(
+              producer.producerId,
+              producer.producerOdaId,
+              producer.kind,
+            );
+          }
+        });
+
+        console.log('SFU mode initialized successfully');
+      } catch (err) {
+        console.error('Failed to initialize SFU mode:', err);
+        setConferenceMode('mesh');
+      }
+    },
+    [consumeProducer],
   );
 
   // Setup SFU event listeners
@@ -1769,56 +1815,20 @@ const VideoConference = ({roomId, channelId, title, onClose}) => {
 
     initConference();
 
-    // Cleanup only when component actually unmounts
     return () => {
-      // Don't cleanup in StrictMode's first unmount
-      // Only cleanup when actually leaving
       console.log('Conference cleanup called');
-
-      // Stop adaptive monitoring
-      if (adaptiveTimerRef.current) {
-        clearInterval(adaptiveTimerRef.current);
-        adaptiveTimerRef.current = null;
-      }
-
-      // Cleanup SFU resources
-      for (const producer of sfuProducersRef.current.values()) {
-        producer.close();
-      }
-      sfuProducersRef.current.clear();
-
-      for (const consumer of sfuConsumersRef.current.values()) {
-        consumer.close();
-      }
-      sfuConsumersRef.current.clear();
-
-      if (sfuSendTransportRef.current) {
-        sfuSendTransportRef.current.close();
-        sfuSendTransportRef.current = null;
-      }
-      if (sfuRecvTransportRef.current) {
-        sfuRecvTransportRef.current.close();
-        sfuRecvTransportRef.current = null;
-      }
-      sfuDeviceRef.current = null;
-
-      // Cleanup local stream
-      if (localStreamRef.current) {
-        localStreamRef.current.getTracks().forEach(track => track.stop());
-        localStreamRef.current = null;
-      }
-
-      // Cleanup peer connections (mesh mode)
-      peersRef.current.forEach(pc => pc.close());
-      peersRef.current.clear();
-
-      if (socketRef.current) {
-        socketRef.current.emit('leave-room');
-        socketRef.current.disconnect();
-        socketRef.current = null;
-      }
-      // Reset initialization flag
-      initializedRef.current = false;
+      cleanupConferenceResources({
+        adaptiveTimerRef,
+        sfuProducersRef,
+        sfuConsumersRef,
+        sfuSendTransportRef,
+        sfuRecvTransportRef,
+        sfuDeviceRef,
+        localStreamRef,
+        peersRef,
+        socketRef,
+        initializedRef,
+      });
     };
   }, [
     roomId,
@@ -1828,6 +1838,10 @@ const VideoConference = ({roomId, channelId, title, onClose}) => {
     startAdaptiveMonitoring,
     initializeSfuMode,
     setupSfuEventListeners,
+    currentUser?.id,
+    currentUser?.name,
+    currentUser?.thumbnail,
+    isConnected,
   ]);
 
   // Toggle audio

@@ -1,10 +1,10 @@
 // Force Vercel rebuild - v2
 import {MiniStatistics, Page, StatisticsSkeleton} from '../../components';
-import {SimpleGrid, Box, Text, Heading, Divider} from '@chakra-ui/react';
+import {SimpleGrid, Box, Heading, Divider} from '@chakra-ui/react';
 import {FaUserClock, FaUsers, FaChartLine} from 'react-icons/fa';
 import {RiVipFill, RiMoneyDollarCircleFill} from 'react-icons/ri';
 import {BiSolidMessageDetail} from 'react-icons/bi';
-import {MdInsertChart, MdReport, MdBlock, MdShoppingCart} from 'react-icons/md';
+import {MdInsertChart, MdReport, MdShoppingCart} from 'react-icons/md';
 import {
   FiVideo,
   FiAlertTriangle,
@@ -19,7 +19,6 @@ import {useQuery} from '@tanstack/react-query';
 import {NavLink} from 'react-router-dom';
 import {routes} from '../../config/routes';
 import {api} from '../../api';
-import {isValue} from '../../utils/string';
 import React from 'react';
 
 const iconProps = {

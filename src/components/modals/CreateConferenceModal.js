@@ -24,7 +24,7 @@ import {
   NumberIncrementStepper,
   NumberDecrementStepper,
 } from '@chakra-ui/react';
-import {FiVideo, FiCalendar, FiClock, FiUsers} from 'react-icons/fi';
+import {FiVideo, FiCalendar, FiClock} from 'react-icons/fi';
 import {useQuery} from '@tanstack/react-query';
 import {api} from '../../api';
 

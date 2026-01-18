@@ -362,7 +362,7 @@ const MobileNav = ({onOpen, ...rest}) => {
     },
   });
 
-  const handleNotificationClick = notification => {
+  const handleNotificationClick = React.useCallback(notification => {
     // Mark as read if not already read
     if (!notification.isOpened) {
       markSingleReadMutation.mutate(notification.id || notification._id);
@@ -414,9 +414,12 @@ const MobileNav = ({onOpen, ...rest}) => {
     } else if (data.type === 'daily_summary' || data.screen === 'StockMarket') {
       navigate(routes.markets.path);
     }
-  };
+  }, [navigate, markSingleReadMutation]);
 
-  const notifications = notificationsData?.data?.results || [];
+  const notifications = React.useMemo(
+    () => notificationsData?.data?.results || [],
+    [notificationsData],
+  );
   const unreadCount = notifications.filter(n => !n.isOpened).length;
 
   // Browser Notification Effect
@@ -484,7 +487,7 @@ const MobileNav = ({onOpen, ...rest}) => {
         });
       }
     }
-  }, [notifications, showNotification]);
+  }, [notifications, showNotification, handleNotificationClick]);
 
   const onLogout = () => {
     setUser(null);
