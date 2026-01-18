@@ -1,16 +1,29 @@
-import { FiHome, FiSettings, FiUsers, FiBell, FiSend, FiMessageCircle, FiSmartphone, FiShield, FiTrendingUp, FiCpu, FiActivity, FiPieChart, FiLayers, FiVideo, FiDatabase } from 'react-icons/fi';
 import {
-  AiOutlineUserAdd,
-  AiOutlineProduct,
-} from 'react-icons/ai';
-import { BiLineChart } from 'react-icons/bi';
-import { HiOutlineDocumentPlus } from 'react-icons/hi2';
-import { FaRegFileAlt, FaAd } from 'react-icons/fa';
-import { RiVipLine, RiChatPollLine } from 'react-icons/ri';
-import { GoListUnordered } from 'react-icons/go';
-import { IoMdAdd } from 'react-icons/io';
-import { MdBlock, MdOutlineReport, MdLightbulbOutline } from 'react-icons/md';
-import { routes } from './routes';
+  FiHome,
+  FiSettings,
+  FiUsers,
+  FiBell,
+  FiSend,
+  FiMessageCircle,
+  FiSmartphone,
+  FiShield,
+  FiTrendingUp,
+  FiCpu,
+  FiActivity,
+  FiPieChart,
+  FiLayers,
+  FiVideo,
+  FiDatabase,
+} from 'react-icons/fi';
+import {AiOutlineUserAdd, AiOutlineProduct} from 'react-icons/ai';
+import {BiLineChart} from 'react-icons/bi';
+import {HiOutlineDocumentPlus} from 'react-icons/hi2';
+import {FaRegFileAlt, FaAd} from 'react-icons/fa';
+import {RiVipLine, RiChatPollLine} from 'react-icons/ri';
+import {GoListUnordered} from 'react-icons/go';
+import {IoMdAdd} from 'react-icons/io';
+import {MdBlock, MdOutlineReport, MdLightbulbOutline} from 'react-icons/md';
+import {routes} from './routes';
 
 export const sidebarRoutes = [
   // Genel
@@ -28,7 +41,7 @@ export const sidebarRoutes = [
     exact: true,
     group: 'Genel',
   },
-  
+
   // Kullanıcı Yönetimi
   {
     name: 'Kullanıcılar',

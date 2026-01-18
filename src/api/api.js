@@ -46,7 +46,7 @@ export const createUser = async body => {
 
 // Get testers for Firebase App Distribution
 export const getTesters = async (platform = 'all', chunkSize) => {
-  return apiClient.get('/users/testers', { params: { platform, chunkSize } });
+  return apiClient.get('/users/testers', {params: {platform, chunkSize}});
 };
 
 // App Distribution
@@ -54,20 +54,27 @@ export const getDistributionStatus = async () => {
   return apiClient.get('/distribution/status');
 };
 
-export const distributeApp = async (file, releaseNotes, groups = 'testers', onProgress) => {
+export const distributeApp = async (
+  file,
+  releaseNotes,
+  groups = 'testers',
+  onProgress,
+) => {
   const formData = new FormData();
   formData.append('app', file);
   formData.append('releaseNotes', releaseNotes || '');
   formData.append('groups', groups);
-  
+
   return apiClient.post('/distribution/upload', formData, {
     headers: {
       'Content-Type': 'multipart/form-data',
     },
     timeout: 600000, // 10 minutes for large files
-    onUploadProgress: (progressEvent) => {
+    onUploadProgress: progressEvent => {
       if (onProgress) {
-        const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+        const percentCompleted = Math.round(
+          (progressEvent.loaded * 100) / progressEvent.total,
+        );
         onProgress(percentCompleted);
       }
     },
@@ -75,19 +82,19 @@ export const distributeApp = async (file, releaseNotes, groups = 'testers', onPr
 };
 
 // Moderation API
-export const getMessagesForModeration = async (params) => {
-  return apiClient.get('/channel-messages/moderation', { params });
+export const getMessagesForModeration = async params => {
+  return apiClient.get('/channel-messages/moderation', {params});
 };
 
-export const getFlaggedMessages = async (params) => {
-  return apiClient.get('/channel-messages/flagged', { params });
+export const getFlaggedMessages = async params => {
+  return apiClient.get('/channel-messages/flagged', {params});
 };
 
 export const blockMessage = async (messageId, reason) => {
-  return apiClient.post(`/channel-messages/${messageId}/block`, { reason });
+  return apiClient.post(`/channel-messages/${messageId}/block`, {reason});
 };
 
-export const unblockMessage = async (messageId) => {
+export const unblockMessage = async messageId => {
   return apiClient.post(`/channel-messages/${messageId}/unblock`);
 };
 
@@ -109,7 +116,7 @@ export const getMarketDetail = async code => {
 
 export const getChartData = async (code, type, range = '1m') => {
   return apiClient.get(`/markets/${code}/chart`, {
-    params: { type, range },
+    params: {type, range},
   });
 };
 
@@ -162,22 +169,28 @@ export const uploadFile = async file => {
  * @param {Object} options - Additional options
  * @returns {Promise} Upload response
  */
-export const uploadFileWithProgress = async (file, onProgress, options = {}) => {
+export const uploadFileWithProgress = async (
+  file,
+  onProgress,
+  options = {},
+) => {
   const formData = new FormData();
   formData.append('file', file);
-  
+
   // Determine timeout based on file size (1 minute per 10MB, min 60s)
   const sizeMB = file.size / (1024 * 1024);
   const timeout = Math.max(60000, Math.ceil(sizeMB / 10) * 60000);
-  
+
   return apiClient.post(`/upload/file`, formData, {
     headers: {
       'Content-Type': 'multipart/form-data',
     },
     timeout,
-    onUploadProgress: (progressEvent) => {
+    onUploadProgress: progressEvent => {
       if (onProgress && progressEvent.total) {
-        const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+        const percentCompleted = Math.round(
+          (progressEvent.loaded * 100) / progressEvent.total,
+        );
         onProgress(percentCompleted);
       }
     },
@@ -195,11 +208,11 @@ export const uploadFileWithProgress = async (file, onProgress, options = {}) => 
 export const uploadVideo = async (file, onProgress, options = {}) => {
   const formData = new FormData();
   formData.append('file', file);
-  
+
   // Videos get longer timeout (2 minutes per 10MB, min 120s)
   const sizeMB = file.size / (1024 * 1024);
   const timeout = Math.max(120000, Math.ceil(sizeMB / 10) * 120000);
-  
+
   return apiClient.post(`/upload/file`, formData, {
     headers: {
       'Content-Type': 'multipart/form-data',
@@ -207,9 +220,11 @@ export const uploadVideo = async (file, onProgress, options = {}) => {
     timeout,
     maxContentLength: 100 * 1024 * 1024, // 100MB
     maxBodyLength: 100 * 1024 * 1024,
-    onUploadProgress: (progressEvent) => {
+    onUploadProgress: progressEvent => {
       if (onProgress && progressEvent.total) {
-        const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+        const percentCompleted = Math.round(
+          (progressEvent.loaded * 100) / progressEvent.total,
+        );
         onProgress(percentCompleted);
       }
     },
@@ -232,11 +247,11 @@ export const createVipChannel = async body => {
 };
 
 export const initiateMarketChannel = async marketCode => {
-  return apiClient.post('/channels/initiate/market', { marketCode });
+  return apiClient.post('/channels/initiate/market', {marketCode});
 };
 
 export const initiateFundChannel = async fundCode => {
-  return apiClient.post('/channels/initiate/fund', { fundCode });
+  return apiClient.post('/channels/initiate/fund', {fundCode});
 };
 
 export const getVipChannels = async params => {
@@ -264,8 +279,8 @@ export const createProduct = async body => {
 };
 
 // Friend APIs
-export const initiatePrivateChannel = async (userId) => {
-  return apiClient.post(`/channels/initiate/private`, { userId });
+export const initiatePrivateChannel = async userId => {
+  return apiClient.post(`/channels/initiate/private`, {userId});
 };
 
 export const getProducts = async params => {
@@ -281,7 +296,7 @@ export const getNotifications = async params => {
 };
 
 export const markNotificationAsRead = async id => {
-  return apiClient.patch(`/notifications/${id}`, { isOpened: true });
+  return apiClient.patch(`/notifications/${id}`, {isOpened: true});
 };
 
 export const markAllNotificationsAsRead = async () => {
@@ -345,7 +360,7 @@ export const getStatistics = async () => {
 };
 
 export const approveUsers = async (emails, message) => {
-  return apiClient.post('/admin/approve-users', { emails, message });
+  return apiClient.post('/admin/approve-users', {emails, message});
 };
 
 export const getReports = async params => {
@@ -380,29 +395,29 @@ export const getChannelsOfUser = async (id, params) => {
   return apiClient.get(`/users/${id}/channels`, {params});
 };
 
-export const getJoinedChannels = async (params) => {
+export const getJoinedChannels = async params => {
   return apiClient.get('/channels/joined', {params});
 };
 
-export const getUserProfile = async (userId) => {
+export const getUserProfile = async userId => {
   return apiClient.get(`/users/${userId}/profile`);
 };
 
-export const getCommonJoinedChannels = async (userId) => {
+export const getCommonJoinedChannels = async userId => {
   return apiClient.get('/channels/common', {
     params: {user: userId},
   });
 };
 
-export const addFriend = async (userId) => {
+export const addFriend = async userId => {
   return apiClient.post(`/friends/${userId}/add`);
 };
 
-export const removeFriend = async (userId) => {
+export const removeFriend = async userId => {
   return apiClient.post(`/friends/${userId}/remove`);
 };
 
-export const acceptFriend = async (userId) => {
+export const acceptFriend = async userId => {
   return apiClient.post(`/friends/${userId}/accept`);
 };
 
@@ -437,7 +452,9 @@ export const deleteVipApplication = async vipApplicationId => {
 
 // Bulk Messaging
 export const sendBulkMessage = async (body, options = {}) => {
-  return apiClient.post('/channels/bulk-message', body, { signal: options.signal });
+  return apiClient.post('/channels/bulk-message', body, {
+    signal: options.signal,
+  });
 };
 
 // Channel Messages
@@ -454,41 +471,45 @@ export const deleteChannelMessage = async (channelId, messageId) => {
 };
 
 export const deleteChannelMessageForUser = async (channelId, messageId) => {
-  return apiClient.delete(`/channels/${channelId}/messages/${messageId}/for-user`);
+  return apiClient.delete(
+    `/channels/${channelId}/messages/${messageId}/for-user`,
+  );
 };
 
 export const deleteChannelMessages = async (channelId, messageIds) => {
   // Delete multiple messages sequentially
   const results = await Promise.allSettled(
-    messageIds.map(messageId => apiClient.delete(`/channels/${channelId}/messages/${messageId}`))
+    messageIds.map(messageId =>
+      apiClient.delete(`/channels/${channelId}/messages/${messageId}`),
+    ),
   );
   return results;
 };
 
 // Pinned Messages
-export const getPinnedMessages = async (channelId) => {
+export const getPinnedMessages = async channelId => {
   const id = encodeURIComponent(channelId);
   return apiClient.get(`/pinned-messages/${id}`);
 };
 
 export const pinMessage = async ({channelId, messageId, durationMs}) => {
-  const body = { channelId, messageId };
+  const body = {channelId, messageId};
   if (durationMs && durationMs > 0) body.durationMs = durationMs;
   return apiClient.post('/pinned-messages', body);
 };
 
-export const unpinMessage = async (pinId) => {
+export const unpinMessage = async pinId => {
   const id = encodeURIComponent(pinId);
   return apiClient.delete(`/pinned-messages/unpin/${id}`);
 };
 
 // Archives
-export const archiveMessage = async ({ messageId, channelId }) => {
-  return apiClient.post('/archives', { messageId, channelId });
+export const archiveMessage = async ({messageId, channelId}) => {
+  return apiClient.post('/archives', {messageId, channelId});
 };
 
 export const getArchivedMessages = async params => {
-  return apiClient.get('/archives', { params });
+  return apiClient.get('/archives', {params});
 };
 
 export const deleteArchivedMessage = async archiveId => {
@@ -532,9 +553,15 @@ export const closePoll = async pollId => {
 
 // Reactions
 export const addReaction = async (channelId, messageId, emoji) => {
-  return apiClient.post(`/channels/${channelId}/messages/${messageId}/reactions`, { emoji });
+  return apiClient.post(
+    `/channels/${channelId}/messages/${messageId}/reactions`,
+    {emoji},
+  );
 };
 
 export const removeReaction = async (channelId, messageId, emoji) => {
-  return apiClient.delete(`/channels/${channelId}/messages/${messageId}/reactions`, { data: { emoji } });
+  return apiClient.delete(
+    `/channels/${channelId}/messages/${messageId}/reactions`,
+    {data: {emoji}},
+  );
 };

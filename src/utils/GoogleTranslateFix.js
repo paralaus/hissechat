@@ -1,7 +1,7 @@
 export function applyGoogleTranslateFix() {
   if (typeof window !== 'undefined' && !window.__googleTranslateFixApplied) {
     const originalRemoveChild = Node.prototype.removeChild;
-    
+
     Node.prototype.removeChild = function (child) {
       try {
         return originalRemoveChild.call(this, child);

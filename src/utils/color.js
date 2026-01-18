@@ -10,7 +10,7 @@ export const USER_COLOR_NAMES = [
   'pink',
 ];
 
-export const getUserColor = (userId) => {
+export const getUserColor = userId => {
   if (!userId) return 'gray';
   let hash = 0;
   for (let i = 0; i < userId.length; i++) {

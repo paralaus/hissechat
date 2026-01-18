@@ -23,7 +23,20 @@ import {
 import {useInfiniteQuery, useQuery} from '@tanstack/react-query';
 import {api} from '../../../api';
 import {Page} from '../../../components';
-import {FiSearch, FiMessageCircle, FiTrendingUp, FiStar, FiFilter, FiChevronDown, FiPieChart, FiActivity, FiCpu, FiUser, FiLayers, FiUsers} from 'react-icons/fi';
+import {
+  FiSearch,
+  FiMessageCircle,
+  FiTrendingUp,
+  FiStar,
+  FiFilter,
+  FiChevronDown,
+  FiPieChart,
+  FiActivity,
+  FiCpu,
+  FiUser,
+  FiLayers,
+  FiUsers,
+} from 'react-icons/fi';
 import {getCombinedLogoUrl} from '../../../utils/image';
 import {formatDistanceToNow} from 'date-fns';
 import {tr} from 'date-fns/locale';
@@ -31,25 +44,33 @@ import {useUserStore} from '../../../store';
 import FriendManager from './FriendManager';
 
 const ChannelItem = ({channel, onClick, currentUserId, priceMap}) => {
-  const lastMessageTime = channel.lastMessageAt 
-    ? formatDistanceToNow(new Date(channel.lastMessageAt), {addSuffix: true, locale: tr})
+  const lastMessageTime = channel.lastMessageAt
+    ? formatDistanceToNow(new Date(channel.lastMessageAt), {
+        addSuffix: true,
+        locale: tr,
+      })
     : '';
 
   let channelName = channel.name;
   let channelThumbnail = channel.thumbnail;
 
   if (channel.type === 'private' && currentUserId) {
-    if ((channel.privateUser1?.id || channel.privateUser1?._id) === currentUserId) {
+    if (
+      (channel.privateUser1?.id || channel.privateUser1?._id) === currentUserId
+    ) {
       channelName = channel.privateUser2?.fullname || 'Bilinmeyen Kullanıcı';
       channelThumbnail = channel.privateUser2?.thumbnail;
-    } else if ((channel.privateUser2?.id || channel.privateUser2?._id) === currentUserId) {
+    } else if (
+      (channel.privateUser2?.id || channel.privateUser2?._id) === currentUserId
+    ) {
       channelName = channel.privateUser1?.fullname || 'Bilinmeyen Kullanıcı';
       channelThumbnail = channel.privateUser1?.thumbnail;
     }
   }
 
-  const displayPrice = (channel.marketCode && priceMap?.[channel.marketCode]) || 
-                       (channel.fundCode && priceMap?.[channel.fundCode]);
+  const displayPrice =
+    (channel.marketCode && priceMap?.[channel.marketCode]) ||
+    (channel.fundCode && priceMap?.[channel.fundCode]);
 
   return (
     <Box
@@ -66,14 +87,29 @@ const ChannelItem = ({channel, onClick, currentUserId, priceMap}) => {
         boxShadow: 'md',
       }}
       borderLeft="4px solid"
-      borderLeftColor={channel.type === 'vip' ? 'purple.400' : channel.type === 'market' ? 'green.400' : channel.type === 'private' ? 'pink.400' : 'blue.400'}
-    >
+      borderLeftColor={
+        channel.type === 'vip'
+          ? 'purple.400'
+          : channel.type === 'market'
+            ? 'green.400'
+            : channel.type === 'private'
+              ? 'pink.400'
+              : 'blue.400'
+      }>
       <HStack spacing="4">
         <Avatar
           size="md"
           name={channelName}
           src={getCombinedLogoUrl(channelThumbnail)}
-          bg={channel.type === 'vip' ? 'purple.100' : channel.type === 'market' ? 'green.100' : channel.type === 'private' ? 'pink.100' : 'blue.100'}
+          bg={
+            channel.type === 'vip'
+              ? 'purple.100'
+              : channel.type === 'market'
+                ? 'green.100'
+                : channel.type === 'private'
+                  ? 'pink.100'
+                  : 'blue.100'
+          }
         />
         <Box flex="1" minW="0">
           <HStack justify="space-between" align="start">
@@ -83,13 +119,19 @@ const ChannelItem = ({channel, onClick, currentUserId, priceMap}) => {
                   {channelName}
                 </Text>
                 {channel.type === 'vip' && (
-                  <Badge colorScheme="purple" size="sm">VIP</Badge>
+                  <Badge colorScheme="purple" size="sm">
+                    VIP
+                  </Badge>
                 )}
                 {channel.type === 'market' && (
-                  <Badge colorScheme="green" size="sm">Market</Badge>
+                  <Badge colorScheme="green" size="sm">
+                    Market
+                  </Badge>
                 )}
                 {channel.type === 'private' && (
-                  <Badge colorScheme="pink" size="sm">Kişisel</Badge>
+                  <Badge colorScheme="pink" size="sm">
+                    Kişisel
+                  </Badge>
                 )}
               </HStack>
               <Text fontSize="xs" color="gray.500" noOfLines={1}>
@@ -101,7 +143,12 @@ const ChannelItem = ({channel, onClick, currentUserId, priceMap}) => {
                 {lastMessageTime}
               </Text>
               {displayPrice && (
-                <Badge colorScheme="green" variant="solid" fontSize="xs" borderRadius="md" px="2">
+                <Badge
+                  colorScheme="green"
+                  variant="solid"
+                  fontSize="xs"
+                  borderRadius="md"
+                  px="2">
                   {displayPrice}
                 </Badge>
               )}
@@ -119,9 +166,9 @@ const ChannelItem = ({channel, onClick, currentUserId, priceMap}) => {
 };
 
 const ChannelList = ({
-  channels, 
-  isLoading, 
-  onChannelClick, 
+  channels,
+  isLoading,
+  onChannelClick,
   emptyMessage,
   hasNextPage,
   isFetchingNextPage,
@@ -134,7 +181,9 @@ const ChannelList = ({
     return (
       <Box textAlign="center" py="10">
         <Spinner size="lg" color="blue.500" />
-        <Text mt="4" color="gray.500">Kanallar yükleniyor...</Text>
+        <Text mt="4" color="gray.500">
+          Kanallar yükleniyor...
+        </Text>
       </Box>
     );
   }
@@ -143,7 +192,9 @@ const ChannelList = ({
     return (
       <Box textAlign="center" py="10">
         <Icon as={FiMessageCircle} boxSize="12" color="gray.300" />
-        <Text mt="4" color="gray.500">{emptyMessage || 'Kanal bulunamadı'}</Text>
+        <Text mt="4" color="gray.500">
+          {emptyMessage || 'Kanal bulunamadı'}
+        </Text>
       </Box>
     );
   }
@@ -157,7 +208,7 @@ const ChannelList = ({
         </Text>
       </HStack>
 
-      {channels.map((channel) => (
+      {channels.map(channel => (
         <ChannelItem
           key={channel.id || channel._id}
           channel={channel}
@@ -177,8 +228,7 @@ const ChannelList = ({
             variant="outline"
             colorScheme="blue"
             size="md"
-            leftIcon={<Icon as={FiChevronDown} />}
-          >
+            leftIcon={<Icon as={FiChevronDown} />}>
             Daha Fazla Yükle
           </Button>
         </Box>
@@ -213,7 +263,9 @@ const Channels = () => {
   const location = useLocation();
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState(SORT_OPTIONS.MOST_MESSAGES);
-  const [tabIndex, setTabIndex] = useState(location.state?.initialTabIndex || 0);
+  const [tabIndex, setTabIndex] = useState(
+    location.state?.initialTabIndex || 0,
+  );
 
   useEffect(() => {
     if (location.state?.initialTabIndex !== undefined) {
@@ -221,49 +273,54 @@ const Channels = () => {
     }
   }, [location.state]);
 
-  const user = useUserStore((state) => state.user);
+  const user = useUserStore(state => state.user);
   const currentUserId = user?.id;
 
   // Counts for Tabs (Fetched separately to be always visible)
-  const { data: vipCountData } = useQuery({
+  const {data: vipCountData} = useQuery({
     queryKey: ['vip-channels-count'],
-    queryFn: () => api.getVipChannels({ limit: 1 }).then(res => res.data),
+    queryFn: () => api.getVipChannels({limit: 1}).then(res => res.data),
     staleTime: 5 * 60 * 1000,
   });
 
-  const { data: viopCountData } = useQuery({
+  const {data: viopCountData} = useQuery({
     queryKey: ['viop-markets-count'],
-    queryFn: () => api.getMarkets({ type: 'viop', limit: 1 }).then(res => res.data),
+    queryFn: () =>
+      api.getMarkets({type: 'viop', limit: 1}).then(res => res.data),
     staleTime: 5 * 60 * 1000,
   });
 
-  const { data: commodityCountData } = useQuery({
+  const {data: commodityCountData} = useQuery({
     queryKey: ['commodity-markets-count'],
-    queryFn: () => api.getMarkets({ type: 'commodity', limit: 1 }).then(res => res.data),
+    queryFn: () =>
+      api.getMarkets({type: 'commodity', limit: 1}).then(res => res.data),
     staleTime: 5 * 60 * 1000,
   });
 
-  const { data: cryptoCountData } = useQuery({
+  const {data: cryptoCountData} = useQuery({
     queryKey: ['crypto-markets-count'],
-    queryFn: () => api.getMarkets({ type: 'crypto', limit: 1 }).then(res => res.data),
+    queryFn: () =>
+      api.getMarkets({type: 'crypto', limit: 1}).then(res => res.data),
     staleTime: 5 * 60 * 1000,
   });
 
-  const { data: stockCountData } = useQuery({
+  const {data: stockCountData} = useQuery({
     queryKey: ['stock-markets-count'],
-    queryFn: () => api.getMarkets({ type: 'stock', limit: 1 }).then(res => res.data),
+    queryFn: () =>
+      api.getMarkets({type: 'stock', limit: 1}).then(res => res.data),
     staleTime: 5 * 60 * 1000,
   });
 
-  const { data: fundCountData } = useQuery({
+  const {data: fundCountData} = useQuery({
     queryKey: ['funds-count'],
-    queryFn: () => api.getFunds({ limit: 1 }).then(res => res.data),
+    queryFn: () => api.getFunds({limit: 1}).then(res => res.data),
     staleTime: 5 * 60 * 1000,
   });
 
-  const { data: privateCountData } = useQuery({
+  const {data: privateCountData} = useQuery({
     queryKey: ['private-channels-count'],
-    queryFn: () => api.getJoinedChannels({ limit: 1, type: 'private' }).then(res => res.data),
+    queryFn: () =>
+      api.getJoinedChannels({limit: 1, type: 'private'}).then(res => res.data),
     staleTime: 5 * 60 * 1000,
   });
 
@@ -271,10 +328,9 @@ const Channels = () => {
   const {data: productsData} = useQuery({
     queryKey: ['products'],
     queryFn: () => api.getProducts({limit: 1000}), // Fetch all products
-    select: (res) => res.data,
+    select: res => res.data,
     enabled: false, // No longer needed for prices as we use market/fund data
   });
-
 
   // Fetch all channels with pagination
   const {
@@ -285,11 +341,11 @@ const Channels = () => {
     isFetchingNextPage: isFetchingNextAllChannels,
   } = useInfiniteQuery({
     queryKey: ['all-channels-messaging'],
-    queryFn: async ({ pageParam = 1 }) => {
-      const res = await api.getAllChannels({ limit: PAGE_SIZE, page: pageParam });
+    queryFn: async ({pageParam = 1}) => {
+      const res = await api.getAllChannels({limit: PAGE_SIZE, page: pageParam});
       return res.data;
     },
-    getNextPageParam: (lastPage) => {
+    getNextPageParam: lastPage => {
       if (lastPage.page < lastPage.totalPages) {
         return lastPage.page + 1;
       }
@@ -308,11 +364,11 @@ const Channels = () => {
     isFetchingNextPage: isFetchingNextVipChannels,
   } = useInfiniteQuery({
     queryKey: ['vip-channels-messaging'],
-    queryFn: async ({ pageParam = 1 }) => {
-      const res = await api.getVipChannels({ limit: PAGE_SIZE, page: pageParam });
+    queryFn: async ({pageParam = 1}) => {
+      const res = await api.getVipChannels({limit: PAGE_SIZE, page: pageParam});
       return res.data;
     },
-    getNextPageParam: (lastPage) => {
+    getNextPageParam: lastPage => {
       if (lastPage.page < lastPage.totalPages) {
         return lastPage.page + 1;
       }
@@ -331,11 +387,15 @@ const Channels = () => {
     isFetchingNextPage: isFetchingNextViop,
   } = useInfiniteQuery({
     queryKey: ['viop-markets'],
-    queryFn: async ({ pageParam = 1 }) => {
-      const res = await api.getMarkets({ type: 'viop', limit: PAGE_SIZE, page: pageParam });
+    queryFn: async ({pageParam = 1}) => {
+      const res = await api.getMarkets({
+        type: 'viop',
+        limit: PAGE_SIZE,
+        page: pageParam,
+      });
       return res.data;
     },
-    getNextPageParam: (lastPage) => {
+    getNextPageParam: lastPage => {
       if (lastPage.page < lastPage.totalPages) {
         return lastPage.page + 1;
       }
@@ -353,11 +413,15 @@ const Channels = () => {
     isFetchingNextPage: isFetchingNextCommodity,
   } = useInfiniteQuery({
     queryKey: ['commodity-markets'],
-    queryFn: async ({ pageParam = 1 }) => {
-      const res = await api.getMarkets({ type: 'commodity', limit: PAGE_SIZE, page: pageParam });
+    queryFn: async ({pageParam = 1}) => {
+      const res = await api.getMarkets({
+        type: 'commodity',
+        limit: PAGE_SIZE,
+        page: pageParam,
+      });
       return res.data;
     },
-    getNextPageParam: (lastPage) => {
+    getNextPageParam: lastPage => {
       if (lastPage.page < lastPage.totalPages) {
         return lastPage.page + 1;
       }
@@ -375,11 +439,15 @@ const Channels = () => {
     isFetchingNextPage: isFetchingNextCrypto,
   } = useInfiniteQuery({
     queryKey: ['crypto-markets'],
-    queryFn: async ({ pageParam = 1 }) => {
-      const res = await api.getMarkets({ type: 'crypto', limit: PAGE_SIZE, page: pageParam });
+    queryFn: async ({pageParam = 1}) => {
+      const res = await api.getMarkets({
+        type: 'crypto',
+        limit: PAGE_SIZE,
+        page: pageParam,
+      });
       return res.data;
     },
-    getNextPageParam: (lastPage) => {
+    getNextPageParam: lastPage => {
       if (lastPage.page < lastPage.totalPages) {
         return lastPage.page + 1;
       }
@@ -397,11 +465,15 @@ const Channels = () => {
     isFetchingNextPage: isFetchingNextStock,
   } = useInfiniteQuery({
     queryKey: ['stock-markets'],
-    queryFn: async ({ pageParam = 1 }) => {
-      const res = await api.getMarkets({ type: 'stock', limit: PAGE_SIZE, page: pageParam });
+    queryFn: async ({pageParam = 1}) => {
+      const res = await api.getMarkets({
+        type: 'stock',
+        limit: PAGE_SIZE,
+        page: pageParam,
+      });
       return res.data;
     },
-    getNextPageParam: (lastPage) => {
+    getNextPageParam: lastPage => {
       if (lastPage.page < lastPage.totalPages) {
         return lastPage.page + 1;
       }
@@ -420,11 +492,11 @@ const Channels = () => {
     isFetchingNextPage: isFetchingNextFunds,
   } = useInfiniteQuery({
     queryKey: ['funds-list'],
-    queryFn: async ({ pageParam = 1 }) => {
-      const res = await api.getFunds({ limit: PAGE_SIZE, page: pageParam });
+    queryFn: async ({pageParam = 1}) => {
+      const res = await api.getFunds({limit: PAGE_SIZE, page: pageParam});
       return res.data;
     },
-    getNextPageParam: (lastPage) => {
+    getNextPageParam: lastPage => {
       if (lastPage.page < lastPage.totalPages) {
         return lastPage.page + 1;
       }
@@ -443,11 +515,14 @@ const Channels = () => {
     isFetchingNextPage: isFetchingNextPrivate,
   } = useInfiniteQuery({
     queryKey: ['private-channels-messaging'],
-    queryFn: async ({ pageParam = 1 }) => {
-      const res = await api.getJoinedChannels({ limit: PAGE_SIZE, page: pageParam });
+    queryFn: async ({pageParam = 1}) => {
+      const res = await api.getJoinedChannels({
+        limit: PAGE_SIZE,
+        page: pageParam,
+      });
       return res.data;
     },
-    getNextPageParam: (lastPage) => {
+    getNextPageParam: lastPage => {
       if (lastPage.page < lastPage.totalPages) {
         return lastPage.page + 1;
       }
@@ -495,13 +570,15 @@ const Channels = () => {
 
   const privateChannelsData = React.useMemo(() => {
     if (!privateChannelsPages?.pages) return [];
-    return privateChannelsPages.pages.flatMap(page => page.results || []).filter(c => c.type === 'private');
+    return privateChannelsPages.pages
+      .flatMap(page => page.results || [])
+      .filter(c => c.type === 'private');
   }, [privateChannelsPages]);
 
   // Calculate Rate Map (Change Percentage)
   const rateMap = useMemo(() => {
     const map = {};
-    
+
     const addToMap = (items, isFund = false) => {
       if (!items) return;
       items.forEach(item => {
@@ -522,33 +599,39 @@ const Channels = () => {
     addToMap(fundsData, true);
 
     return map;
-  }, [stockMarketsData, viopMarketsData, commodityMarketsData, cryptoMarketsData, fundsData]);
+  }, [
+    stockMarketsData,
+    viopMarketsData,
+    commodityMarketsData,
+    cryptoMarketsData,
+    fundsData,
+  ]);
 
   const priceMap = useMemo(() => {
     const map = {};
-    
-    const addToMap = (items) => {
+
+    const addToMap = items => {
       if (!items) return;
       items.forEach(item => {
         if (item.code && item.price !== undefined) {
           // Format price based on type or magnitude if needed
           // For now, simple appending of TL or USD could be done, but let's just show the number or assume TL
           // Most markets in this context seem to be TR based (BIST, TEFAS), Crypto might be USD?
-          // Let's just store the value for now. 
+          // Let's just store the value for now.
           // Actually, looking at mobile app behavior might be good, but user said "yahoo finance gibi apilerden alıyor".
           // Let's assume the price comes as a number and we format it.
-          
+
           let formattedPrice = item.price;
-          
+
           // Basic formatting
           if (typeof item.price === 'number') {
-             formattedPrice = item.price.toLocaleString('tr-TR', {
-               minimumFractionDigits: 2,
-               maximumFractionDigits: 2,
-             });
+            formattedPrice = item.price.toLocaleString('tr-TR', {
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 2,
+            });
           }
 
-          map[item.code] = `${formattedPrice} TL`; // Defaulting to TL as requested "fiyat gösterelim" context implies local usage usually. 
+          map[item.code] = `${formattedPrice} TL`; // Defaulting to TL as requested "fiyat gösterelim" context implies local usage usually.
           // If crypto is USD, we might need to check item type.
           // But 'crypto' usually implies USD or USDT.
           // Let's check if item has currency info.
@@ -560,32 +643,40 @@ const Channels = () => {
     addToMap(viopMarketsData);
     addToMap(commodityMarketsData);
     addToMap(fundsData);
-    
+
     // Crypto might need special handling if it's USD
     if (cryptoMarketsData) {
       cryptoMarketsData.forEach(item => {
         if (item.code && item.price !== undefined) {
-           let formattedPrice = item.price;
-           if (typeof item.price === 'number') {
-             formattedPrice = item.price.toLocaleString('en-US', {
-               minimumFractionDigits: 2,
-               maximumFractionDigits: 4,
-             });
-           }
-           map[item.code] = `$${formattedPrice}`;
+          let formattedPrice = item.price;
+          if (typeof item.price === 'number') {
+            formattedPrice = item.price.toLocaleString('en-US', {
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 4,
+            });
+          }
+          map[item.code] = `$${formattedPrice}`;
         }
       });
-          }
+    }
 
-          return map;
-        }, [stockMarketsData, cryptoMarketsData, viopMarketsData, commodityMarketsData, fundsData]);
+    return map;
+  }, [
+    stockMarketsData,
+    cryptoMarketsData,
+    viopMarketsData,
+    commodityMarketsData,
+    fundsData,
+  ]);
 
   // Merge VİOP markets with existing channels
   const mergedViopChannels = React.useMemo(() => {
     return viopMarketsData.map(market => {
-      const existingChannel = allChannelsData.find(c => c.marketCode === market.code);
+      const existingChannel = allChannelsData.find(
+        c => c.marketCode === market.code,
+      );
       if (existingChannel) return existingChannel;
-      
+
       return {
         id: null, // No channel ID yet
         name: market.name,
@@ -602,7 +693,9 @@ const Channels = () => {
 
   const mergedCommodityChannels = React.useMemo(() => {
     return commodityMarketsData.map(market => {
-      const existingChannel = allChannelsData.find(c => c.marketCode === market.code);
+      const existingChannel = allChannelsData.find(
+        c => c.marketCode === market.code,
+      );
       if (existingChannel) return existingChannel;
       return {
         id: null,
@@ -620,7 +713,9 @@ const Channels = () => {
 
   const mergedCryptoChannels = React.useMemo(() => {
     return cryptoMarketsData.map(market => {
-      const existingChannel = allChannelsData.find(c => c.marketCode === market.code);
+      const existingChannel = allChannelsData.find(
+        c => c.marketCode === market.code,
+      );
       if (existingChannel) return existingChannel;
       return {
         id: null,
@@ -638,7 +733,9 @@ const Channels = () => {
 
   const mergedStockChannels = React.useMemo(() => {
     return stockMarketsData.map(market => {
-      const existingChannel = allChannelsData.find(c => c.marketCode === market.code);
+      const existingChannel = allChannelsData.find(
+        c => c.marketCode === market.code,
+      );
       if (existingChannel) return existingChannel;
       return {
         id: null,
@@ -657,9 +754,11 @@ const Channels = () => {
   // Merge Funds with existing channels
   const mergedFundChannels = React.useMemo(() => {
     return fundsData.map(fund => {
-      const existingChannel = allChannelsData.find(c => c.fundCode === fund.code);
+      const existingChannel = allChannelsData.find(
+        c => c.fundCode === fund.code,
+      );
       if (existingChannel) return existingChannel;
-      
+
       return {
         id: null,
         name: fund.name,
@@ -675,17 +774,30 @@ const Channels = () => {
   }, [fundsData, allChannelsData]);
 
   // Get total counts (Prioritize count queries, fall back to list queries if active)
-  const totalVipChannels = vipCountData?.totalResults || vipChannelsPages?.pages?.[0]?.totalResults || 0;
-  const totalViopResults = viopCountData?.totalResults || viopPages?.pages?.[0]?.totalResults || 0;
-  const totalCommodityResults = commodityCountData?.totalResults || commodityPages?.pages?.[0]?.totalResults || 0;
-  const totalCryptoResults = cryptoCountData?.totalResults || cryptoPages?.pages?.[0]?.totalResults || 0;
-  const totalStockResults = stockCountData?.totalResults || stockPages?.pages?.[0]?.totalResults || 0;
-  const totalFundResults = fundCountData?.total || fundPages?.pages?.[0]?.total || 0; // funds usually use 'total' instead of 'totalResults' in some APIs, checking usage
-  const totalPrivateResults = privateCountData?.totalResults || privateChannelsPages?.pages?.[0]?.totalResults || 0;
-  
+  const totalVipChannels =
+    vipCountData?.totalResults ||
+    vipChannelsPages?.pages?.[0]?.totalResults ||
+    0;
+  const totalViopResults =
+    viopCountData?.totalResults || viopPages?.pages?.[0]?.totalResults || 0;
+  const totalCommodityResults =
+    commodityCountData?.totalResults ||
+    commodityPages?.pages?.[0]?.totalResults ||
+    0;
+  const totalCryptoResults =
+    cryptoCountData?.totalResults || cryptoPages?.pages?.[0]?.totalResults || 0;
+  const totalStockResults =
+    stockCountData?.totalResults || stockPages?.pages?.[0]?.totalResults || 0;
+  const totalFundResults =
+    fundCountData?.total || fundPages?.pages?.[0]?.total || 0; // funds usually use 'total' instead of 'totalResults' in some APIs, checking usage
+  const totalPrivateResults =
+    privateCountData?.totalResults ||
+    privateChannelsPages?.pages?.[0]?.totalResults ||
+    0;
+
   // For 'All', we sum them up or use list count if available
   const totalAllChannels = allChannelsPages?.pages?.[0]?.totalResults || 0; // This is 'My Channels' count
-  
+
   const totalAllCombinedCount =
     (totalStockResults || 0) +
     (totalCryptoResults || 0) +
@@ -694,7 +806,7 @@ const Channels = () => {
     (totalFundResults || 0) +
     (totalVipChannels || 0);
 
-  const handleChannelClick = async (channel) => {
+  const handleChannelClick = async channel => {
     if (channel.id) {
       navigate(`/dashboard/messaging/channels/${channel.id}`);
     } else if (channel.isVirtual) {
@@ -705,7 +817,7 @@ const Channels = () => {
         } else if (channel.type === 'fund') {
           res = await api.initiateFundChannel(channel.fundCode);
         }
-        
+
         if (res?.data?.id) {
           navigate(`/dashboard/messaging/channels/${res.data.id}`);
         }
@@ -717,16 +829,16 @@ const Channels = () => {
   };
 
   // Filter and sort channels based on search query and selected sort option
-  const filterAndSortChannels = (channels) => {
+  const filterAndSortChannels = channels => {
     let filtered = channels || [];
-    
+
     // Apply search filter
     if (searchQuery) {
-      filtered = filtered.filter(c => 
-        c.name?.toLowerCase().includes(searchQuery.toLowerCase())
+      filtered = filtered.filter(c =>
+        c.name?.toLowerCase().includes(searchQuery.toLowerCase()),
       );
     }
-    
+
     // Sort based on selected option
     return [...filtered].sort((a, b) => {
       switch (sortBy) {
@@ -735,8 +847,12 @@ const Channels = () => {
           const countDiff = (b.messageCount || 0) - (a.messageCount || 0);
           if (countDiff !== 0) return countDiff;
           // Tie-breaker: most recent message
-          const dateA1 = a.lastMessageAt ? new Date(a.lastMessageAt).getTime() : 0;
-          const dateB1 = b.lastMessageAt ? new Date(b.lastMessageAt).getTime() : 0;
+          const dateA1 = a.lastMessageAt
+            ? new Date(a.lastMessageAt).getTime()
+            : 0;
+          const dateB1 = b.lastMessageAt
+            ? new Date(b.lastMessageAt).getTime()
+            : 0;
           return dateB1 - dateA1;
 
         case SORT_OPTIONS.MOST_MEMBERS:
@@ -744,17 +860,21 @@ const Channels = () => {
           const memberDiff = (b.memberCount || 0) - (a.memberCount || 0);
           if (memberDiff !== 0) return memberDiff;
           return (b.messageCount || 0) - (a.messageCount || 0);
-          
+
         case SORT_OPTIONS.RECENT_MESSAGE:
           // Sort by last message date (most recent first)
-          const dateA2 = a.lastMessageAt ? new Date(a.lastMessageAt).getTime() : 0;
-          const dateB2 = b.lastMessageAt ? new Date(b.lastMessageAt).getTime() : 0;
+          const dateA2 = a.lastMessageAt
+            ? new Date(a.lastMessageAt).getTime()
+            : 0;
+          const dateB2 = b.lastMessageAt
+            ? new Date(b.lastMessageAt).getTime()
+            : 0;
           return dateB2 - dateA2;
-          
+
         case SORT_OPTIONS.NAME_ASC:
           // Sort by name A-Z
           return (a.name || '').localeCompare(b.name || '', 'tr');
-          
+
         case SORT_OPTIONS.NAME_DESC:
           // Sort by name Z-A
           return (b.name || '').localeCompare(a.name || '', 'tr');
@@ -763,18 +883,18 @@ const Channels = () => {
           // Sort by rate descending (Highest first)
           const codeA1 = a.marketCode || a.fundCode;
           const codeB1 = b.marketCode || b.fundCode;
-          const rateA1 = codeA1 ? (rateMap[codeA1] || 0) : -999999;
-          const rateB1 = codeB1 ? (rateMap[codeB1] || 0) : -999999;
+          const rateA1 = codeA1 ? rateMap[codeA1] || 0 : -999999;
+          const rateB1 = codeB1 ? rateMap[codeB1] || 0 : -999999;
           return rateB1 - rateA1;
 
         case SORT_OPTIONS.FALLING:
           // Sort by rate ascending (Lowest first)
           const codeA2 = a.marketCode || a.fundCode;
           const codeB2 = b.marketCode || b.fundCode;
-          const rateA2 = codeA2 ? (rateMap[codeA2] || 0) : 999999;
-          const rateB2 = codeB2 ? (rateMap[codeB2] || 0) : 999999;
+          const rateA2 = codeA2 ? rateMap[codeA2] || 0 : 999999;
+          const rateB2 = codeB2 ? rateMap[codeB2] || 0 : 999999;
           return rateA2 - rateB2;
-          
+
         default:
           return 0;
       }
@@ -783,11 +903,15 @@ const Channels = () => {
 
   // Separate channels by type and sort by message count
   // We use the fetched and merged lists for VIOP and Funds now
-  const isCrypto = (c) => c.type === 'market' && c.category === 'kripto';
+  const isCrypto = c => c.type === 'market' && c.category === 'kripto';
   // Note: isViop check is less critical for the tab now as we use direct fetch, but good for "Others" exclusion
-  const isViop = (c) => c.type === 'market' && (c.marketCode?.startsWith('F_') || c.name?.toUpperCase().includes('VİOP') || c.marketCode?.includes('VIOP'));
-  const isFund = (c) => c.type === 'fund';
-  const isStock = (c) => c.type === 'market' && !isViop(c) && !isCrypto(c);
+  const isViop = c =>
+    c.type === 'market' &&
+    (c.marketCode?.startsWith('F_') ||
+      c.name?.toUpperCase().includes('VİOP') ||
+      c.marketCode?.includes('VIOP'));
+  const isFund = c => c.type === 'fund';
+  const isStock = c => c.type === 'market' && !isViop(c) && !isCrypto(c);
 
   const stockChannels = filterAndSortChannels(mergedStockChannels);
   const cryptoChannels = filterAndSortChannels(mergedCryptoChannels);
@@ -796,24 +920,27 @@ const Channels = () => {
   const fundChannels = filterAndSortChannels(mergedFundChannels); // Use merged list
   const vipChannels = filterAndSortChannels(vipChannelsData);
   const privateChannels = filterAndSortChannels(privateChannelsData);
-  const otherChannels = filterAndSortChannels(allChannelsData?.filter(c => c.type !== 'market' && c.type !== 'vip' && c.type !== 'fund'));
+  const otherChannels = filterAndSortChannels(
+    allChannelsData?.filter(
+      c => c.type !== 'market' && c.type !== 'vip' && c.type !== 'fund',
+    ),
+  );
   const allCombined = React.useMemo(() => {
     // When on Tab 0 (All), we only want to show active channels to avoid performance issues
     // and clutter. If users want to see markets/funds, they should use specific tabs.
     // However, if we enabled other queries, we could merge them.
     // Given we disabled other queries on Tab 0, these arrays (mergedViopChannels etc) will be empty
     // except for what's already in allChannelsData.
-    
+
     const map = new Map();
-    const add = (c) => {
-      const key =
-        c.id
-          ? `id:${c.id}`
-          : c.type === 'market' && c.marketCode
+    const add = c => {
+      const key = c.id
+        ? `id:${c.id}`
+        : c.type === 'market' && c.marketCode
           ? `market:${c.marketCode}`
           : c.type === 'fund' && c.fundCode
-          ? `fund:${c.fundCode}`
-          : `name:${c.name || ''}`;
+            ? `fund:${c.fundCode}`
+            : `name:${c.name || ''}`;
       if (!map.has(key)) map.set(key, c);
     };
     (allChannelsData || []).forEach(add);
@@ -823,7 +950,13 @@ const Channels = () => {
     (mergedFundChannels || []).forEach(add);
     (mergedCryptoChannels || []).forEach(add);
     return Array.from(map.values());
-  }, [allChannelsData, mergedViopChannels, mergedFundChannels, mergedCryptoChannels, mergedCommodityChannels]);
+  }, [
+    allChannelsData,
+    mergedViopChannels,
+    mergedFundChannels,
+    mergedCryptoChannels,
+    mergedCommodityChannels,
+  ]);
   const allFiltered = filterAndSortChannels(allCombined);
 
   // Optimized for Tab 0: only track all-channels query
@@ -853,22 +986,27 @@ const Channels = () => {
             placeholder="Kanal ara..."
             bg="white"
             value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+            onChange={e => setSearchQuery(e.target.value)}
           />
         </InputGroup>
-        
-        <HStack spacing="2" bg="white" borderRadius="lg" px="3" py="2" boxShadow="sm">
+
+        <HStack
+          spacing="2"
+          bg="white"
+          borderRadius="lg"
+          px="3"
+          py="2"
+          boxShadow="sm">
           <Icon as={FiFilter} color="gray.500" />
           <Select
             value={sortBy}
-            onChange={(e) => setSortBy(e.target.value)}
+            onChange={e => setSortBy(e.target.value)}
             size="md"
             border="none"
             bg="transparent"
             fontWeight="500"
-            _focus={{ boxShadow: 'none' }}
-            minW="180px"
-          >
+            _focus={{boxShadow: 'none'}}
+            minW="180px">
             <option value={SORT_OPTIONS.MOST_MESSAGES}>📊 En Çok Mesaj</option>
             <option value={SORT_OPTIONS.MOST_MEMBERS}>👥 En Çok Üye</option>
             <option value={SORT_OPTIONS.RECENT_MESSAGE}>🕐 En Son Mesaj</option>
@@ -882,7 +1020,11 @@ const Channels = () => {
 
       {/* Tabs */}
       <Box bg="white" borderRadius="xl" boxShadow="md" p="4">
-        <Tabs variant="soft-rounded" colorScheme="blue" index={tabIndex} onChange={setTabIndex}>
+        <Tabs
+          variant="soft-rounded"
+          colorScheme="blue"
+          index={tabIndex}
+          onChange={setTabIndex}>
           <TabList mb="4" flexWrap="wrap" gap="2">
             <Tab>
               <HStack spacing="2">
@@ -893,43 +1035,62 @@ const Channels = () => {
             <Tab>
               <HStack spacing="2">
                 <Icon as={FiTrendingUp} />
-                <Text>Borsa ({totalStockResults || stockChannels?.length || 0})</Text>
+                <Text>
+                  Borsa ({totalStockResults || stockChannels?.length || 0})
+                </Text>
               </HStack>
             </Tab>
             <Tab>
               <HStack spacing="2">
                 <Icon as={FiCpu} />
-                <Text>Kripto ({totalCryptoResults || cryptoChannels?.length || 0})</Text>
+                <Text>
+                  Kripto ({totalCryptoResults || cryptoChannels?.length || 0})
+                </Text>
               </HStack>
             </Tab>
             <Tab>
               <HStack spacing="2">
                 <Icon as={FiActivity} />
-                <Text>VİOP ({totalViopResults || viopChannels?.length || 0})</Text>
+                <Text>
+                  VİOP ({totalViopResults || viopChannels?.length || 0})
+                </Text>
               </HStack>
             </Tab>
             <Tab>
               <HStack spacing="2">
                 <Icon as={FiLayers} />
-                <Text>Emtia ({totalCommodityResults || mergedCommodityChannels?.length || 0})</Text>
+                <Text>
+                  Emtia (
+                  {totalCommodityResults ||
+                    mergedCommodityChannels?.length ||
+                    0}
+                  )
+                </Text>
               </HStack>
             </Tab>
             <Tab>
               <HStack spacing="2">
                 <Icon as={FiPieChart} />
-                <Text>Fonlar ({totalFundResults || fundChannels?.length || 0})</Text>
+                <Text>
+                  Fonlar ({totalFundResults || fundChannels?.length || 0})
+                </Text>
               </HStack>
             </Tab>
             <Tab>
               <HStack spacing="2">
                 <Icon as={FiStar} />
-                <Text>VIP ({totalVipChannels || vipChannels?.length || 0})</Text>
+                <Text>
+                  VIP ({totalVipChannels || vipChannels?.length || 0})
+                </Text>
               </HStack>
             </Tab>
             <Tab>
               <HStack spacing="2">
                 <Icon as={FiUser} />
-                <Text>Kişisel ({totalPrivateResults || privateChannels?.length || 0})</Text>
+                <Text>
+                  Kişisel ({totalPrivateResults || privateChannels?.length || 0}
+                  )
+                </Text>
               </HStack>
             </Tab>
             <Tab>
@@ -1071,7 +1232,10 @@ const Channels = () => {
 
             {/* Friend Manager */}
             <TabPanel p="0">
-              <FriendManager currentUserId={currentUserId} navigate={navigate} />
+              <FriendManager
+                currentUserId={currentUserId}
+                navigate={navigate}
+              />
             </TabPanel>
           </TabPanels>
         </Tabs>

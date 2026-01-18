@@ -1,4 +1,14 @@
-import {Text, Badge, HStack, Button, Box, IconButton, Tooltip, useToast, Select} from '@chakra-ui/react';
+import {
+  Text,
+  Badge,
+  HStack,
+  Button,
+  Box,
+  IconButton,
+  Tooltip,
+  useToast,
+  Select,
+} from '@chakra-ui/react';
 import {DataTable, Page} from '../../../components';
 import {useNavigate} from 'react-router-dom';
 import {api} from '../../../api';
@@ -7,8 +17,8 @@ import {routes} from '../../../config/routes';
 import {useState} from 'react';
 import {useMutation, useQueryClient} from '@tanstack/react-query';
 import {FiStar} from 'react-icons/fi';
-import { format } from 'date-fns';
-import { tr } from 'date-fns/locale';
+import {format} from 'date-fns';
+import {tr} from 'date-fns/locale';
 
 const fetchData = async options => {
   const response = await api.getUsers(options);
@@ -22,7 +32,8 @@ const Users = () => {
   const toast = useToast();
 
   const togglePrivilegeMutation = useMutation({
-    mutationFn: ({userId, isPrivileged}) => api.updateUser(userId, {isPrivileged}),
+    mutationFn: ({userId, isPrivileged}) =>
+      api.updateUser(userId, {isPrivileged}),
     onSuccess: () => {
       queryClient.invalidateQueries(['data']);
       toast({
@@ -31,7 +42,7 @@ const Users = () => {
         duration: 2000,
       });
     },
-    onError: (error) => {
+    onError: error => {
       toast({
         title: 'Hata',
         description: error.response?.data?.message || 'İşlem başarısız',
@@ -45,8 +56,8 @@ const Users = () => {
     navigate(routes.editUser.getPath(item.id));
   };
 
-  const handleRoleFilter = (type) => {
-    const newParams = { ...filterParams };
+  const handleRoleFilter = type => {
+    const newParams = {...filterParams};
     delete newParams.role;
     delete newParams.isPrivileged;
 
@@ -66,16 +77,16 @@ const Users = () => {
     setFilterParams(newParams);
   };
 
-  const handleActivityFilter = (e) => {
+  const handleActivityFilter = e => {
     const value = e.target.value;
-    const newParams = { ...filterParams };
-    
+    const newParams = {...filterParams};
+
     if (value) {
-        const date = new Date();
-        date.setDate(date.getDate() - parseInt(value));
-        newParams.lastActiveAfter = date.toISOString();
+      const date = new Date();
+      date.setDate(date.getDate() - parseInt(value));
+      newParams.lastActiveAfter = date.toISOString();
     } else {
-        delete newParams.lastActiveAfter;
+      delete newParams.lastActiveAfter;
     }
     setFilterParams(newParams);
   };
@@ -93,46 +104,45 @@ const Users = () => {
     <Page>
       <Box mb={4}>
         <HStack spacing={4} justify="space-between">
-            <HStack spacing={2}>
+          <HStack spacing={2}>
             <Button
-                size="sm"
-                colorScheme={activeFilter === 'all' ? 'blue' : 'gray'}
-                onClick={() => handleRoleFilter('all')}
-            >
-                Tümü
+              size="sm"
+              colorScheme={activeFilter === 'all' ? 'blue' : 'gray'}
+              onClick={() => handleRoleFilter('all')}>
+              Tümü
             </Button>
             <Button
-                size="sm"
-                colorScheme={activeFilter === 'admin' ? 'blue' : 'gray'}
-                onClick={() => handleRoleFilter('admin')}
-            >
-                Yöneticiler
+              size="sm"
+              colorScheme={activeFilter === 'admin' ? 'blue' : 'gray'}
+              onClick={() => handleRoleFilter('admin')}>
+              Yöneticiler
             </Button>
             <Button
-                size="sm"
-                colorScheme={activeFilter === 'privileged' ? 'blue' : 'gray'}
-                onClick={() => handleRoleFilter('privileged')}
-            >
-                Ayrıcalıklı Üyeler
+              size="sm"
+              colorScheme={activeFilter === 'privileged' ? 'blue' : 'gray'}
+              onClick={() => handleRoleFilter('privileged')}>
+              Ayrıcalıklı Üyeler
             </Button>
             <Button
-                size="sm"
-                colorScheme={activeFilter === 'user' ? 'blue' : 'gray'}
-                onClick={() => handleRoleFilter('user')}
-            >
-                Kullanıcılar
+              size="sm"
+              colorScheme={activeFilter === 'user' ? 'blue' : 'gray'}
+              onClick={() => handleRoleFilter('user')}>
+              Kullanıcılar
             </Button>
-            </HStack>
+          </HStack>
 
-            <Box width="200px">
-                <Select size="sm" placeholder="Son Aktivite: Tümü" onChange={handleActivityFilter}>
-                    <option value="1">Son 24 Saat</option>
-                    <option value="3">Son 3 Gün</option>
-                    <option value="7">Son 7 Gün</option>
-                    <option value="30">Son 30 Gün</option>
-                    <option value="90">Son 3 Ay</option>
-                </Select>
-            </Box>
+          <Box width="200px">
+            <Select
+              size="sm"
+              placeholder="Son Aktivite: Tümü"
+              onChange={handleActivityFilter}>
+              <option value="1">Son 24 Saat</option>
+              <option value="3">Son 3 Gün</option>
+              <option value="7">Son 7 Gün</option>
+              <option value="30">Son 30 Gün</option>
+              <option value="90">Son 3 Ay</option>
+            </Select>
+          </Box>
         </HStack>
       </Box>
       <DataTable
@@ -156,11 +166,11 @@ const Users = () => {
               const role = getValue();
               const isPrivileged = row.original.isPrivileged;
               const label = RoleLabel[role];
-              
+
               let colorScheme = 'gray';
               if (role === 'admin') colorScheme = 'red';
               else if (isPrivileged) colorScheme = 'orange';
-              
+
               return <Badge colorScheme={colorScheme}>{label}</Badge>;
             },
           },
@@ -169,10 +179,15 @@ const Users = () => {
             accessorKey: 'lastActivityAt',
             cell: ({getValue}) => {
               const value = getValue();
-              if (!value) return <Text fontSize="sm" color="gray.500">-</Text>;
+              if (!value)
+                return (
+                  <Text fontSize="sm" color="gray.500">
+                    -
+                  </Text>
+                );
               return (
                 <Text fontSize="sm">
-                  {format(new Date(value), 'dd MMM yyyy HH:mm', { locale: tr })}
+                  {format(new Date(value), 'dd MMM yyyy HH:mm', {locale: tr})}
                 </Text>
               );
             },
@@ -184,16 +199,30 @@ const Users = () => {
               const user = row.original;
               const isPrivileged = user.isPrivileged;
               const userId = user.id || user._id;
-              
+
               return (
-                <Tooltip label={isPrivileged ? "Ayrıcalığı Kaldır" : "Ayrıcalıklı Üye Yap"}>
+                <Tooltip
+                  label={
+                    isPrivileged ? 'Ayrıcalığı Kaldır' : 'Ayrıcalıklı Üye Yap'
+                  }>
                   <IconButton
-                    icon={<FiStar fill={isPrivileged ? "orange" : "none"} color={isPrivileged ? "orange" : "gray"} />}
-                    onClick={(e) => {
+                    icon={
+                      <FiStar
+                        fill={isPrivileged ? 'orange' : 'none'}
+                        color={isPrivileged ? 'orange' : 'gray'}
+                      />
+                    }
+                    onClick={e => {
                       e.stopPropagation();
-                      togglePrivilegeMutation.mutate({ userId, isPrivileged: !isPrivileged });
+                      togglePrivilegeMutation.mutate({
+                        userId,
+                        isPrivileged: !isPrivileged,
+                      });
                     }}
-                    isLoading={togglePrivilegeMutation.isPending && togglePrivilegeMutation.variables?.userId === userId}
+                    isLoading={
+                      togglePrivilegeMutation.isPending &&
+                      togglePrivilegeMutation.variables?.userId === userId
+                    }
                     variant="ghost"
                     size="sm"
                     aria-label="Toggle Privilege"

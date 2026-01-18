@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, {useState, useMemo} from 'react';
 import {
   Box,
   Flex,
@@ -47,37 +47,44 @@ import {
   Switch,
   useDisclosure,
 } from '@chakra-ui/react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useNavigate } from 'react-router-dom';
-import { 
-  FiVideo, 
-  FiSearch, 
-  FiRefreshCw, 
-  FiUsers, 
-  FiClock, 
+import {useQuery, useMutation, useQueryClient} from '@tanstack/react-query';
+import {useNavigate} from 'react-router-dom';
+import {
+  FiVideo,
+  FiSearch,
+  FiRefreshCw,
+  FiUsers,
+  FiClock,
   FiCalendar,
   FiPlay,
   FiMoreVertical,
   FiPlus,
   FiExternalLink,
   FiCheckCircle,
-  FiAlertCircle
+  FiAlertCircle,
 } from 'react-icons/fi';
-import { Page } from '../../../components';
+import {Page} from '../../../components';
 import CreateConferenceModal from '../../../components/modals/CreateConferenceModal';
-import { api } from '../../../api';
-import { routes } from '../../../config/routes';
-import { format, isAfter, isBefore, differenceInMinutes, differenceInHours, differenceInDays } from 'date-fns';
-import { tr } from 'date-fns/locale';
+import {api} from '../../../api';
+import {routes} from '../../../config/routes';
+import {
+  format,
+  isAfter,
+  isBefore,
+  differenceInMinutes,
+  differenceInHours,
+  differenceInDays,
+} from 'date-fns';
+import {tr} from 'date-fns/locale';
 
 const Conferences = () => {
   const navigate = useNavigate();
   const toast = useToast();
   const queryClient = useQueryClient();
-  const { isOpen, onOpen, onClose } = useDisclosure();
-  
+  const {isOpen, onOpen, onClose} = useDisclosure();
+
   const createMutation = useMutation({
-    mutationFn: (data) => {
+    mutationFn: data => {
       if (data.type === 'scheduled') {
         return api.scheduleConference(data);
       }
@@ -94,10 +101,12 @@ const Conferences = () => {
       });
       onClose();
     },
-    onError: (error) => {
+    onError: error => {
       toast({
         title: 'Hata',
-        description: error.response?.data?.message || 'Konferans oluşturulurken bir hata oluştu.',
+        description:
+          error.response?.data?.message ||
+          'Konferans oluşturulurken bir hata oluştu.',
         status: 'error',
         duration: 3000,
         isClosable: true,
@@ -105,7 +114,7 @@ const Conferences = () => {
     },
   });
 
-  const handleCreateConference = (data) => {
+  const handleCreateConference = data => {
     createMutation.mutate(data);
   };
 
@@ -125,14 +134,22 @@ const Conferences = () => {
   const emptyStateBg = useColorModeValue('gray.100', 'gray.700');
 
   // Fetch conferences
-  const { data: conferencesData, isLoading, refetch, isFetching } = useQuery({
+  const {
+    data: conferencesData,
+    isLoading,
+    refetch,
+    isFetching,
+  } = useQuery({
     queryKey: ['conferences', 'all', page, limit],
-    queryFn: () => api.getActiveConferences({ limit: 100, page: 1, type: 'all' }).then(res => res.data),
+    queryFn: () =>
+      api
+        .getActiveConferences({limit: 100, page: 1, type: 'all'})
+        .then(res => res.data),
     refetchInterval: 30000, // Refresh every 30 seconds
   });
 
   // Helper to extract ID string from various formats
-  const extractIdString = (obj) => {
+  const extractIdString = obj => {
     if (!obj) return null;
     if (typeof obj === 'string') return obj;
     if (typeof obj === 'object') {
@@ -152,47 +169,52 @@ const Conferences = () => {
   };
 
   // Process and filter conferences
-  const { conferences, counts } = useMemo(() => {
+  const {conferences, counts} = useMemo(() => {
     const results = conferencesData?.results || [];
     const now = new Date();
 
     const processed = results.map(conf => {
       const startTime = new Date(conf.startTime);
-      const endTime = conf.scheduledEndTime ? new Date(conf.scheduledEndTime) : null;
+      const endTime = conf.scheduledEndTime
+        ? new Date(conf.scheduledEndTime)
+        : null;
       const endedAt = conf.endedAt ? new Date(conf.endedAt) : null;
-      
+
       // Determine conference status with multiple checks
       let status = 'unknown';
-      
+
       // Calculate time differences
       const hoursSinceStart = differenceInHours(now, startTime);
       const minutesSinceStart = differenceInMinutes(now, startTime);
-      
+
       // Default duration: 60 minutes if scheduledEndTime not set
       const DEFAULT_DURATION_MINUTES = 60;
       const SAFETY_FALLBACK_HOURS = 24;
-      
+
       // Calculate effective end time
       // If scheduledEndTime exists, use it; otherwise use startTime + default duration
       let effectiveEndTime = endTime;
       if (!effectiveEndTime && startTime) {
-        effectiveEndTime = new Date(startTime.getTime() + DEFAULT_DURATION_MINUTES * 60 * 1000);
+        effectiveEndTime = new Date(
+          startTime.getTime() + DEFAULT_DURATION_MINUTES * 60 * 1000,
+        );
       }
-      
+
       // Check if conference has ended based on multiple criteria:
       // 1. endedAt field exists (explicitly ended by host)
       // 2. isActive is explicitly false (backend marked as inactive)
       // 3. scheduledEndTime/effectiveEndTime has passed
       // 4. Started more than 24 hours ago (safety fallback)
       const hasEndedExplicitly = endedAt !== null || conf.isActive === false;
-      const hasEndedByTime = effectiveEndTime && isBefore(effectiveEndTime, now);
+      const hasEndedByTime =
+        effectiveEndTime && isBefore(effectiveEndTime, now);
       const hasEndedBySafety = hoursSinceStart > SAFETY_FALLBACK_HOURS;
       const hasEnded = hasEndedExplicitly || hasEndedByTime || hasEndedBySafety;
-      
+
       // Check if conference is scheduled for the future
       const isFuture = isAfter(startTime, now);
       const isScheduledConference = conf.isScheduled === true;
-      
+
       // Determine final status
       if (hasEnded) {
         // Conference is finished (any of the end conditions met)
@@ -218,7 +240,10 @@ const Conferences = () => {
       // Calculate remaining time for live conferences
       let remainingMinutes = null;
       if (status === 'live' && effectiveEndTime) {
-        remainingMinutes = Math.max(0, differenceInMinutes(effectiveEndTime, now));
+        remainingMinutes = Math.max(
+          0,
+          differenceInMinutes(effectiveEndTime, now),
+        );
       }
 
       return {
@@ -230,7 +255,8 @@ const Conferences = () => {
         endTime,
         effectiveEndTime,
         remainingMinutes,
-        activeParticipants: conf.participants?.filter(p => !p.leftAt)?.length || 0,
+        activeParticipants:
+          conf.participants?.filter(p => !p.leftAt)?.length || 0,
       };
     });
 
@@ -238,10 +264,11 @@ const Conferences = () => {
     let filtered = processed;
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase();
-      filtered = filtered.filter(c => 
-        c.title?.toLowerCase().includes(query) ||
-        c.host?.name?.toLowerCase().includes(query) ||
-        c.channelId?.name?.toLowerCase().includes(query)
+      filtered = filtered.filter(
+        c =>
+          c.title?.toLowerCase().includes(query) ||
+          c.host?.name?.toLowerCase().includes(query) ||
+          c.channelId?.name?.toLowerCase().includes(query),
       );
     }
 
@@ -252,7 +279,7 @@ const Conferences = () => {
 
     // Sort: live first, then upcoming by start time, then past
     filtered.sort((a, b) => {
-      const statusOrder = { live: 0, upcoming: 1, past: 2, unknown: 3 };
+      const statusOrder = {live: 0, upcoming: 1, past: 2, unknown: 3};
       if (statusOrder[a.status] !== statusOrder[b.status]) {
         return statusOrder[a.status] - statusOrder[b.status];
       }
@@ -271,14 +298,14 @@ const Conferences = () => {
   }, [conferencesData, searchQuery, filter]);
 
   // Helper to extract channelId as string
-  const getChannelIdString = (channelId) => {
+  const getChannelIdString = channelId => {
     if (!channelId) return null;
-    
+
     // If it's already a string (24 char hex = MongoDB ObjectId)
     if (typeof channelId === 'string') {
       return channelId;
     }
-    
+
     // If it's an object, try various ways to get the ID
     if (typeof channelId === 'object') {
       // Try _id first (populated MongoDB document)
@@ -299,25 +326,30 @@ const Conferences = () => {
         return channelId.toString();
       }
     }
-    
+
     // Last resort - should not reach here ideally
     console.warn('Unable to extract channelId:', channelId);
     return null;
   };
 
-  const handleJoinConference = (conference) => {
+  const handleJoinConference = conference => {
     // Comprehensive check: if conference has ended
     const now = new Date();
     const endTime = conference.effectiveEndTime || conference.endTime;
     const startTime = conference.startTime;
     const hoursSinceStart = differenceInHours(now, startTime);
-    
+
     // Use same criteria as status determination
-    const hasEndedExplicitly = conference.endedAt || conference.isActive === false;
+    const hasEndedExplicitly =
+      conference.endedAt || conference.isActive === false;
     const hasEndedByTime = endTime && isBefore(endTime, now);
-    const hasEndedBySafety = hoursSinceStart > 24;  // Safety: 24+ hours old
-    const hasEnded = conference.status === 'past' || hasEndedExplicitly || hasEndedByTime || hasEndedBySafety;
-    
+    const hasEndedBySafety = hoursSinceStart > 24; // Safety: 24+ hours old
+    const hasEnded =
+      conference.status === 'past' ||
+      hasEndedExplicitly ||
+      hasEndedByTime ||
+      hasEndedBySafety;
+
     if (hasEnded) {
       toast({
         title: 'Konferans Sona Erdi',
@@ -331,13 +363,13 @@ const Conferences = () => {
     if (conference.status === 'upcoming') {
       toast({
         title: 'Henüz Başlamadı',
-        description: `Bu konferans ${format(conference.startTime, 'dd MMM yyyy HH:mm', { locale: tr })} tarihinde başlayacak.`,
+        description: `Bu konferans ${format(conference.startTime, 'dd MMM yyyy HH:mm', {locale: tr})} tarihinde başlayacak.`,
         status: 'info',
         duration: 3000,
       });
       return;
     }
-    
+
     // Extra safety check: only allow joining if truly active
     if (!conference.isActive) {
       toast({
@@ -351,15 +383,26 @@ const Conferences = () => {
 
     // Navigate to channel chat with conference params
     // Use pre-computed channelIdString or try to extract it
-    const channelId = conference.channelIdString || getChannelIdString(conference.channelId);
-    
+    const channelId =
+      conference.channelIdString || getChannelIdString(conference.channelId);
+
     // Validate channelId is a valid MongoDB ObjectId format (24 hex chars)
-    const isValidId = channelId && typeof channelId === 'string' && /^[a-fA-F0-9]{24}$/.test(channelId);
-    
+    const isValidId =
+      channelId &&
+      typeof channelId === 'string' &&
+      /^[a-fA-F0-9]{24}$/.test(channelId);
+
     if (isValidId) {
-      navigate(`${routes.channelChat.getPath(channelId)}?conference=active&roomId=${conference.roomId}`);
+      navigate(
+        `${routes.channelChat.getPath(channelId)}?conference=active&roomId=${conference.roomId}`,
+      );
     } else {
-      console.error('Invalid channelId:', channelId, 'from conference:', conference);
+      console.error(
+        'Invalid channelId:',
+        channelId,
+        'from conference:',
+        conference,
+      );
       toast({
         title: 'Hata',
         description: 'Kanal bilgisi bulunamadı veya geçersiz.',
@@ -369,7 +412,7 @@ const Conferences = () => {
     }
   };
 
-  const getTimeDisplay = (conference) => {
+  const getTimeDisplay = conference => {
     const now = new Date();
     const startTime = conference.startTime;
     const effectiveEndTime = conference.effectiveEndTime;
@@ -378,7 +421,7 @@ const Conferences = () => {
       // Show both elapsed and remaining time
       const elapsedMins = differenceInMinutes(now, startTime);
       const remainingMins = conference.remainingMinutes;
-      
+
       // Format elapsed time
       let elapsedText = '';
       if (elapsedMins < 1) {
@@ -388,11 +431,12 @@ const Conferences = () => {
       } else {
         const hours = Math.floor(elapsedMins / 60);
         const mins = elapsedMins % 60;
-        elapsedText = mins > 0 
-          ? `${hours} saat ${mins} dk önce başladı`
-          : `${hours} saat önce başladı`;
+        elapsedText =
+          mins > 0
+            ? `${hours} saat ${mins} dk önce başladı`
+            : `${hours} saat önce başladı`;
       }
-      
+
       // Add remaining time if available
       if (remainingMins !== null && remainingMins > 0) {
         if (remainingMins < 60) {
@@ -405,7 +449,7 @@ const Conferences = () => {
             : `${elapsedText} • ${remainingHours} saat kaldı`;
         }
       }
-      
+
       return elapsedText;
     }
 
@@ -415,8 +459,14 @@ const Conferences = () => {
       const hours = differenceInHours(startTime, now) % 24;
       const mins = totalMins % 60;
 
-      if (days > 0) return hours > 0 ? `${days} gün ${hours} saat sonra` : `${days} gün sonra`;
-      if (hours > 0) return mins > 0 ? `${hours} saat ${mins} dk sonra` : `${hours} saat sonra`;
+      if (days > 0)
+        return hours > 0
+          ? `${days} gün ${hours} saat sonra`
+          : `${days} gün sonra`;
+      if (hours > 0)
+        return mins > 0
+          ? `${hours} saat ${mins} dk sonra`
+          : `${hours} saat sonra`;
       if (mins > 0) return `${mins} dk sonra`;
       return 'Birazdan başlayacak';
     }
@@ -424,18 +474,18 @@ const Conferences = () => {
     // Past conferences - show when they ended
     if (conference.status === 'past') {
       if (conference.endedAt) {
-        return `${format(new Date(conference.endedAt), 'dd MMM HH:mm', { locale: tr })} sona erdi`;
+        return `${format(new Date(conference.endedAt), 'dd MMM HH:mm', {locale: tr})} sona erdi`;
       }
       if (effectiveEndTime) {
-        return `${format(effectiveEndTime, 'dd MMM HH:mm', { locale: tr })} sona erdi`;
+        return `${format(effectiveEndTime, 'dd MMM HH:mm', {locale: tr})} sona erdi`;
       }
-      return `${format(startTime, 'dd MMM yyyy, HH:mm', { locale: tr })} başladı`;
+      return `${format(startTime, 'dd MMM yyyy, HH:mm', {locale: tr})} başladı`;
     }
 
-    return format(startTime, 'dd MMM yyyy, HH:mm', { locale: tr });
+    return format(startTime, 'dd MMM yyyy, HH:mm', {locale: tr});
   };
 
-  const ConferenceCard = ({ conference }) => (
+  const ConferenceCard = ({conference}) => (
     <Box
       bg={cardBg}
       borderRadius="xl"
@@ -443,40 +493,43 @@ const Conferences = () => {
       borderColor={borderColor}
       p={5}
       transition="all 0.2s"
-      _hover={{ shadow: 'lg', transform: 'translateY(-2px)' }}
+      _hover={{shadow: 'lg', transform: 'translateY(-2px)'}}
       cursor="pointer"
       onClick={() => handleJoinConference(conference)}
       position="relative"
-      opacity={conference.status === 'past' ? 0.7 : 1}
-    >
+      opacity={conference.status === 'past' ? 0.7 : 1}>
       {/* Status Badge */}
       <Flex justify="space-between" align="center" mb={3}>
         <HStack spacing={2}>
           {conference.status === 'live' ? (
-            <Badge 
-              bg={liveBadgeBg} 
-              color="white" 
-              px={2} 
-              py={1} 
+            <Badge
+              bg={liveBadgeBg}
+              color="white"
+              px={2}
+              py={1}
               borderRadius="md"
               display="flex"
               alignItems="center"
-              gap={1}
-            >
-              <Box w={2} h={2} bg="white" borderRadius="full" animation="pulse 1.5s infinite" />
+              gap={1}>
+              <Box
+                w={2}
+                h={2}
+                bg="white"
+                borderRadius="full"
+                animation="pulse 1.5s infinite"
+              />
               CANLI
             </Badge>
           ) : conference.status === 'upcoming' ? (
-            <Badge 
-              bg={upcomingBadgeBg} 
-              color="white" 
-              px={2} 
-              py={1} 
+            <Badge
+              bg={upcomingBadgeBg}
+              color="white"
+              px={2}
+              py={1}
               borderRadius="md"
               display="flex"
               alignItems="center"
-              gap={1}
-            >
+              gap={1}>
               <FiCalendar size={12} />
               Planlandı
             </Badge>
@@ -490,20 +543,23 @@ const Conferences = () => {
           )}
 
           {/* Remaining time warning for live conferences */}
-          {conference.status === 'live' && conference.remainingMinutes !== null && conference.remainingMinutes <= 15 && (
-            <Badge 
-              colorScheme="orange" 
-              variant="subtle"
-              px={2}
-              py={1}
-              borderRadius="md"
-            >
-              <Flex align="center" gap={1}>
-                <FiClock size={12} />
-                {conference.remainingMinutes <= 0 ? 'Süre doldu' : `${conference.remainingMinutes} dk kaldı`}
-              </Flex>
-            </Badge>
-          )}
+          {conference.status === 'live' &&
+            conference.remainingMinutes !== null &&
+            conference.remainingMinutes <= 15 && (
+              <Badge
+                colorScheme="orange"
+                variant="subtle"
+                px={2}
+                py={1}
+                borderRadius="md">
+                <Flex align="center" gap={1}>
+                  <FiClock size={12} />
+                  {conference.remainingMinutes <= 0
+                    ? 'Süre doldu'
+                    : `${conference.remainingMinutes} dk kaldı`}
+                </Flex>
+              </Badge>
+            )}
         </HStack>
 
         <HStack spacing={2}>
@@ -517,8 +573,7 @@ const Conferences = () => {
             borderColor="orange.200"
             fontFamily="monospace"
             fontSize="xs"
-            textTransform="none"
-          >
+            textTransform="none">
             ID: {conference.roomId}
           </Badge>
 
@@ -539,7 +594,9 @@ const Conferences = () => {
       </Heading>
 
       {/* Channel Info */}
-      {(conference.channelId?.name || (typeof conference.channelId === 'object' && conference.channelId?.name)) && (
+      {(conference.channelId?.name ||
+        (typeof conference.channelId === 'object' &&
+          conference.channelId?.name)) && (
         <Text fontSize="xs" color={textSecondary} mb={3}>
           📢 {conference.channelId?.name}
         </Text>
@@ -548,9 +605,9 @@ const Conferences = () => {
       {/* Host & Time Info */}
       <Flex align="center" justify="space-between" mb={4}>
         <HStack spacing={2}>
-          <Avatar 
-            size="sm" 
-            name={conference.host?.name || 'Host'} 
+          <Avatar
+            size="sm"
+            name={conference.host?.name || 'Host'}
             src={conference.host?.avatar}
           />
           <VStack spacing={0} align="start">
@@ -566,10 +623,9 @@ const Conferences = () => {
         <HStack spacing={1} color={textSecondary}>
           <FiUsers size={14} />
           <Text fontSize="sm">
-            {conference.status === 'live' 
+            {conference.status === 'live'
               ? `${conference.activeParticipants} katılımcı`
-              : `${conference.maxParticipants || 50} kişilik`
-            }
+              : `${conference.maxParticipants || 50} kişilik`}
           </Text>
         </HStack>
       </Flex>
@@ -581,9 +637,9 @@ const Conferences = () => {
             ?.filter(p => !p.leftAt)
             ?.slice(0, 5)
             ?.map((p, i) => (
-              <Avatar 
-                key={p.user?.id || i} 
-                name={p.user?.name || '?'} 
+              <Avatar
+                key={p.user?.id || i}
+                name={p.user?.name || '?'}
                 src={p.user?.avatar}
               />
             ))}
@@ -594,12 +650,21 @@ const Conferences = () => {
       <Button
         size="sm"
         width="100%"
-        colorScheme={conference.status === 'live' ? 'green' : conference.status === 'upcoming' ? 'orange' : 'gray'}
+        colorScheme={
+          conference.status === 'live'
+            ? 'green'
+            : conference.status === 'upcoming'
+              ? 'orange'
+              : 'gray'
+        }
         variant={conference.status === 'past' ? 'outline' : 'solid'}
         leftIcon={conference.status === 'live' ? <FiPlay /> : <FiClock />}
-        isDisabled={conference.status === 'past'}
-      >
-        {conference.status === 'live' ? 'Şimdi Katıl' : conference.status === 'upcoming' ? 'Hatırlat' : 'Sona Erdi'}
+        isDisabled={conference.status === 'past'}>
+        {conference.status === 'live'
+          ? 'Şimdi Katıl'
+          : conference.status === 'upcoming'
+            ? 'Hatırlat'
+            : 'Sona Erdi'}
       </Button>
     </Box>
   );
@@ -610,8 +675,7 @@ const Conferences = () => {
       borderRadius="xl"
       borderWidth="1px"
       borderColor={borderColor}
-      p={5}
-    >
+      p={5}>
       <Skeleton height="24px" width="80px" mb={3} borderRadius="md" />
       <Skeleton height="20px" width="100%" mb={2} />
       <Skeleton height="16px" width="60%" mb={4} />
@@ -630,34 +694,32 @@ const Conferences = () => {
   );
 
   const filterTabs = [
-    { key: 'all', label: 'Tümü', count: counts.all },
-    { key: 'live', label: 'Canlı', count: counts.live, isLive: true },
-    { key: 'upcoming', label: 'Yaklaşan', count: counts.upcoming },
-    { key: 'past', label: 'Geçmiş', count: counts.past },
+    {key: 'all', label: 'Tümü', count: counts.all},
+    {key: 'live', label: 'Canlı', count: counts.live, isLive: true},
+    {key: 'upcoming', label: 'Yaklaşan', count: counts.upcoming},
+    {key: 'past', label: 'Geçmiş', count: counts.past},
   ];
 
   return (
-    <Page 
-      title="Video Konferanslar" 
-      subtitle={`${counts.all} konferans${counts.live > 0 ? ` • ${counts.live} canlı` : ''}`}
-    >
+    <Page
+      title="Video Konferanslar"
+      subtitle={`${counts.all} konferans${counts.live > 0 ? ` • ${counts.live} canlı` : ''}`}>
       {/* Header Actions */}
-      <Flex 
-        justify="space-between" 
-        align="center" 
+      <Flex
+        justify="space-between"
+        align="center"
         mb={6}
-        direction={{ base: 'column', md: 'row' }}
-        gap={4}
-      >
+        direction={{base: 'column', md: 'row'}}
+        gap={4}>
         {/* Search */}
-        <InputGroup maxW={{ base: '100%', md: '300px' }}>
+        <InputGroup maxW={{base: '100%', md: '300px'}}>
           <InputLeftElement pointerEvents="none">
             <FiSearch color="gray.400" />
           </InputLeftElement>
           <Input
             placeholder="Konferans ara..."
             value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+            onChange={e => setSearchQuery(e.target.value)}
             borderRadius="lg"
           />
         </InputGroup>
@@ -677,40 +739,37 @@ const Conferences = () => {
       </Flex>
 
       {/* Filter Tabs */}
-      <Tabs 
-        variant="soft-rounded" 
-        colorScheme="blue" 
+      <Tabs
+        variant="soft-rounded"
+        colorScheme="blue"
         mb={6}
         index={filterTabs.findIndex(t => t.key === filter)}
-        onChange={(index) => setFilter(filterTabs[index].key)}
-      >
+        onChange={index => setFilter(filterTabs[index].key)}>
         <TabList gap={2} flexWrap="wrap">
-          {filterTabs.map((tab) => (
+          {filterTabs.map(tab => (
             <Tab
               key={tab.key}
               px={4}
               py={2}
               borderRadius="full"
-              _selected={{ bg: 'blue.500', color: 'white' }}
-            >
+              _selected={{bg: 'blue.500', color: 'white'}}>
               <HStack spacing={2}>
                 {tab.isLive && tab.count > 0 && (
-                  <Box 
-                    w={2} 
-                    h={2} 
-                    bg="red.500" 
-                    borderRadius="full" 
+                  <Box
+                    w={2}
+                    h={2}
+                    bg="red.500"
+                    borderRadius="full"
                     animation="pulse 1.5s infinite"
                   />
                 )}
                 <Text>{tab.label}</Text>
                 {tab.count > 0 && (
-                  <Badge 
-                    borderRadius="full" 
+                  <Badge
+                    borderRadius="full"
                     px={2}
                     bg={filter === tab.key ? 'whiteAlpha.300' : 'gray.200'}
-                    color={filter === tab.key ? 'white' : 'gray.600'}
-                  >
+                    color={filter === tab.key ? 'white' : 'gray.600'}>
                     {tab.count}
                   </Badge>
                 )}
@@ -722,35 +781,24 @@ const Conferences = () => {
 
       {/* Conference Grid */}
       {isLoading ? (
-        <SimpleGrid columns={{ base: 1, md: 2, lg: 3, xl: 4 }} spacing={4}>
-          {[1, 2, 3, 4, 5, 6].map((i) => (
+        <SimpleGrid columns={{base: 1, md: 2, lg: 3, xl: 4}} spacing={4}>
+          {[1, 2, 3, 4, 5, 6].map(i => (
             <SkeletonCard key={i} />
           ))}
         </SimpleGrid>
       ) : conferences.length === 0 ? (
-        <Flex
-          direction="column"
-          align="center"
-          justify="center"
-          py={16}
-          px={4}
-        >
-          <Box
-            p={4}
-            borderRadius="full"
-            bg={emptyStateBg}
-            mb={4}
-          >
+        <Flex direction="column" align="center" justify="center" py={16} px={4}>
+          <Box p={4} borderRadius="full" bg={emptyStateBg} mb={4}>
             <FiVideo size={48} color="gray" />
           </Box>
           <Heading size="md" mb={2} textAlign="center">
             {filter === 'live'
               ? 'Şu an canlı konferans yok'
               : filter === 'upcoming'
-              ? 'Yaklaşan konferans yok'
-              : filter === 'past'
-              ? 'Geçmiş konferans yok'
-              : 'Henüz konferans yok'}
+                ? 'Yaklaşan konferans yok'
+                : filter === 'past'
+                  ? 'Geçmiş konferans yok'
+                  : 'Henüz konferans yok'}
           </Heading>
           <Text color={textSecondary} textAlign="center" mb={6}>
             {filter === 'all'
@@ -759,8 +807,8 @@ const Conferences = () => {
           </Text>
         </Flex>
       ) : (
-        <SimpleGrid columns={{ base: 1, md: 2, lg: 3, xl: 4 }} spacing={4}>
-          {conferences.map((conference) => (
+        <SimpleGrid columns={{base: 1, md: 2, lg: 3, xl: 4}} spacing={4}>
+          {conferences.map(conference => (
             <ConferenceCard key={conference.id} conference={conference} />
           ))}
         </SimpleGrid>
@@ -777,9 +825,9 @@ const Conferences = () => {
       </style>
 
       {/* Create Modal */}
-      <CreateConferenceModal 
-        isOpen={isOpen} 
-        onClose={onClose} 
+      <CreateConferenceModal
+        isOpen={isOpen}
+        onClose={onClose}
         onCreate={handleCreateConference}
         isLoading={createMutation.isLoading}
       />

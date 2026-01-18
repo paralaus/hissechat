@@ -41,12 +41,12 @@ import useFileInput from '../../../hooks/useFileInput';
 import {AsyncSelect} from 'chakra-react-select';
 
 const channelCategories = [
-  { value: 'borsa', label: 'Borsa' },
-  { value: 'kripto', label: 'Kripto' },
-  { value: 'forex', label: 'Forex' },
-  { value: 'analiz', label: 'Analiz' },
-  { value: 'emtia', label: 'Emtia' },
-  { value: 'other', label: 'Diğer' },
+  {value: 'borsa', label: 'Borsa'},
+  {value: 'kripto', label: 'Kripto'},
+  {value: 'forex', label: 'Forex'},
+  {value: 'analiz', label: 'Analiz'},
+  {value: 'emtia', label: 'Emtia'},
+  {value: 'other', label: 'Diğer'},
 ];
 
 const object = {
@@ -184,16 +184,28 @@ const EditVipChannel = ({id}) => {
             background="transparent"
             borderRadius="md"
             me="auto">
-            <Box display={'flex'} flexDirection="column" alignItems="center" mb="6">
+            <Box
+              display={'flex'}
+              flexDirection="column"
+              alignItems="center"
+              mb="6">
               {/* Thumbnail Upload Area */}
               <Box
                 onClick={() => open()}
                 cursor="pointer"
                 borderRadius="xl"
                 border="2px dashed"
-                borderColor={objectUrl || (getValues('thumbnail')?.length > 0) ? 'transparent' : 'gray.300'}
-                bg={objectUrl || (getValues('thumbnail')?.length > 0) ? 'transparent' : 'gray.50'}
-                p={objectUrl || (getValues('thumbnail')?.length > 0) ? '0' : '8'}
+                borderColor={
+                  objectUrl || getValues('thumbnail')?.length > 0
+                    ? 'transparent'
+                    : 'gray.300'
+                }
+                bg={
+                  objectUrl || getValues('thumbnail')?.length > 0
+                    ? 'transparent'
+                    : 'gray.50'
+                }
+                p={objectUrl || getValues('thumbnail')?.length > 0 ? '0' : '8'}
                 minH="150px"
                 minW="150px"
                 maxW="200px"
@@ -203,14 +215,18 @@ const EditVipChannel = ({id}) => {
                 transition="all 0.2s"
                 _hover={{
                   borderColor: 'brand.400',
-                  bg: objectUrl || (getValues('thumbnail')?.length > 0) ? 'transparent' : 'brand.50',
+                  bg:
+                    objectUrl || getValues('thumbnail')?.length > 0
+                      ? 'transparent'
+                      : 'brand.50',
                 }}
                 position="relative"
-                overflow="hidden"
-              >
-                {objectUrl || (getValues('thumbnail')?.length > 0) ? (
+                overflow="hidden">
+                {objectUrl || getValues('thumbnail')?.length > 0 ? (
                   <ChakraImage
-                    src={objectUrl || getCombinedLogoUrl(getValues('thumbnail'))}
+                    src={
+                      objectUrl || getCombinedLogoUrl(getValues('thumbnail'))
+                    }
                     alt="Thumbnail"
                     maxH="150px"
                     objectFit="contain"
@@ -218,11 +234,7 @@ const EditVipChannel = ({id}) => {
                   />
                 ) : (
                   <VStack spacing="3">
-                    <Box
-                      p="4"
-                      bg="gray.100"
-                      borderRadius="full"
-                    >
+                    <Box p="4" bg="gray.100" borderRadius="full">
                       <Icon as={FiImage} boxSize="8" color="gray.400" />
                     </Box>
                     <VStack spacing="1">
@@ -239,13 +251,13 @@ const EditVipChannel = ({id}) => {
               </Box>
               {input}
               <Input type={'hidden'} {...register('thumbnail')} />
-              {(objectUrl || (getValues('thumbnail')?.length > 0)) && (
+              {(objectUrl || getValues('thumbnail')?.length > 0) && (
                 <Button
                   mt="3"
                   size="sm"
                   variant="ghost"
                   colorScheme="red"
-                  onClick={(e) => {
+                  onClick={e => {
                     e.stopPropagation();
                     setValue('thumbnail', '');
                     trigger('thumbnail');
@@ -297,7 +309,8 @@ const EditVipChannel = ({id}) => {
                 ))}
               </Select>
               <FormHelperText>
-                Kanalın kategorisi - mobil uygulamada filtreleme için kullanılır.
+                Kanalın kategorisi - mobil uygulamada filtreleme için
+                kullanılır.
               </FormHelperText>
               <FormErrorMessage>{errors.category?.message}</FormErrorMessage>
             </FormControl>

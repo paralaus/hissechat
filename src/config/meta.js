@@ -1,4 +1,4 @@
 export const meta = {
-  name: "Admin",
-  title: "Admin Dashboard",
+  name: 'Admin',
+  title: 'Admin Dashboard',
 };

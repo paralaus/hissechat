@@ -21,7 +21,7 @@ import {
   Text,
   VStack,
 } from '@chakra-ui/react';
-import { FiImage, FiUpload } from 'react-icons/fi';
+import {FiImage, FiUpload} from 'react-icons/fi';
 import {useForm} from 'react-hook-form';
 import {yupResolver} from '@hookform/resolvers/yup';
 import {useMutation, useQuery} from '@tanstack/react-query';
@@ -77,9 +77,7 @@ const EditAds = ({id}) => {
 
   const {mutateAsync, isPending} = useMutation({
     mutationFn: values =>
-      isNew
-        ? api.createAdDetail(values)
-        : api.updateAdDetail(id, values),
+      isNew ? api.createAdDetail(values) : api.updateAdDetail(id, values),
   });
 
   const {mutateAsync: deleteAdDetail, isPending: isDeleting} = useMutation({
@@ -104,46 +102,46 @@ const EditAds = ({id}) => {
 
   const onSubmit = async values => {
     try {
-        const submissionData = { ...values };
-        
-        if (objectUrl) {
-          const url = await upload();
-          if (!url) {
-              toast({
-              title: 'Görsel yüklenemedi.',
-              status: 'error',
-              position: 'top',
-              });
-              return;
-          }
-          submissionData.adImage = url;
+      const submissionData = {...values};
+
+      if (objectUrl) {
+        const url = await upload();
+        if (!url) {
+          toast({
+            title: 'Görsel yüklenemedi.',
+            status: 'error',
+            position: 'top',
+          });
+          return;
         }
-        
-        await mutateAsync(submissionData);
-        
-        toast({
+        submissionData.adImage = url;
+      }
+
+      await mutateAsync(submissionData);
+
+      toast({
         title: 'Bilgiler kaydedildi.',
         status: 'success',
         position: 'top',
-        });
-        navigate(routes.ads.path);
+      });
+      navigate(routes.ads.path);
     } catch (error) {
-        console.error('Submission error:', error);
-        toast({
+      console.error('Submission error:', error);
+      toast({
         title: getErrorMessage(error),
         status: 'error',
         position: 'top',
-        });
+      });
     }
   };
 
   const onDelete = async () => {
-  try {
-    await deleteAdDetail(); // 'data' is unused
-    toast({
-      title: 'Başarıyla silindi.',
-      status: 'success',
-      position: 'top',
+    try {
+      await deleteAdDetail(); // 'data' is unused
+      toast({
+        title: 'Başarıyla silindi.',
+        status: 'success',
+        position: 'top',
       });
       navigate(routes.ads.path);
     } catch (error) {
@@ -173,15 +171,27 @@ const EditAds = ({id}) => {
             background="transparent"
             borderRadius="md"
             me="auto">
-            <Box display={'flex'} flexDirection="column" alignItems="center" mb="6">
+            <Box
+              display={'flex'}
+              flexDirection="column"
+              alignItems="center"
+              mb="6">
               {/* Image Upload Area */}
               <Box
                 onClick={() => open()}
                 cursor="pointer"
                 borderRadius="xl"
                 border="2px dashed"
-                borderColor={objectUrl || getValues('adImage')?.length > 0 ? 'transparent' : 'gray.300'}
-                bg={objectUrl || getValues('adImage')?.length > 0 ? 'transparent' : 'gray.50'}
+                borderColor={
+                  objectUrl || getValues('adImage')?.length > 0
+                    ? 'transparent'
+                    : 'gray.300'
+                }
+                bg={
+                  objectUrl || getValues('adImage')?.length > 0
+                    ? 'transparent'
+                    : 'gray.50'
+                }
                 p={objectUrl || getValues('adImage')?.length > 0 ? '0' : '8'}
                 minH="200px"
                 minW="300px"
@@ -192,11 +202,13 @@ const EditAds = ({id}) => {
                 transition="all 0.2s"
                 _hover={{
                   borderColor: 'brand.400',
-                  bg: objectUrl || getValues('adImage')?.length > 0 ? 'transparent' : 'brand.50',
+                  bg:
+                    objectUrl || getValues('adImage')?.length > 0
+                      ? 'transparent'
+                      : 'brand.50',
                 }}
                 position="relative"
-                overflow="hidden"
-              >
+                overflow="hidden">
                 {objectUrl || getValues('adImage')?.length > 0 ? (
                   <ChakraImage
                     src={objectUrl || getAdImageUrl(getValues('adImage'))}
@@ -207,11 +219,7 @@ const EditAds = ({id}) => {
                   />
                 ) : (
                   <VStack spacing="3">
-                    <Box
-                      p="4"
-                      bg="gray.100"
-                      borderRadius="full"
-                    >
+                    <Box p="4" bg="gray.100" borderRadius="full">
                       <Icon as={FiImage} boxSize="8" color="gray.400" />
                     </Box>
                     <VStack spacing="1">
@@ -234,15 +242,14 @@ const EditAds = ({id}) => {
                   size="sm"
                   variant="ghost"
                   colorScheme="red"
-                  onClick={(e) => {
+                  onClick={e => {
                     e.stopPropagation();
                     reset({
                       ...getValues(),
                       adImage: '',
                     });
                     resetFile();
-                  }}
-                >
+                  }}>
                   Görseli Kaldır
                 </Button>
               )}

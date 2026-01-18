@@ -17,11 +17,11 @@ import {
   Center,
   useToast,
 } from '@chakra-ui/react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import {useQuery, useMutation, useQueryClient} from '@tanstack/react-query';
 import {Link, useNavigate} from 'react-router-dom';
-import { FaTrash } from 'react-icons/fa';
-import { api } from '../../../api';
-import { routes } from '../../../config/routes'; // Yolu kontrol edin
+import {FaTrash} from 'react-icons/fa';
+import {api} from '../../../api';
+import {routes} from '../../../config/routes'; // Yolu kontrol edin
 
 const VipApplications = () => {
   const queryClient = useQueryClient();
@@ -32,7 +32,7 @@ const VipApplications = () => {
     navigate(routes.editVipApplications.getPath(item.id));
   };
 
-  const { data, isLoading, error } = useQuery({
+  const {data, isLoading, error} = useQuery({
     queryKey: ['vipapplications'],
     queryFn: () => api.getVipApplications(),
   });
@@ -44,7 +44,7 @@ const VipApplications = () => {
     },
   });
 
-  const handleDelete = (id) => {
+  const handleDelete = id => {
     if (window.confirm('Bu başvuruyu silmek istediğinize emin misiniz?')) {
       deleteMutation.mutate(id);
       toast({
@@ -56,7 +56,12 @@ const VipApplications = () => {
     }
   };
 
-  if (isLoading) return <Center h="200px"><Spinner /></Center>;
+  if (isLoading)
+    return (
+      <Center h="200px">
+        <Spinner />
+      </Center>
+    );
   if (error) return <Box color="red.500">Veriler yüklenirken hata oluştu.</Box>;
 
   // API'den dönen verinin data.data içinde olduğunu varsayıyoruz (Axios + Backend yapınıza göre)
@@ -84,7 +89,11 @@ const VipApplications = () => {
     <Box p={8} bg="white" borderRadius="lg" shadow="sm">
       <HStack justifyContent="space-between" mb={6}>
         <Heading size="md">VIP Başvuruları</Heading>
-        <Button as={Link} to="/dashboard/vipapplications/new" colorScheme="blue" size="sm">
+        <Button
+          as={Link}
+          to="/dashboard/vipapplications/new"
+          colorScheme="blue"
+          size="sm">
           Yeni Ekle
         </Button>
       </HStack>
@@ -105,15 +114,17 @@ const VipApplications = () => {
           <Tbody>
             {applications.length === 0 && (
               <Tr>
-                <Td colSpan={7} textAlign="center">Henüz başvuru yok.</Td>
+                <Td colSpan={7} textAlign="center">
+                  Henüz başvuru yok.
+                </Td>
               </Tr>
             )}
-            {applications.map((app) => (
-              <Tr key={app._id || app.id}
-                  onClick={() => onRow(app)}
-                  cursor="pointer"
-                  _hover={{ bg: "gray.50" }}
-              >
+            {applications.map(app => (
+              <Tr
+                key={app._id || app.id}
+                onClick={() => onRow(app)}
+                cursor="pointer"
+                _hover={{bg: 'gray.50'}}>
                 <Td fontWeight="bold">{app.fullName}</Td>
                 <Td>{app.phone}</Td>
                 <Td>{app.followerCount}</Td>
@@ -132,7 +143,7 @@ const VipApplications = () => {
                       icon={<FaTrash />}
                       size="sm"
                       colorScheme="red"
-                      onClick={(e) => {
+                      onClick={e => {
                         e.stopPropagation(); // Prevent row click when deleting
                         handleDelete(app._id || app.id);
                       }}

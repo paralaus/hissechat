@@ -13,20 +13,20 @@ const AllChannels = ({category}) => {
   const fetchData = useCallback(
     async options => {
       const params = {...options};
-      
+
       // Map category to market type
       let marketType = null;
       if (category === 'borsa') marketType = 'stock';
       else if (category === 'kripto') marketType = 'crypto';
       else if (category === 'viop') marketType = 'viop';
       else if (category === 'emtia') marketType = 'commodity';
-      
+
       const isFund = category === 'fon';
 
       if (marketType || isFund) {
         // 1. Fetch Markets/Funds (Pagination Source)
         let marketsRes;
-        const marketParams = { ...params, type: marketType };
+        const marketParams = {...params, type: marketType};
         // Clean up params that might not be needed for markets API if strict
         delete marketParams.category;
 
@@ -39,8 +39,15 @@ const AllChannels = ({category}) => {
           // Handle sortBy (DataTable sends "field:desc", Fund API expects sortBy and sortOrder separately)
           if (marketParams.sortBy && typeof marketParams.sortBy === 'string') {
             const [field, order] = marketParams.sortBy.split(':');
-            const allowedSortFields = ['dailyReturn', 'weeklyReturn', 'monthlyReturn', 'yearlyReturn', 'totalValue', 'name'];
-            
+            const allowedSortFields = [
+              'dailyReturn',
+              'weeklyReturn',
+              'monthlyReturn',
+              'yearlyReturn',
+              'totalValue',
+              'name',
+            ];
+
             if (allowedSortFields.includes(field)) {
               marketParams.sortBy = field;
               marketParams.sortOrder = order || 'desc';
@@ -57,16 +64,16 @@ const AllChannels = ({category}) => {
         }
 
         // 2. Fetch Active Channels for this category to merge
-        // We fetch a larger list to find matches. Ideally backend should support this, 
+        // We fetch a larger list to find matches. Ideally backend should support this,
         // but for now we follow messaging logic.
-        const channelsRes = await api.getAllChannels({ category, limit: 1000 });
+        const channelsRes = await api.getAllChannels({category, limit: 1000});
         const activeChannels = channelsRes.data.results || [];
 
         // 3. Merge
         const mergedResults = (marketsRes.data.results || []).map(item => {
           const code = item.code;
-          const existingChannel = activeChannels.find(c => 
-            (c.marketCode === code) || (c.fundCode === code)
+          const existingChannel = activeChannels.find(
+            c => c.marketCode === code || c.fundCode === code,
           );
 
           if (existingChannel) return existingChannel;
@@ -78,7 +85,7 @@ const AllChannels = ({category}) => {
             // Ensure ID is null so we know it's virtual
             id: null,
             _id: null,
-            
+
             name: item.name,
             marketCode: !isFund ? code : undefined,
             fundCode: isFund ? code : undefined,
@@ -92,7 +99,8 @@ const AllChannels = ({category}) => {
 
         return {
           results: mergedResults,
-          totalResults: marketsRes.data.totalResults || marketsRes.data.total || 0,
+          totalResults:
+            marketsRes.data.totalResults || marketsRes.data.total || 0,
         };
       }
 
@@ -155,7 +163,7 @@ const AllChannels = ({category}) => {
           },
         ]}
         fetchData={fetchData}
-        filters={{ category }}
+        filters={{category}}
       />
     </Page>
   );

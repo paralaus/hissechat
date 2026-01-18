@@ -1,16 +1,25 @@
 // Force Vercel rebuild - v2
-import { MiniStatistics, Page, StatisticsSkeleton } from '../../components';
-import { SimpleGrid, Box, Text, Heading, Divider } from '@chakra-ui/react';
-import { FaUserClock, FaUsers, FaChartLine } from 'react-icons/fa';
-import { RiVipFill, RiMoneyDollarCircleFill } from 'react-icons/ri';
-import { BiSolidMessageDetail } from 'react-icons/bi';
-import { MdInsertChart, MdReport, MdBlock, MdShoppingCart } from 'react-icons/md';
-import { FiVideo, FiAlertTriangle, FiShield, FiTrendingUp, FiActivity, FiLayers, FiPieChart, FiCpu } from 'react-icons/fi';
-import { useQuery } from '@tanstack/react-query';
-import { NavLink } from 'react-router-dom';
-import { routes } from '../../config/routes';
-import { api } from '../../api';
-import { isValue } from '../../utils/string';
+import {MiniStatistics, Page, StatisticsSkeleton} from '../../components';
+import {SimpleGrid, Box, Text, Heading, Divider} from '@chakra-ui/react';
+import {FaUserClock, FaUsers, FaChartLine} from 'react-icons/fa';
+import {RiVipFill, RiMoneyDollarCircleFill} from 'react-icons/ri';
+import {BiSolidMessageDetail} from 'react-icons/bi';
+import {MdInsertChart, MdReport, MdBlock, MdShoppingCart} from 'react-icons/md';
+import {
+  FiVideo,
+  FiAlertTriangle,
+  FiShield,
+  FiTrendingUp,
+  FiActivity,
+  FiLayers,
+  FiPieChart,
+  FiCpu,
+} from 'react-icons/fi';
+import {useQuery} from '@tanstack/react-query';
+import {NavLink} from 'react-router-dom';
+import {routes} from '../../config/routes';
+import {api} from '../../api';
+import {isValue} from '../../utils/string';
 import React from 'react';
 
 const iconProps = {
@@ -19,19 +28,25 @@ const iconProps = {
 };
 
 const Home = () => {
-  const { data, isLoading } = useQuery({
+  const {data, isLoading} = useQuery({
     queryKey: ['statistics'],
-    queryFn: () => api.getStatistics().then((res) => res.data),
+    queryFn: () => api.getStatistics().then(res => res.data),
   });
-  
-  const { data: vipApplications } = useQuery({
+
+  const {data: vipApplications} = useQuery({
     queryKey: ['vip-applications', 'pending', 1],
-    queryFn: () => api.getVipApplications({ status: 'pending', limit: 1, page: 1 }).then(res => res.data),
+    queryFn: () =>
+      api
+        .getVipApplications({status: 'pending', limit: 1, page: 1})
+        .then(res => res.data),
   });
-  
-  const { data: activeConferencesRaw } = useQuery({
+
+  const {data: activeConferencesRaw} = useQuery({
     queryKey: ['conferences', 'active', 'dashboard'],
-    queryFn: () => api.getActiveConferences({ isActive: true, limit: 100, page: 1 }).then(res => res.data),
+    queryFn: () =>
+      api
+        .getActiveConferences({isActive: true, limit: 100, page: 1})
+        .then(res => res.data),
     refetchInterval: 30000, // Refresh every 30 seconds
   });
 
@@ -42,72 +57,91 @@ const Home = () => {
     const now = new Date();
     const DEFAULT_DURATION_MS = 60 * 60 * 1000; // 60 minutes default
     const SAFETY_FALLBACK_MS = 24 * 60 * 60 * 1000; // 24 hours
-    
+
     const trulyActive = results.filter(conf => {
       const startTime = new Date(conf.startTime);
-      const endTime = conf.scheduledEndTime ? new Date(conf.scheduledEndTime) : null;
+      const endTime = conf.scheduledEndTime
+        ? new Date(conf.scheduledEndTime)
+        : null;
       const endedAt = conf.endedAt ? new Date(conf.endedAt) : null;
-      
+
       // Calculate effective end time
-      const effectiveEndTime = endTime || new Date(startTime.getTime() + DEFAULT_DURATION_MS);
-      
+      const effectiveEndTime =
+        endTime || new Date(startTime.getTime() + DEFAULT_DURATION_MS);
+
       // Check if conference has ended
       const hasEndedExplicitly = endedAt !== null || conf.isActive === false;
       const hasEndedByTime = effectiveEndTime < now;
-      const hasEndedBySafety = (now - startTime) > SAFETY_FALLBACK_MS;
+      const hasEndedBySafety = now - startTime > SAFETY_FALLBACK_MS;
       const isFuture = startTime > now;
-      
+
       // Conference is truly active if:
       // - Not ended by any criteria
       // - Not in the future
       // - isActive is true
-      return !hasEndedExplicitly && !hasEndedByTime && !hasEndedBySafety && !isFuture && conf.isActive === true;
+      return (
+        !hasEndedExplicitly &&
+        !hasEndedByTime &&
+        !hasEndedBySafety &&
+        !isFuture &&
+        conf.isActive === true
+      );
     });
-    
+
     return trulyActive.length;
   }, [activeConferencesRaw]);
-  
-  const { data: flaggedMessages } = useQuery({
+
+  const {data: flaggedMessages} = useQuery({
     queryKey: ['moderation', 'flagged', 1],
-    queryFn: () => api.getMessagesForModeration({ showFlagged: true, limit: 1, page: 1 }).then(res => res.data),
+    queryFn: () =>
+      api
+        .getMessagesForModeration({showFlagged: true, limit: 1, page: 1})
+        .then(res => res.data),
   });
-  
-  const { data: blockedMessages } = useQuery({
+
+  const {data: blockedMessages} = useQuery({
     queryKey: ['moderation', 'blocked', 1],
-    queryFn: () => api.getMessagesForModeration({ showBlocked: true, limit: 1, page: 1 }).then(res => res.data),
+    queryFn: () =>
+      api
+        .getMessagesForModeration({showBlocked: true, limit: 1, page: 1})
+        .then(res => res.data),
   });
-  
+
   // Kara liste artık ayrı bir ekran olarak gösterilmiyor
-  
-  const { data: products } = useQuery({
+
+  const {data: products} = useQuery({
     queryKey: ['products', 1],
-    queryFn: () => api.getProducts({ limit: 1, page: 1 }).then(res => res.data),
+    queryFn: () => api.getProducts({limit: 1, page: 1}).then(res => res.data),
   });
 
   // Channel Counts
-  const { data: stockChannels } = useQuery({
+  const {data: stockChannels} = useQuery({
     queryKey: ['markets', 'stock', 'count'],
-    queryFn: () => api.getMarkets({ type: 'stock', limit: 1 }).then(res => res.data),
+    queryFn: () =>
+      api.getMarkets({type: 'stock', limit: 1}).then(res => res.data),
   });
 
-  const { data: cryptoChannels } = useQuery({
+  const {data: cryptoChannels} = useQuery({
     queryKey: ['markets', 'crypto', 'count'],
-    queryFn: () => api.getMarkets({ type: 'crypto', limit: 1 }).then(res => res.data),
+    queryFn: () =>
+      api.getMarkets({type: 'crypto', limit: 1}).then(res => res.data),
   });
 
-  const { data: viopChannels } = useQuery({
+  const {data: viopChannels} = useQuery({
     queryKey: ['markets', 'viop', 'count'],
-    queryFn: () => api.getMarkets({ type: 'viop', limit: 1 }).then(res => res.data),
+    queryFn: () =>
+      api.getMarkets({type: 'viop', limit: 1}).then(res => res.data),
   });
 
-  const { data: commodityChannels } = useQuery({
+  const {data: commodityChannels} = useQuery({
     queryKey: ['markets', 'commodity', 'count'],
-    queryFn: () => api.getMarkets({ type: 'commodity', limit: 1 }).then(res => res.data),
+    queryFn: () =>
+      api.getMarkets({type: 'commodity', limit: 1}).then(res => res.data),
   });
 
-  const { data: fundChannels } = useQuery({
+  const {data: fundChannels} = useQuery({
     queryKey: ['funds', 'count'],
-    queryFn: () => api.getFunds({ limit: 1 }).then(res => res.data),
+    queryFn: () => api.getFunds({limit: 1}).then(res => res.data),
   });
 
   // Yüklenirken skeleton göster
@@ -120,7 +154,7 @@ const Home = () => {
   }
 
   // Gruplandırılmış İstatistikler
-  
+
   const userStats = [
     {
       title: 'Aktif Kullanıcı',
@@ -246,8 +280,10 @@ const Home = () => {
 
   const renderSection = (title, items) => (
     <Box mb={8}>
-      <Heading size="md" mb={4} color="gray.600">{title}</Heading>
-      <SimpleGrid columns={{ base: 1, sm: 2, lg: 3, xl: 4 }} spacing="6">
+      <Heading size="md" mb={4} color="gray.600">
+        {title}
+      </Heading>
+      <SimpleGrid columns={{base: 1, sm: 2, lg: 3, xl: 4}} spacing="6">
         {items.map((item, index) => {
           // If item has a path, make it clickable
           const content = (
@@ -261,7 +297,10 @@ const Home = () => {
 
           if (item.path) {
             return (
-              <NavLink key={item.title || index} to={item.path} style={{ textDecoration: 'none' }}>
+              <NavLink
+                key={item.title || index}
+                to={item.path}
+                style={{textDecoration: 'none'}}>
                 {content}
               </NavLink>
             );

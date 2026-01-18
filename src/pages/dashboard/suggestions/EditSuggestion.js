@@ -34,7 +34,11 @@ import {
 } from '../../../components';
 import {api} from '../../../api';
 import {pick} from '../../../utils/object';
-import { SuggestionTypeLabel, suggestionTypes, SuggestionType } from '../../../config';
+import {
+  SuggestionTypeLabel,
+  suggestionTypes,
+  SuggestionType,
+} from '../../../config';
 import useFileInput from '../../../hooks/useFileInput';
 
 applyGoogleTranslateFix();
@@ -78,7 +82,7 @@ const EditSuggestion = ({id}) => {
     objectUrl: imageObjectUrl,
     upload: uploadImage,
     isUploading: isUploadingImage,
-  } = useFileInput({ accept: 'image/*' });
+  } = useFileInput({accept: 'image/*'});
   const {
     input: mediaInput,
     open: openMedia,
@@ -88,7 +92,7 @@ const EditSuggestion = ({id}) => {
     thumbnail: mediaThumbnail,
     upload: uploadMedia,
     isUploading: isUploadingMedia,
-  } = useFileInput({ accept: 'video/*,audio/*' });
+  } = useFileInput({accept: 'video/*,audio/*'});
   const {
     register,
     handleSubmit,
@@ -131,7 +135,7 @@ const EditSuggestion = ({id}) => {
   const isHeadline = typeValue === SuggestionType.Headline;
   const hasMedia =
     !!imageFile ||
-   !!mediaFile ||
+    !!mediaFile ||
     !!(imageUrlValue && imageUrlValue.trim()) ||
     !!(videoUrlValue && videoUrlValue.trim()) ||
     !!(audioUrlValue && audioUrlValue.trim());
@@ -187,8 +191,12 @@ const EditSuggestion = ({id}) => {
         const fileName = mediaFile.name ? mediaFile.name.toLowerCase() : '';
         const videoExtensions = ['.mp4', '.mov', '.avi', '.mkv', '.webm'];
         const audioExtensions = ['.mp3', '.wav', '.m4a', '.aac', '.ogg'];
-        const isVideo = mimeType.startsWith('video/') || videoExtensions.some(ext => fileName.endsWith(ext));
-        const isAudio = mimeType.startsWith('audio/') || audioExtensions.some(ext => fileName.endsWith(ext));
+        const isVideo =
+          mimeType.startsWith('video/') ||
+          videoExtensions.some(ext => fileName.endsWith(ext));
+        const isAudio =
+          mimeType.startsWith('audio/') ||
+          audioExtensions.some(ext => fileName.endsWith(ext));
         if (isVideo) {
           submissionValues.videoUrl = url;
         } else if (isAudio) {
@@ -251,7 +259,10 @@ const EditSuggestion = ({id}) => {
             background="transparent"
             borderRadius="md"
             me="auto">
-            <FormControl isInvalid={!isHeadline && !!errors.title} mb="4" key={0}>
+            <FormControl
+              isInvalid={!isHeadline && !!errors.title}
+              mb="4"
+              key={0}>
               <FormLabel
                 display="flex"
                 ms="4px"
@@ -268,9 +279,14 @@ const EditSuggestion = ({id}) => {
                 defaultValue={data?.title}
                 {...register('title')}
               />
-              <FormErrorMessage>{!isHeadline ? errors.title?.message : ''}</FormErrorMessage>
+              <FormErrorMessage>
+                {!isHeadline ? errors.title?.message : ''}
+              </FormErrorMessage>
             </FormControl>
-            <FormControl isInvalid={!isHeadline && !!errors.content} mb="4" key={1}>
+            <FormControl
+              isInvalid={!isHeadline && !!errors.content}
+              mb="4"
+              key={1}>
               <FormLabel
                 display="flex"
                 ms="4px"
@@ -291,7 +307,9 @@ const EditSuggestion = ({id}) => {
                 defaultValue={data?.content}
                 onChange={html => setValue('content', html)}
               />
-              <FormErrorMessage>{!isHeadline ? errors.content?.message : ''}</FormErrorMessage>
+              <FormErrorMessage>
+                {!isHeadline ? errors.content?.message : ''}
+              </FormErrorMessage>
             </FormControl>
             <FormControl isInvalid={!!errors.type} mb="4" key={2}>
               <FormLabel
@@ -309,7 +327,9 @@ const EditSuggestion = ({id}) => {
                 size="md"
                 {...register('type')}>
                 {suggestionTypes.map(type => {
-                  return <option value={type}>{SuggestionTypeLabel[type]}</option>;
+                  return (
+                    <option value={type}>{SuggestionTypeLabel[type]}</option>
+                  );
                 })}
               </Select>
               <FormErrorMessage>{errors.type?.message}</FormErrorMessage>
@@ -328,8 +348,7 @@ const EditSuggestion = ({id}) => {
                 isLoading={isUploadingImage}
                 loadingText="Yükleniyor"
                 variant="outline"
-                mb="2"
-              >
+                mb="2">
                 Görsel Seç
               </Button>
               {imageInput}
@@ -362,8 +381,7 @@ const EditSuggestion = ({id}) => {
                 isLoading={isUploadingMedia}
                 loadingText="Yükleniyor"
                 variant="outline"
-                mb="2"
-              >
+                mb="2">
                 Video veya Ses Seç
               </Button>
               {mediaInput}
@@ -431,7 +449,9 @@ const EditSuggestion = ({id}) => {
                 </Box>
               )}
               <FormErrorMessage>
-                {isHeadline && !hasMedia ? 'Manşet için en az bir medya zorunludur.' : ''}
+                {isHeadline && !hasMedia
+                  ? 'Manşet için en az bir medya zorunludur.'
+                  : ''}
               </FormErrorMessage>
             </FormControl>
             <Condition condition={!isNew}>

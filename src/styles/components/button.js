@@ -1,4 +1,4 @@
-import { defineStyleConfig } from '@chakra-ui/react';
+import {defineStyleConfig} from '@chakra-ui/react';
 
 const Button = defineStyleConfig({
   baseStyle: {
@@ -107,4 +107,4 @@ export const buttonStyles = {
 };
 
 // Backward compatibility
-export { Button };
+export {Button};

@@ -42,11 +42,11 @@ export const refreshAccessToken = async () => {
     // Use a separate axios instance to avoid interceptor loops
     const response = await axios.post(
       `${API_URL}/auth/refresh-tokens`,
-      { refreshToken },
-      { headers: { 'Content-Type': 'application/json' } }
+      {refreshToken},
+      {headers: {'Content-Type': 'application/json'}},
     );
 
-    const { access, refresh } = response.data.tokens || response.data;
+    const {access, refresh} = response.data.tokens || response.data;
 
     if (!access?.token) {
       console.error('[Auth] Invalid refresh response');
@@ -60,7 +60,7 @@ export const refreshAccessToken = async () => {
     Cookies.set('tokenExpires', access.expires, {
       expires: new Date(access.expires),
     });
-    
+
     if (refresh?.token) {
       Cookies.set('refreshToken', refresh.token, {
         expires: new Date(refresh.expires),
@@ -68,12 +68,16 @@ export const refreshAccessToken = async () => {
     }
 
     // Update axios headers
-    apiClient.defaults.headers.common['Authorization'] = `Bearer ${access.token}`;
+    apiClient.defaults.headers.common['Authorization'] =
+      `Bearer ${access.token}`;
 
     console.log('[Auth] Access token refreshed successfully');
     return access.token;
   } catch (error) {
-    console.error('[Auth] Token refresh failed:', error?.response?.data || error.message);
+    console.error(
+      '[Auth] Token refresh failed:',
+      error?.response?.data || error.message,
+    );
 
     // Clear invalid tokens
     clearAuthTokens();
@@ -108,11 +112,11 @@ export const setAuthToken = token => {
 const isTokenExpired = () => {
   const expires = Cookies.get('tokenExpires');
   if (!expires) return true;
-  
+
   const expiryTime = new Date(expires).getTime();
   const now = Date.now();
   const buffer = 60 * 1000; // 1 minute buffer
-  
+
   return now > expiryTime - buffer;
 };
 
@@ -125,10 +129,11 @@ const isTokenExpired = () => {
 apiClient.interceptors.request.use(
   async config => {
     // Skip auth for login/register endpoints
-    const isAuthEndpoint = config.url?.includes('auth/') || 
-                          config.url?.includes('login') || 
-                          config.url?.includes('register');
-    
+    const isAuthEndpoint =
+      config.url?.includes('auth/') ||
+      config.url?.includes('login') ||
+      config.url?.includes('register');
+
     if (isAuthEndpoint) {
       return config;
     }
@@ -145,13 +150,13 @@ apiClient.interceptors.request.use(
     // Check token expiry
     if (isTokenExpired() && Cookies.get('refreshToken')) {
       console.log('[Auth] Token expiring soon, proactively refreshing...');
-      
+
       if (!isRefreshing) {
         isRefreshing = true;
         try {
           const newToken = await refreshAccessToken();
           isRefreshing = false;
-          
+
           if (newToken) {
             config.headers['Authorization'] = `Bearer ${newToken}`;
             processQueue(null, newToken);
@@ -166,13 +171,13 @@ apiClient.interceptors.request.use(
         // Wait for ongoing refresh
         return new Promise((resolve, reject) => {
           failedQueue.push({
-            resolve: (token) => {
+            resolve: token => {
               if (token) {
                 config.headers['Authorization'] = `Bearer ${token}`;
               }
               resolve(config);
             },
-            reject: (err) => reject(err),
+            reject: err => reject(err),
           });
         });
       }
@@ -183,7 +188,7 @@ apiClient.interceptors.request.use(
   error => {
     console.error('[API] Request error:', error);
     return Promise.reject(error);
-  }
+  },
 );
 
 /**
@@ -201,10 +206,11 @@ apiClient.interceptors.response.use(
     // Handle 401 Unauthorized
     if (status === 401 && originalRequest && !originalRequest._retry) {
       // Skip for auth endpoints
-      const isAuthEndpoint = originalRequest.url?.includes('auth/') || 
-                            originalRequest.url?.includes('login') || 
-                            originalRequest.url?.includes('register');
-      
+      const isAuthEndpoint =
+        originalRequest.url?.includes('auth/') ||
+        originalRequest.url?.includes('login') ||
+        originalRequest.url?.includes('register');
+
       if (isAuthEndpoint) {
         return Promise.reject(error);
       }
@@ -213,7 +219,7 @@ apiClient.interceptors.response.use(
       if (isRefreshing) {
         console.log('[Auth] Refresh in progress, queueing request');
         return new Promise((resolve, reject) => {
-          failedQueue.push({ resolve, reject });
+          failedQueue.push({resolve, reject});
         })
           .then(token => {
             originalRequest.headers['Authorization'] = `Bearer ${token}`;
@@ -230,27 +236,27 @@ apiClient.interceptors.response.use(
 
       try {
         const newToken = await refreshAccessToken();
-        
+
         if (newToken) {
           // Update authorization header
           originalRequest.headers['Authorization'] = `Bearer ${newToken}`;
-          
+
           // Process queued requests
           processQueue(null, newToken);
-          
+
           // Retry original request
           return apiClient(originalRequest);
         } else {
           // Token refresh failed
           processQueue(new Error('Token refresh failed'), null);
-          
+
           // Redirect to login
           window.location.href = '/auth/login';
           return Promise.reject(error);
         }
       } catch (refreshError) {
         processQueue(refreshError, null);
-        
+
         // Redirect to login
         window.location.href = '/auth/login';
         return Promise.reject(refreshError);
@@ -267,7 +273,7 @@ apiClient.interceptors.response.use(
     }
 
     return Promise.reject(error);
-  }
+  },
 );
 
 export default apiClient;

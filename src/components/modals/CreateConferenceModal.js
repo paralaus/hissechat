@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, {useState} from 'react';
 import {
   Modal,
   ModalOverlay,
@@ -24,18 +24,18 @@ import {
   NumberIncrementStepper,
   NumberDecrementStepper,
 } from '@chakra-ui/react';
-import { FiVideo, FiCalendar, FiClock, FiUsers } from 'react-icons/fi';
-import { useQuery } from '@tanstack/react-query';
-import { api } from '../../api';
+import {FiVideo, FiCalendar, FiClock, FiUsers} from 'react-icons/fi';
+import {useQuery} from '@tanstack/react-query';
+import {api} from '../../api';
 
 const DURATION_OPTIONS = [
-  { value: 30, label: '30 dk' },
-  { value: 60, label: '1 saat' },
-  { value: 90, label: '1.5 saat' },
-  { value: 120, label: '2 saat' },
+  {value: 30, label: '30 dk'},
+  {value: 60, label: '1 saat'},
+  {value: 90, label: '1.5 saat'},
+  {value: 120, label: '2 saat'},
 ];
 
-const CreateConferenceModal = ({ isOpen, onClose, onCreate, isLoading }) => {
+const CreateConferenceModal = ({isOpen, onClose, onCreate, isLoading}) => {
   const [mode, setMode] = useState('select'); // 'select', 'schedule'
   const [title, setTitle] = useState('');
   const [selectedChannel, setSelectedChannel] = useState('');
@@ -46,9 +46,9 @@ const CreateConferenceModal = ({ isOpen, onClose, onCreate, isLoading }) => {
   const [waitingRoom, setWaitingRoom] = useState(false);
 
   // Fetch channels for selection
-  const { data: channelsData } = useQuery({
+  const {data: channelsData} = useQuery({
     queryKey: ['channels', 'all'],
-    queryFn: () => api.getAllChannels({ limit: 100 }).then(res => res.data),
+    queryFn: () => api.getAllChannels({limit: 100}).then(res => res.data),
     enabled: isOpen,
   });
 
@@ -56,36 +56,36 @@ const CreateConferenceModal = ({ isOpen, onClose, onCreate, isLoading }) => {
 
   const handleInstantStart = () => {
     if (!selectedChannel) return;
-    
+
     const now = new Date();
     const endTime = new Date(now.getTime() + duration * 60000);
 
-    onCreate({ 
-      type: 'instant', 
+    onCreate({
+      type: 'instant',
       title: title || 'Video Konferans',
       channelId: selectedChannel,
       startTime: now.toISOString(),
       scheduledEndTime: endTime.toISOString(),
       maxParticipants,
-      settings: { waitingRoom }
+      settings: {waitingRoom},
     });
     handleClose();
   };
 
   const handleScheduleStart = () => {
     if (!date || !time || !selectedChannel) return;
-    
+
     const scheduledDateTime = new Date(`${date}T${time}`);
     const endTime = new Date(scheduledDateTime.getTime() + duration * 60000);
 
-    onCreate({ 
-      type: 'scheduled', 
+    onCreate({
+      type: 'scheduled',
       title: title || 'Video Konferans',
       channelId: selectedChannel,
       startTime: scheduledDateTime.toISOString(),
       scheduledEndTime: endTime.toISOString(),
       maxParticipants,
-      settings: { waitingRoom }
+      settings: {waitingRoom},
     });
     handleClose();
   };
@@ -103,14 +103,13 @@ const CreateConferenceModal = ({ isOpen, onClose, onCreate, isLoading }) => {
   };
 
   return (
-    <Modal 
-      isOpen={isOpen} 
-      onClose={handleClose} 
-      isCentered 
+    <Modal
+      isOpen={isOpen}
+      onClose={handleClose}
+      isCentered
       size="xl"
       closeOnOverlayClick={true}
-      closeOnEsc={true}
-    >
+      closeOnEsc={true}>
       <ModalOverlay />
       <ModalContent>
         <ModalHeader>Video Görüşme Başlat</ModalHeader>
@@ -120,11 +119,10 @@ const CreateConferenceModal = ({ isOpen, onClose, onCreate, isLoading }) => {
             {/* Common Fields */}
             <FormControl isRequired>
               <FormLabel>Kanal Seçin</FormLabel>
-              <Select 
-                placeholder="Kanal seçin..." 
+              <Select
+                placeholder="Kanal seçin..."
                 value={selectedChannel}
-                onChange={(e) => setSelectedChannel(e.target.value)}
-              >
+                onChange={e => setSelectedChannel(e.target.value)}>
                 {channels.map(channel => (
                   <option key={channel.id} value={channel.id}>
                     {channel.name}
@@ -135,22 +133,21 @@ const CreateConferenceModal = ({ isOpen, onClose, onCreate, isLoading }) => {
 
             <FormControl>
               <FormLabel>Konferans Başlığı</FormLabel>
-              <Input 
-                placeholder="Örn: Haftalık Toplantı" 
+              <Input
+                placeholder="Örn: Haftalık Toplantı"
                 value={title}
-                onChange={(e) => setTitle(e.target.value)}
+                onChange={e => setTitle(e.target.value)}
               />
             </FormControl>
 
             <HStack spacing={4}>
               <FormControl>
                 <FormLabel>Maksimum Katılımcı</FormLabel>
-                <NumberInput 
-                  min={2} 
-                  max={100} 
+                <NumberInput
+                  min={2}
+                  max={100}
                   value={maxParticipants}
-                  onChange={(_, val) => setMaxParticipants(val)}
-                >
+                  onChange={(_, val) => setMaxParticipants(val)}>
                   <NumberInputField />
                   <NumberInputStepper>
                     <NumberIncrementStepper />
@@ -161,9 +158,9 @@ const CreateConferenceModal = ({ isOpen, onClose, onCreate, isLoading }) => {
 
               <FormControl display="flex" alignItems="center">
                 <FormLabel mb="0">Bekleme Odası</FormLabel>
-                <Switch 
+                <Switch
                   isChecked={waitingRoom}
-                  onChange={(e) => setWaitingRoom(e.target.checked)}
+                  onChange={e => setWaitingRoom(e.target.checked)}
                 />
               </FormControl>
             </HStack>
@@ -179,14 +176,13 @@ const CreateConferenceModal = ({ isOpen, onClose, onCreate, isLoading }) => {
                     </HStack>
                   </FormLabel>
                   <SimpleGrid columns={4} spacing={2}>
-                    {DURATION_OPTIONS.map((opt) => (
+                    {DURATION_OPTIONS.map(opt => (
                       <Button
                         key={opt.value}
                         size="sm"
                         variant={duration === opt.value ? 'solid' : 'outline'}
                         colorScheme={duration === opt.value ? 'blue' : 'gray'}
-                        onClick={() => setDuration(opt.value)}
-                      >
+                        onClick={() => setDuration(opt.value)}>
                         {opt.label}
                       </Button>
                     ))}
@@ -201,15 +197,18 @@ const CreateConferenceModal = ({ isOpen, onClose, onCreate, isLoading }) => {
                   isLoading={isLoading}
                   isDisabled={!selectedChannel}
                   justifyContent="flex-start"
-                  px={6}
-                >
+                  px={6}>
                   <HStack spacing={4}>
                     <Box p={3} bg="green.100" borderRadius="full">
                       <Icon as={FiVideo} boxSize={6} color="green.600" />
                     </Box>
                     <VStack align="start" spacing={0}>
-                      <Text fontWeight="bold" fontSize="lg">Anında Başlat</Text>
-                      <Text fontSize="sm" fontWeight="normal">Hemen bir görüşme başlatın ({duration} dk)</Text>
+                      <Text fontWeight="bold" fontSize="lg">
+                        Anında Başlat
+                      </Text>
+                      <Text fontSize="sm" fontWeight="normal">
+                        Hemen bir görüşme başlatın ({duration} dk)
+                      </Text>
                     </VStack>
                   </HStack>
                 </Button>
@@ -221,15 +220,18 @@ const CreateConferenceModal = ({ isOpen, onClose, onCreate, isLoading }) => {
                   onClick={() => setMode('schedule')}
                   isDisabled={!selectedChannel}
                   justifyContent="flex-start"
-                  px={6}
-                >
+                  px={6}>
                   <HStack spacing={4}>
                     <Box p={3} bg="blue.100" borderRadius="full">
                       <Icon as={FiCalendar} boxSize={6} color="blue.600" />
                     </Box>
                     <VStack align="start" spacing={0}>
-                      <Text fontWeight="bold" fontSize="lg">İleri Tarihli Planla</Text>
-                      <Text fontSize="sm" fontWeight="normal">Gelecek bir zaman için görüşme planlayın</Text>
+                      <Text fontWeight="bold" fontSize="lg">
+                        İleri Tarihli Planla
+                      </Text>
+                      <Text fontSize="sm" fontWeight="normal">
+                        Gelecek bir zaman için görüşme planlayın
+                      </Text>
                     </VStack>
                   </HStack>
                 </Button>
@@ -239,8 +241,7 @@ const CreateConferenceModal = ({ isOpen, onClose, onCreate, isLoading }) => {
                   variant="ghost"
                   colorScheme="gray"
                   onClick={handleClose}
-                  mt={2}
-                >
+                  mt={2}>
                   İptal
                 </Button>
               </VStack>
@@ -249,23 +250,23 @@ const CreateConferenceModal = ({ isOpen, onClose, onCreate, isLoading }) => {
                 <Text fontSize="md" color="gray.600" mb={2}>
                   Görüşme için tarih ve saat seçin:
                 </Text>
-                
+
                 <FormControl isRequired>
                   <FormLabel>Tarih</FormLabel>
-                  <Input 
-                    type="date" 
-                    value={date} 
-                    onChange={(e) => setDate(e.target.value)} 
+                  <Input
+                    type="date"
+                    value={date}
+                    onChange={e => setDate(e.target.value)}
                     min={new Date().toISOString().split('T')[0]}
                   />
                 </FormControl>
 
                 <FormControl isRequired>
                   <FormLabel>Saat</FormLabel>
-                  <Input 
-                    type="time" 
-                    value={time} 
-                    onChange={(e) => setTime(e.target.value)} 
+                  <Input
+                    type="time"
+                    value={time}
+                    onChange={e => setTime(e.target.value)}
                   />
                 </FormControl>
 
@@ -273,14 +274,13 @@ const CreateConferenceModal = ({ isOpen, onClose, onCreate, isLoading }) => {
                 <FormControl>
                   <FormLabel>Tahmini Süre</FormLabel>
                   <SimpleGrid columns={4} spacing={2}>
-                    {DURATION_OPTIONS.map((opt) => (
+                    {DURATION_OPTIONS.map(opt => (
                       <Button
                         key={opt.value}
                         size="sm"
                         variant={duration === opt.value ? 'solid' : 'outline'}
                         colorScheme={duration === opt.value ? 'blue' : 'gray'}
-                        onClick={() => setDuration(opt.value)}
-                      >
+                        onClick={() => setDuration(opt.value)}>
                         {opt.label}
                       </Button>
                     ))}
@@ -288,16 +288,18 @@ const CreateConferenceModal = ({ isOpen, onClose, onCreate, isLoading }) => {
                 </FormControl>
 
                 <HStack justify="space-between" pt={4}>
-                  <Button variant="ghost" colorScheme="gray" onClick={() => setMode('select')}>
+                  <Button
+                    variant="ghost"
+                    colorScheme="gray"
+                    onClick={() => setMode('select')}>
                     Geri
                   </Button>
-                  <Button 
-                    colorScheme="blue" 
+                  <Button
+                    colorScheme="blue"
                     onClick={handleScheduleStart}
                     isDisabled={!date || !time || !selectedChannel}
                     isLoading={isLoading}
-                    leftIcon={<Icon as={FiCalendar} />}
-                  >
+                    leftIcon={<Icon as={FiCalendar} />}>
                     Planla ve Gönder
                   </Button>
                 </HStack>

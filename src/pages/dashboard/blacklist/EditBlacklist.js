@@ -239,10 +239,10 @@ const EditBlacklist = ({id}) => {
                 <FormErrorMessage>{errors.resource?.message}</FormErrorMessage>
                 <FormHelperText>
                   Burayı doldurursanız, yalnızca girdiğiniz değere sahip
-                  kaynakta işlem yapılırsa engellenir. Örneğin, Kanala Mesaj Gönderme
-                  kapsamı seçip buraya bir Kanal ID'si girerseniz kullanıcının
-                  yalnızca o kanala mesaj göndermesi engellenir. Boş bırakırsanız
-                  hiçbir kanala mesaj gönderemez.
+                  kaynakta işlem yapılırsa engellenir. Örneğin, Kanala Mesaj
+                  Gönderme kapsamı seçip buraya bir Kanal ID'si girerseniz
+                  kullanıcının yalnızca o kanala mesaj göndermesi engellenir.
+                  Boş bırakırsanız hiçbir kanala mesaj gönderemez.
                 </FormHelperText>
               </FormControl>
             </Condition>

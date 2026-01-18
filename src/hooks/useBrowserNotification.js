@@ -1,9 +1,11 @@
-import { useState, useEffect, useCallback } from 'react';
+import {useState, useEffect, useCallback} from 'react';
 
 const useBrowserNotification = () => {
   const isSupported = typeof Notification !== 'undefined';
 
-  const [permission, setPermission] = useState(isSupported ? Notification.permission : 'denied');
+  const [permission, setPermission] = useState(
+    isSupported ? Notification.permission : 'denied',
+  );
   const [enabled, setEnabled] = useState(() => {
     if (!isSupported) return false;
     const saved = localStorage.getItem('browser_notifications_enabled');
@@ -12,9 +14,12 @@ const useBrowserNotification = () => {
 
   useEffect(() => {
     if (!isSupported) return;
-    
-    if (Notification.permission !== 'granted' && Notification.permission !== 'denied') {
-      Notification.requestPermission().then((perm) => {
+
+    if (
+      Notification.permission !== 'granted' &&
+      Notification.permission !== 'denied'
+    ) {
+      Notification.requestPermission().then(perm => {
         setPermission(perm);
       });
     }
@@ -42,42 +47,48 @@ const useBrowserNotification = () => {
       }
     } else {
       setEnabled(newState);
-      localStorage.setItem('browser_notifications_enabled', JSON.stringify(newState));
+      localStorage.setItem(
+        'browser_notifications_enabled',
+        JSON.stringify(newState),
+      );
       return true;
     }
   }, [enabled, permission, requestPermission, isSupported]);
 
-  const showNotification = useCallback((title, options = {}) => {
-    if (!enabled || !isSupported) return;
+  const showNotification = useCallback(
+    (title, options = {}) => {
+      if (!enabled || !isSupported) return;
 
-    if (permission === 'granted') {
-      try {
-        const notification = new Notification(title, {
-          icon: '/logo192.png',
-          badge: '/logo192.png',
-          ...options,
-        });
+      if (permission === 'granted') {
+        try {
+          const notification = new Notification(title, {
+            icon: '/logo192.png',
+            badge: '/logo192.png',
+            ...options,
+          });
 
-        notification.onclick = () => {
-          window.focus();
-          if (options.onClick) {
-            options.onClick();
-          }
-          notification.close();
-        };
+          notification.onclick = () => {
+            window.focus();
+            if (options.onClick) {
+              options.onClick();
+            }
+            notification.close();
+          };
 
-        return notification;
-      } catch (e) {
-        console.error('Notification creation failed:', e);
-      }
-    } else if (permission !== 'denied') {
-      requestPermission().then((perm) => {
-        if (perm === 'granted') {
-          showNotification(title, options);
+          return notification;
+        } catch (e) {
+          console.error('Notification creation failed:', e);
         }
-      });
-    }
-  }, [permission, enabled, requestPermission, isSupported]);
+      } else if (permission !== 'denied') {
+        requestPermission().then(perm => {
+          if (perm === 'granted') {
+            showNotification(title, options);
+          }
+        });
+      }
+    },
+    [permission, enabled, requestPermission, isSupported],
+  );
 
   return {
     permission,

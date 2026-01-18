@@ -236,13 +236,15 @@ const EditUser = () => {
               label={'Son Aktivite Tarihi'}
               value={formatDate(data?.lastActivityAt)}
             />
-            <ReadOnlyInfo 
-              label={'Giriş Yöntemi'} 
+            <ReadOnlyInfo
+              label={'Giriş Yöntemi'}
               value={
-                data?.authProvider === 'google' ? '🔵 Google' :
-                data?.authProvider === 'apple' ? '🍎 Apple' :
-                '📧 E-posta'
-              } 
+                data?.authProvider === 'google'
+                  ? '🔵 Google'
+                  : data?.authProvider === 'apple'
+                    ? '🍎 Apple'
+                    : '📧 E-posta'
+              }
             />
             {data?.googleId && (
               <ReadOnlyInfo label={'Google ID'} value={data?.googleId} />

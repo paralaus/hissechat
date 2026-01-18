@@ -86,9 +86,11 @@ const EditProduct = ({id}) => {
   const onSubmit = async values => {
     try {
       const {data} = await mutateAsync({...values, type: 'subscription'});
-      
+
       if (values.subscribeText && values.channel) {
-        await api.updateChannel(values.channel, { subscribeText: values.subscribeText });
+        await api.updateChannel(values.channel, {
+          subscribeText: values.subscribeText,
+        });
       }
 
       if (data) {
@@ -290,9 +292,12 @@ const EditProduct = ({id}) => {
                 {...register('subscribeText')}
               />
               <FormHelperText>
-                Mobilde fiyatlar App Store/Google Play'den otomatik çekilir. Webde görünmesi için buraya manuel giriş yapmalısınız.
+                Mobilde fiyatlar App Store/Google Play'den otomatik çekilir.
+                Webde görünmesi için buraya manuel giriş yapmalısınız.
               </FormHelperText>
-              <FormErrorMessage>{errors.subscribeText?.message}</FormErrorMessage>
+              <FormErrorMessage>
+                {errors.subscribeText?.message}
+              </FormErrorMessage>
             </FormControl>
 
             <FormControl

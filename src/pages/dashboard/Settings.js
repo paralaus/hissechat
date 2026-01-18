@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, {useState, useEffect} from 'react';
 import {
   Box,
   Button,
@@ -21,33 +21,38 @@ import {
   HStack,
   Divider,
 } from '@chakra-ui/react';
-import { FiImage, FiUpload, FiUser, FiBell, FiLock } from 'react-icons/fi';
-import { useForm } from 'react-hook-form';
-import { yupResolver } from '@hookform/resolvers/yup';
-import { useMutation, useQuery } from '@tanstack/react-query';
+import {FiImage, FiUpload, FiUser, FiBell, FiLock} from 'react-icons/fi';
+import {useForm} from 'react-hook-form';
+import {yupResolver} from '@hookform/resolvers/yup';
+import {useMutation, useQuery} from '@tanstack/react-query';
 import * as yup from 'yup';
-import { getErrorMessage } from '../../utils/string';
-import { formatDate } from '../../utils/date';
-import { Page as Layout } from '../../components';
-import { api } from '../../api';
-import { pick } from '../../utils/object';
+import {getErrorMessage} from '../../utils/string';
+import {formatDate} from '../../utils/date';
+import {Page as Layout} from '../../components';
+import {api} from '../../api';
+import {pick} from '../../utils/object';
 import useFileInput from '../../hooks/useFileInput';
-import { ReadOnlyInfo } from '../../components';
-import { useUserStore } from '../../store';
+import {ReadOnlyInfo} from '../../components';
+import {useUserStore} from '../../store';
 import useBrowserNotification from '../../hooks/useBrowserNotification';
-import { playNotificationSound } from '../../utils/sound';
-import { PolicyType } from '../../config';
+import {playNotificationSound} from '../../utils/sound';
+import {PolicyType} from '../../config';
 
 // --- Profile Settings Component ---
-const profileSchema = yup.object({
-  thumbnail: yup.string(),
-  fullname: yup.string().required('Bu alan zorunludur.'),
-  email: yup.string().email('Geçersiz email adresi').required('Bu alan zorunludur.'),
-}).required();
+const profileSchema = yup
+  .object({
+    thumbnail: yup.string(),
+    fullname: yup.string().required('Bu alan zorunludur.'),
+    email: yup
+      .string()
+      .email('Geçersiz email adresi')
+      .required('Bu alan zorunludur.'),
+  })
+  .required();
 
-const ProfileSettings = ({ user }) => {
+const ProfileSettings = ({user}) => {
   const toast = useToast();
-  const { updateUser } = useUserStore();
+  const {updateUser} = useUserStore();
   const id = user?.id;
   const {
     input,
@@ -61,17 +66,17 @@ const ProfileSettings = ({ user }) => {
     register,
     handleSubmit,
     getValues,
-    formState: { errors },
+    formState: {errors},
     reset,
   } = useForm({
     resolver: yupResolver(profileSchema),
   });
 
-  const { mutateAsync, isPending } = useMutation({
+  const {mutateAsync, isPending} = useMutation({
     mutationFn: values => api.updateUser(id, values),
   });
 
-  const { data } = useQuery({
+  const {data} = useQuery({
     queryKey: ['users', id],
     queryFn: () =>
       api
@@ -90,7 +95,7 @@ const ProfileSettings = ({ user }) => {
         if (url) values.thumbnail = url;
       }
 
-      const { data } = await mutateAsync(values);
+      const {data} = await mutateAsync(values);
       if (data) {
         updateUser(data);
         toast({
@@ -117,9 +122,17 @@ const ProfileSettings = ({ user }) => {
             cursor="pointer"
             borderRadius="xl"
             border="2px dashed"
-            borderColor={objectUrl || (getValues('thumbnail')?.length > 0) ? 'transparent' : 'gray.300'}
-            bg={objectUrl || (getValues('thumbnail')?.length > 0) ? 'transparent' : 'gray.50'}
-            p={objectUrl || (getValues('thumbnail')?.length > 0) ? '0' : '8'}
+            borderColor={
+              objectUrl || getValues('thumbnail')?.length > 0
+                ? 'transparent'
+                : 'gray.300'
+            }
+            bg={
+              objectUrl || getValues('thumbnail')?.length > 0
+                ? 'transparent'
+                : 'gray.50'
+            }
+            p={objectUrl || getValues('thumbnail')?.length > 0 ? '0' : '8'}
             minH="150px"
             minW="150px"
             maxW="200px"
@@ -129,12 +142,14 @@ const ProfileSettings = ({ user }) => {
             transition="all 0.2s"
             _hover={{
               borderColor: 'brand.400',
-              bg: objectUrl || (getValues('thumbnail')?.length > 0) ? 'transparent' : 'brand.50',
+              bg:
+                objectUrl || getValues('thumbnail')?.length > 0
+                  ? 'transparent'
+                  : 'brand.50',
             }}
             position="relative"
-            overflow="hidden"
-          >
-            {objectUrl || (getValues('thumbnail')?.length > 0) ? (
+            overflow="hidden">
+            {objectUrl || getValues('thumbnail')?.length > 0 ? (
               <ChakraImage
                 src={objectUrl || getValues('thumbnail')}
                 alt="Profil Fotoğrafı"
@@ -161,15 +176,15 @@ const ProfileSettings = ({ user }) => {
           </Box>
           {input}
           <Input type={'hidden'} {...register('thumbnail')} />
-          {(objectUrl || (getValues('thumbnail')?.length > 0)) && (
+          {(objectUrl || getValues('thumbnail')?.length > 0) && (
             <Button
               mt="3"
               size="sm"
               variant="ghost"
               colorScheme="red"
-              onClick={(e) => {
+              onClick={e => {
                 e.stopPropagation();
-                reset({ thumbnail: '' });
+                reset({thumbnail: ''});
                 resetFile();
               }}>
               Kaldır
@@ -177,18 +192,48 @@ const ProfileSettings = ({ user }) => {
           )}
         </Box>
         <FormControl isInvalid={!!errors.fullname} mb="4">
-          <FormLabel fontSize="sm" fontWeight="500" mb="8px">Ad Soyad</FormLabel>
-          <Input fontSize="sm" type="text" fontWeight="500" size="md" defaultValue={data?.fullname} {...register('fullname')} />
+          <FormLabel fontSize="sm" fontWeight="500" mb="8px">
+            Ad Soyad
+          </FormLabel>
+          <Input
+            fontSize="sm"
+            type="text"
+            fontWeight="500"
+            size="md"
+            defaultValue={data?.fullname}
+            {...register('fullname')}
+          />
           <FormErrorMessage>{errors.fullname?.message}</FormErrorMessage>
         </FormControl>
         <FormControl isInvalid={!!errors.email} mb="4">
-          <FormLabel fontSize="sm" fontWeight="500" mb="8px">E-Posta</FormLabel>
-          <Input fontSize="sm" fontWeight="500" size="md" type={'email'} defaultValue={data?.email} {...register('email')} />
+          <FormLabel fontSize="sm" fontWeight="500" mb="8px">
+            E-Posta
+          </FormLabel>
+          <Input
+            fontSize="sm"
+            fontWeight="500"
+            size="md"
+            type={'email'}
+            defaultValue={data?.email}
+            {...register('email')}
+          />
           <FormErrorMessage>{errors.email?.message}</FormErrorMessage>
         </FormControl>
-        <ReadOnlyInfo label={'Kayıt Tarihi'} value={formatDate(data?.createdAt)} />
-        <ReadOnlyInfo label={'Son Güncellenme Tarihi'} value={formatDate(data?.updatedAt)} />
-        <Button isLoading={isPending || isUploading} colorScheme={'primary'} isDisabled={isPending || isUploading} type="submit" fontSize={'sm'} mt={4}>
+        <ReadOnlyInfo
+          label={'Kayıt Tarihi'}
+          value={formatDate(data?.createdAt)}
+        />
+        <ReadOnlyInfo
+          label={'Son Güncellenme Tarihi'}
+          value={formatDate(data?.updatedAt)}
+        />
+        <Button
+          isLoading={isPending || isUploading}
+          colorScheme={'primary'}
+          isDisabled={isPending || isUploading}
+          type="submit"
+          fontSize={'sm'}
+          mt={4}>
           Kaydet
         </Button>
       </Flex>
@@ -198,7 +243,8 @@ const ProfileSettings = ({ user }) => {
 
 // --- Notification Settings Component ---
 const NotificationSettings = () => {
-  const { permission, enabled, toggleEnabled, showNotification } = useBrowserNotification();
+  const {permission, enabled, toggleEnabled, showNotification} =
+    useBrowserNotification();
   const [soundEnabled, setSoundEnabled] = useState(true);
   const toast = useToast();
 
@@ -237,7 +283,7 @@ const NotificationSettings = () => {
     }
   };
 
-  const handleSoundChange = (e) => {
+  const handleSoundChange = e => {
     const isChecked = e.target.checked;
     setSoundEnabled(isChecked);
     localStorage.setItem('notification_sound_enabled', isChecked);
@@ -248,24 +294,24 @@ const NotificationSettings = () => {
     if (soundEnabled) {
       playNotificationSound();
     }
-    
+
     if (!enabled && permission === 'granted') {
-         toast({
-            title: 'Bildirimler kapalı',
-            description: 'Test etmek için önce bildirimleri açmalısınız.',
-            status: 'warning',
-            position: 'top',
-          });
-          return;
+      toast({
+        title: 'Bildirimler kapalı',
+        description: 'Test etmek için önce bildirimleri açmalısınız.',
+        status: 'warning',
+        position: 'top',
+      });
+      return;
     }
-    
+
     // Görsel test
     if (permission === 'granted') {
       showNotification('Test Bildirimi', {
         body: 'Bu bir test bildirimidir. Bildirimler ve ses çalışıyor.',
-        tag: 'test-notification'
+        tag: 'test-notification',
       });
-      
+
       toast({
         title: 'Test bildirimi gönderildi',
         status: 'info',
@@ -273,33 +319,37 @@ const NotificationSettings = () => {
         position: 'top',
       });
     } else {
-       // showNotification will try to request permission if not denied, but here we can show a toast if denied
-       if (permission === 'denied') {
-          toast({
-            title: 'Bildirim izni yok',
-            description: 'Tarayıcı ayarlarından bildirimlere izin vermelisiniz.',
-            status: 'warning',
-            position: 'top',
-          });
-       } else {
-          // try to show notification which will request permission
-           showNotification('Test Bildirimi', {
-            body: 'Bu bir test bildirimidir. Bildirimler ve ses çalışıyor.',
-            tag: 'test-notification'
-          });
-       }
+      // showNotification will try to request permission if not denied, but here we can show a toast if denied
+      if (permission === 'denied') {
+        toast({
+          title: 'Bildirim izni yok',
+          description: 'Tarayıcı ayarlarından bildirimlere izin vermelisiniz.',
+          status: 'warning',
+          position: 'top',
+        });
+      } else {
+        // try to show notification which will request permission
+        showNotification('Test Bildirimi', {
+          body: 'Bu bir test bildirimidir. Bildirimler ve ses çalışıyor.',
+          tag: 'test-notification',
+        });
+      }
     }
   };
 
   return (
     <VStack spacing={6} align="stretch">
       <Box>
-        <Text fontSize="lg" fontWeight="bold" mb={4}>Bildirim Tercihleri</Text>
+        <Text fontSize="lg" fontWeight="bold" mb={4}>
+          Bildirim Tercihleri
+        </Text>
         <VStack spacing={4} divider={<Divider />} align="stretch">
           <HStack spacing={4} justify="space-between">
             <VStack align="start" spacing={0}>
               <Text fontWeight="medium">Tarayıcı Bildirimleri</Text>
-              <Text fontSize="sm" color="gray.500">Yeni mesaj geldiğinde masaüstü bildirimi göster</Text>
+              <Text fontSize="sm" color="gray.500">
+                Yeni mesaj geldiğinde masaüstü bildirimi göster
+              </Text>
             </VStack>
             <Switch
               isChecked={enabled && permission === 'granted'}
@@ -307,16 +357,15 @@ const NotificationSettings = () => {
               isDisabled={permission === 'denied' && !enabled}
             />
           </HStack>
-          
+
           <HStack spacing={4} justify="space-between">
             <VStack align="start" spacing={0}>
               <Text fontWeight="medium">Bildirim Sesi</Text>
-              <Text fontSize="sm" color="gray.500">Bildirim geldiğinde ses çal</Text>
+              <Text fontSize="sm" color="gray.500">
+                Bildirim geldiğinde ses çal
+              </Text>
             </VStack>
-            <Switch
-              isChecked={soundEnabled}
-              onChange={handleSoundChange}
-            />
+            <Switch isChecked={soundEnabled} onChange={handleSoundChange} />
           </HStack>
 
           <Box pt={2}>
@@ -331,23 +380,32 @@ const NotificationSettings = () => {
 };
 
 // --- Security Settings Component ---
-const passwordSchema = yup.object({
-  currentPassword: yup.string().required('Mevcut şifre zorunludur.'),
-  password: yup.string()
-    .min(6, 'Şifre en az 6 karakter olmalıdır.')
-    .required('Yeni şifre zorunludur.'),
-  confirmPassword: yup.string()
-    .oneOf([yup.ref('password'), null], 'Şifreler eşleşmiyor.')
-    .required('Şifre tekrarı zorunludur.'),
-}).required();
+const passwordSchema = yup
+  .object({
+    currentPassword: yup.string().required('Mevcut şifre zorunludur.'),
+    password: yup
+      .string()
+      .min(6, 'Şifre en az 6 karakter olmalıdır.')
+      .required('Yeni şifre zorunludur.'),
+    confirmPassword: yup
+      .string()
+      .oneOf([yup.ref('password'), null], 'Şifreler eşleşmiyor.')
+      .required('Şifre tekrarı zorunludur.'),
+  })
+  .required();
 
-const SecuritySettings = ({ user }) => {
+const SecuritySettings = ({user}) => {
   const toast = useToast();
-  const { register, handleSubmit, formState: { errors }, reset } = useForm({
+  const {
+    register,
+    handleSubmit,
+    formState: {errors},
+    reset,
+  } = useForm({
     resolver: yupResolver(passwordSchema),
   });
 
-  const { mutateAsync, isPending } = useMutation({
+  const {mutateAsync, isPending} = useMutation({
     mutationFn: values => api.changePassword(user.id, values),
   });
 
@@ -375,7 +433,9 @@ const SecuritySettings = ({ user }) => {
   return (
     <form onSubmit={handleSubmit(onSubmit)}>
       <VStack spacing={4} align="stretch">
-        <Text fontSize="lg" fontWeight="bold">Şifre Değiştir</Text>
+        <Text fontSize="lg" fontWeight="bold">
+          Şifre Değiştir
+        </Text>
         <FormControl isInvalid={!!errors.currentPassword}>
           <FormLabel fontSize="sm">Mevcut Şifre</FormLabel>
           <Input type="password" {...register('currentPassword')} />
@@ -394,7 +454,11 @@ const SecuritySettings = ({ user }) => {
           <FormErrorMessage>{errors.confirmPassword?.message}</FormErrorMessage>
         </FormControl>
 
-        <Button type="submit" colorScheme="primary" isLoading={isPending} mt={2}>
+        <Button
+          type="submit"
+          colorScheme="primary"
+          isLoading={isPending}
+          mt={2}>
           Şifreyi Güncelle
         </Button>
       </VStack>
@@ -402,17 +466,24 @@ const SecuritySettings = ({ user }) => {
   );
 };
 
-const appVersionSchema = yup.object({
-  androidMinVersion: yup.string().required('Bu alan zorunludur.'),
-  androidCriticalVersion: yup.string().required('Bu alan zorunludur.'),
-  iosMinVersion: yup.string().required('Bu alan zorunludur.'),
-  iosCriticalVersion: yup.string().required('Bu alan zorunludur.'),
-}).required();
+const appVersionSchema = yup
+  .object({
+    androidMinVersion: yup.string().required('Bu alan zorunludur.'),
+    androidCriticalVersion: yup.string().required('Bu alan zorunludur.'),
+    iosMinVersion: yup.string().required('Bu alan zorunludur.'),
+    iosCriticalVersion: yup.string().required('Bu alan zorunludur.'),
+  })
+  .required();
 
 const AppVersionSettings = () => {
   const toast = useToast();
   const [isLoading, setIsLoading] = useState(true);
-  const { register, handleSubmit, formState: { errors }, reset } = useForm({
+  const {
+    register,
+    handleSubmit,
+    formState: {errors},
+    reset,
+  } = useForm({
     resolver: yupResolver(appVersionSchema),
     defaultValues: {
       androidMinVersion: '',
@@ -441,8 +512,7 @@ const AppVersionSettings = () => {
                 iosCriticalVersion: ios.criticalVersion || '',
               });
             }
-          } catch {
-          }
+          } catch {}
         }
       } catch {
       } finally {
@@ -491,25 +561,41 @@ const AppVersionSettings = () => {
   return (
     <form onSubmit={handleSubmit(onSubmit)}>
       <VStack spacing={6} align="stretch">
-        <Text fontSize="lg" fontWeight="bold">Uygulama Sürüm Ayarları</Text>
+        <Text fontSize="lg" fontWeight="bold">
+          Uygulama Sürüm Ayarları
+        </Text>
         <VStack spacing={4} align="stretch">
-          <Text fontSize="md" fontWeight="semibold">Android</Text>
+          <Text fontSize="md" fontWeight="semibold">
+            Android
+          </Text>
           <FormControl isInvalid={!!errors.androidMinVersion}>
             <FormLabel fontSize="sm">Minimum Sürüm</FormLabel>
-            <Input placeholder="Örn: 1.3.40" {...register('androidMinVersion')} />
-            <FormErrorMessage>{errors.androidMinVersion?.message}</FormErrorMessage>
+            <Input
+              placeholder="Örn: 1.3.40"
+              {...register('androidMinVersion')}
+            />
+            <FormErrorMessage>
+              {errors.androidMinVersion?.message}
+            </FormErrorMessage>
           </FormControl>
           <FormControl isInvalid={!!errors.androidCriticalVersion}>
             <FormLabel fontSize="sm">Kritik Sürüm</FormLabel>
-            <Input placeholder="Örn: 1.3.46" {...register('androidCriticalVersion')} />
-            <FormErrorMessage>{errors.androidCriticalVersion?.message}</FormErrorMessage>
+            <Input
+              placeholder="Örn: 1.3.46"
+              {...register('androidCriticalVersion')}
+            />
+            <FormErrorMessage>
+              {errors.androidCriticalVersion?.message}
+            </FormErrorMessage>
           </FormControl>
         </VStack>
 
         <Divider />
 
         <VStack spacing={4} align="stretch">
-          <Text fontSize="md" fontWeight="semibold">iOS</Text>
+          <Text fontSize="md" fontWeight="semibold">
+            iOS
+          </Text>
           <FormControl isInvalid={!!errors.iosMinVersion}>
             <FormLabel fontSize="sm">Minimum Sürüm</FormLabel>
             <Input placeholder="Örn: 1.3.40" {...register('iosMinVersion')} />
@@ -517,8 +603,13 @@ const AppVersionSettings = () => {
           </FormControl>
           <FormControl isInvalid={!!errors.iosCriticalVersion}>
             <FormLabel fontSize="sm">Kritik Sürüm</FormLabel>
-            <Input placeholder="Örn: 1.3.46" {...register('iosCriticalVersion')} />
-            <FormErrorMessage>{errors.iosCriticalVersion?.message}</FormErrorMessage>
+            <Input
+              placeholder="Örn: 1.3.46"
+              {...register('iosCriticalVersion')}
+            />
+            <FormErrorMessage>
+              {errors.iosCriticalVersion?.message}
+            </FormErrorMessage>
           </FormControl>
         </VStack>
 
@@ -532,7 +623,7 @@ const AppVersionSettings = () => {
 
 // --- Main Settings Page ---
 const Settings = () => {
-  const { user } = useUserStore();
+  const {user} = useUserStore();
 
   return (
     <Layout>
@@ -541,9 +632,12 @@ const Settings = () => {
         borderRadius={'md'}
         boxShadow={'md'}
         p={'4'}
-        minH="80vh"
-      >
-        <Tabs orientation="vertical" variant="soft-rounded" colorScheme="blue" isLazy>
+        minH="80vh">
+        <Tabs
+          orientation="vertical"
+          variant="soft-rounded"
+          colorScheme="blue"
+          isLazy>
           <TabList minW="200px" mr={8}>
             <Tab justifyContent="flex-start" mb={2}>
               <Icon as={FiUser} mr={2} /> Profil

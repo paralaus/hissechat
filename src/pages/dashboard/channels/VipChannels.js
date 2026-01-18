@@ -12,12 +12,12 @@ const fetchData = async options => {
 
 // Category labels and colors
 const categoryConfig = {
-  borsa: { label: 'Borsa', color: 'blue' },
-  kripto: { label: 'Kripto', color: 'orange' },
-  forex: { label: 'Forex', color: 'green' },
-  analiz: { label: 'Analiz', color: 'purple' },
-  emtia: { label: 'Emtia', color: 'yellow' },
-  other: { label: 'Diğer', color: 'gray' },
+  borsa: {label: 'Borsa', color: 'blue'},
+  kripto: {label: 'Kripto', color: 'orange'},
+  forex: {label: 'Forex', color: 'green'},
+  analiz: {label: 'Analiz', color: 'purple'},
+  emtia: {label: 'Emtia', color: 'yellow'},
+  other: {label: 'Diğer', color: 'gray'},
 };
 
 const VipChannels = () => {

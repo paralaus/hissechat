@@ -1,9 +1,9 @@
-import { ChakraProvider } from "@chakra-ui/react";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import {ChakraProvider} from '@chakra-ui/react';
+import {QueryClient, QueryClientProvider} from '@tanstack/react-query';
 
-import "./App.css";
-import Navigation from "./navigation";
-import { theme } from "./styles/theme";
+import './App.css';
+import Navigation from './navigation';
+import {theme} from './styles/theme';
 
 const queryClient = new QueryClient();
 

@@ -33,7 +33,7 @@ const Suggestions = () => {
             cell: ({getValue}) => {
               return <Text>{SuggestionTypeLabel[getValue()]}</Text>;
             },
-         },
+          },
         ]}
         fetchData={fetchData}
       />

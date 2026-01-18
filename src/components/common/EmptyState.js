@@ -1,5 +1,5 @@
-import { Box, Flex, Text, Icon, Button } from '@chakra-ui/react';
-import { FiInbox, FiSearch, FiAlertCircle, FiPlus } from 'react-icons/fi';
+import {Box, Flex, Text, Icon, Button} from '@chakra-ui/react';
+import {FiInbox, FiSearch, FiAlertCircle, FiPlus} from 'react-icons/fi';
 
 /**
  * Boş durum bileşeni
@@ -35,14 +35,16 @@ const EmptyState = ({
       iconBg: 'blue.50',
       iconColor: 'blue.400',
       title: 'Sonuç Bulunamadı',
-      description: 'Arama kriterlerinize uygun sonuç bulunamadı. Farklı anahtar kelimeler deneyin.',
+      description:
+        'Arama kriterlerinize uygun sonuç bulunamadı. Farklı anahtar kelimeler deneyin.',
     },
     error: {
       icon: FiAlertCircle,
       iconBg: 'red.50',
       iconColor: 'red.400',
       title: 'Bir Hata Oluştu',
-      description: 'Veriler yüklenirken bir hata oluştu. Lütfen tekrar deneyin.',
+      description:
+        'Veriler yüklenirken bir hata oluştu. Lütfen tekrar deneyin.',
     },
   };
 
@@ -58,48 +60,37 @@ const EmptyState = ({
       justify="center"
       py="16"
       px="8"
-      {...props}
-    >
-      <Box
-        p="4"
-        bg={currentVariant.iconBg}
-        borderRadius="full"
-        mb="4"
-      >
-        <Icon 
-          as={IconComponent} 
-          boxSize="8" 
-          color={currentVariant.iconColor} 
-        />
+      {...props}>
+      <Box p="4" bg={currentVariant.iconBg} borderRadius="full" mb="4">
+        <Icon as={IconComponent} boxSize="8" color={currentVariant.iconColor} />
       </Box>
-      
-      <Text 
-        fontSize="lg" 
-        fontWeight="semibold" 
-        color="gray.700" 
+
+      <Text
+        fontSize="lg"
+        fontWeight="semibold"
+        color="gray.700"
         mb="1"
-        textAlign="center"
-      >
+        textAlign="center">
         {displayTitle}
       </Text>
-      
-      <Text 
-        fontSize="sm" 
-        color="gray.500" 
-        textAlign="center" 
-        maxW="sm" 
-        mb={actionLabel ? '4' : '0'}
-      >
+
+      <Text
+        fontSize="sm"
+        color="gray.500"
+        textAlign="center"
+        maxW="sm"
+        mb={actionLabel ? '4' : '0'}>
         {displayDescription}
       </Text>
-      
+
       {actionLabel && onAction && (
         <Button
           colorScheme="brand"
           size="sm"
           onClick={onAction}
-          leftIcon={actionIcon ? <Icon as={actionIcon} /> : <Icon as={FiPlus} />}
-        >
+          leftIcon={
+            actionIcon ? <Icon as={actionIcon} /> : <Icon as={FiPlus} />
+          }>
           {actionLabel}
         </Button>
       )}
@@ -110,7 +101,7 @@ const EmptyState = ({
 /**
  * Tablo için boş durum
  */
-export const TableEmptyState = ({ 
+export const TableEmptyState = ({
   title = 'Kayıt bulunamadı',
   description = 'Bu tabloda henüz kayıt bulunmuyor.',
   actionLabel,
@@ -131,16 +122,15 @@ export const TableEmptyState = ({
 /**
  * Arama sonucu boş durumu
  */
-export const SearchEmptyState = ({ 
-  query,
-  onClear,
-}) => {
+export const SearchEmptyState = ({query, onClear}) => {
   return (
     <EmptyState
       variant="search"
       title="Sonuç bulunamadı"
-      description={query ? `"${query}" için sonuç bulunamadı.` : 'Arama sonucu bulunamadı.'}
-      actionLabel={onClear ? "Aramayı Temizle" : undefined}
+      description={
+        query ? `"${query}" için sonuç bulunamadı.` : 'Arama sonucu bulunamadı.'
+      }
+      actionLabel={onClear ? 'Aramayı Temizle' : undefined}
       onAction={onClear}
       actionIcon={FiSearch}
     />
@@ -150,7 +140,7 @@ export const SearchEmptyState = ({
 /**
  * Hata durumu
  */
-export const ErrorState = ({ 
+export const ErrorState = ({
   title = 'Bir hata oluştu',
   description = 'Veriler yüklenirken bir hata oluştu.',
   onRetry,
@@ -160,11 +150,10 @@ export const ErrorState = ({
       variant="error"
       title={title}
       description={description}
-      actionLabel={onRetry ? "Tekrar Dene" : undefined}
+      actionLabel={onRetry ? 'Tekrar Dene' : undefined}
       onAction={onRetry}
     />
   );
 };
 
 export default EmptyState;
-

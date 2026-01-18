@@ -7,13 +7,13 @@ import {
   HStack,
   Icon,
 } from '@chakra-ui/react';
-import { FiTrendingUp, FiTrendingDown } from 'react-icons/fi';
-import { isValue } from '../../utils/string';
+import {FiTrendingUp, FiTrendingDown} from 'react-icons/fi';
+import {isValue} from '../../utils/string';
 
-const MiniStatistics = ({ 
-  title, 
-  amount, 
-  percentage, 
+const MiniStatistics = ({
+  title,
+  amount,
+  percentage,
   icon,
   trend, // 'up' | 'down'
   trendLabel = 'geçen aya göre',
@@ -21,14 +21,15 @@ const MiniStatistics = ({
   const bgColor = useColorModeValue('white', 'gray.800');
   const textColor = useColorModeValue('gray.800', 'white');
   const subtleTextColor = useColorModeValue('gray.500', 'gray.400');
-  
+
   // percentage'dan trend hesapla
-  const calculatedTrend = trend || (percentage > 0 ? 'up' : percentage < 0 ? 'down' : null);
+  const calculatedTrend =
+    trend || (percentage > 0 ? 'up' : percentage < 0 ? 'down' : null);
   const trendColor = calculatedTrend === 'up' ? 'green.500' : 'red.500';
   const trendBgColor = calculatedTrend === 'up' ? 'green.50' : 'red.50';
 
   // Sayıyı formatla
-  const formatNumber = (num) => {
+  const formatNumber = num => {
     if (typeof num !== 'number') return num;
     return num.toLocaleString('tr-TR');
   };
@@ -45,8 +46,7 @@ const MiniStatistics = ({
       _hover={{
         boxShadow: 'cardHover',
         transform: 'translateY(-2px)',
-      }}
-    >
+      }}>
       <Flex justify="space-between" align="flex-start">
         <Box flex="1">
           {title && (
@@ -54,19 +54,17 @@ const MiniStatistics = ({
               fontSize="sm"
               color={subtleTextColor}
               fontWeight="medium"
-              mb="1"
-            >
+              mb="1">
               {title}
             </Text>
           )}
-          
+
           {isValue(amount) && (
             <Text
               fontSize="2xl"
               fontWeight="bold"
               color={textColor}
-              lineHeight="1.2"
-            >
+              lineHeight="1.2">
               {formatNumber(amount)}
             </Text>
           )}
@@ -78,15 +76,15 @@ const MiniStatistics = ({
                 bg={trendBgColor}
                 px="2"
                 py="0.5"
-                borderRadius="full"
-              >
+                borderRadius="full">
                 <Icon
                   as={calculatedTrend === 'up' ? FiTrendingUp : FiTrendingDown}
                   color={trendColor}
                   fontSize="xs"
                 />
                 <Text fontSize="xs" fontWeight="semibold" color={trendColor}>
-                  {percentage > 0 ? '+' : ''}{percentage}%
+                  {percentage > 0 ? '+' : ''}
+                  {percentage}%
                 </Text>
               </HStack>
               <Text fontSize="xs" color={subtleTextColor}>
@@ -101,8 +99,7 @@ const MiniStatistics = ({
             p="3"
             borderRadius="xl"
             bgGradient="linear(to-br, brand.400, brand.600)"
-            boxShadow="md"
-          >
+            boxShadow="md">
             {icon}
           </Box>
         )}
@@ -112,9 +109,9 @@ const MiniStatistics = ({
 };
 
 // Basit istatistik kartı (sadece sayı ve başlık)
-export const SimpleStatCard = ({ title, value, icon, color = 'brand' }) => {
+export const SimpleStatCard = ({title, value, icon, color = 'brand'}) => {
   const bgColor = useColorModeValue('white', 'gray.800');
-  
+
   return (
     <Box
       bg={bgColor}
@@ -127,15 +124,10 @@ export const SimpleStatCard = ({ title, value, icon, color = 'brand' }) => {
       _hover={{
         boxShadow: 'cardHover',
         transform: 'translateY(-2px)',
-      }}
-    >
+      }}>
       <HStack spacing="4">
         {icon && (
-          <Box
-            p="3"
-            borderRadius="lg"
-            bg={`${color}.50`}
-          >
+          <Box p="3" borderRadius="lg" bg={`${color}.50`}>
             <Icon as={icon} color={`${color}.500`} boxSize="5" />
           </Box>
         )}
@@ -153,10 +145,10 @@ export const SimpleStatCard = ({ title, value, icon, color = 'brand' }) => {
 };
 
 // Renkli istatistik kartı
-export const ColoredStatCard = ({ 
-  title, 
-  value, 
-  icon, 
+export const ColoredStatCard = ({
+  title,
+  value,
+  icon,
   colorScheme = 'brand',
   subtitle,
 }) => {
@@ -171,8 +163,7 @@ export const ColoredStatCard = ({
       _hover={{
         transform: 'translateY(-2px)',
         boxShadow: 'xl',
-      }}
-    >
+      }}>
       <Flex justify="space-between" align="flex-start">
         <Box>
           <Text fontSize="sm" opacity="0.9" fontWeight="medium" mb="1">
@@ -188,11 +179,7 @@ export const ColoredStatCard = ({
           )}
         </Box>
         {icon && (
-          <Box
-            p="3"
-            borderRadius="xl"
-            bg="whiteAlpha.200"
-          >
+          <Box p="3" borderRadius="xl" bg="whiteAlpha.200">
             {icon}
           </Box>
         )}

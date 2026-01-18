@@ -1,7 +1,7 @@
-import { 
-  Box, 
-  Skeleton, 
-  SkeletonText, 
+import {
+  Box,
+  Skeleton,
+  SkeletonText,
   SkeletonCircle,
   SimpleGrid,
   HStack,
@@ -12,39 +12,33 @@ import {
 /**
  * Tablo için skeleton loading
  */
-export const TableSkeleton = ({ rows = 5, columns = 4 }) => {
+export const TableSkeleton = ({rows = 5, columns = 4}) => {
   return (
     <Box
       bg="white"
       borderRadius="xl"
       border="1px"
       borderColor="gray.100"
-      overflow="hidden"
-    >
+      overflow="hidden">
       {/* Header */}
       <Box p="4" borderBottom="1px" borderColor="gray.100" bg="gray.50">
         <HStack spacing="4">
-          {Array.from({ length: columns }).map((_, i) => (
+          {Array.from({length: columns}).map((_, i) => (
             <Skeleton key={i} height="16px" width="100px" borderRadius="md" />
           ))}
         </HStack>
       </Box>
 
       {/* Rows */}
-      {Array.from({ length: rows }).map((_, rowIndex) => (
-        <Box 
-          key={rowIndex} 
-          p="4" 
-          borderBottom="1px" 
-          borderColor="gray.100"
-        >
+      {Array.from({length: rows}).map((_, rowIndex) => (
+        <Box key={rowIndex} p="4" borderBottom="1px" borderColor="gray.100">
           <HStack spacing="4">
-            {Array.from({ length: columns }).map((_, colIndex) => (
-              <Skeleton 
-                key={colIndex} 
-                height="20px" 
-                width={colIndex === 0 ? '150px' : '100px'} 
-                borderRadius="md" 
+            {Array.from({length: columns}).map((_, colIndex) => (
+              <Skeleton
+                key={colIndex}
+                height="20px"
+                width={colIndex === 0 ? '150px' : '100px'}
+                borderRadius="md"
               />
             ))}
           </HStack>
@@ -69,18 +63,17 @@ export const TableSkeleton = ({ rows = 5, columns = 4 }) => {
 /**
  * İstatistik kartları için skeleton
  */
-export const StatisticsSkeleton = ({ count = 4 }) => {
+export const StatisticsSkeleton = ({count = 4}) => {
   return (
-    <SimpleGrid columns={{ base: 1, sm: 2, lg: 4 }} spacing="6">
-      {Array.from({ length: count }).map((_, i) => (
+    <SimpleGrid columns={{base: 1, sm: 2, lg: 4}} spacing="6">
+      {Array.from({length: count}).map((_, i) => (
         <Box
           key={i}
           bg="white"
           borderRadius="xl"
           p="5"
           border="1px"
-          borderColor="gray.100"
-        >
+          borderColor="gray.100">
           <Flex justify="space-between" align="flex-start">
             <VStack align="flex-start" spacing="2" flex="1">
               <Skeleton height="14px" width="80px" borderRadius="md" />
@@ -101,18 +94,15 @@ export const StatisticsSkeleton = ({ count = 4 }) => {
 /**
  * Kart için skeleton
  */
-export const CardSkeleton = ({ hasImage = false, lines = 3 }) => {
+export const CardSkeleton = ({hasImage = false, lines = 3}) => {
   return (
     <Box
       bg="white"
       borderRadius="xl"
       border="1px"
       borderColor="gray.100"
-      overflow="hidden"
-    >
-      {hasImage && (
-        <Skeleton height="160px" width="100%" />
-      )}
+      overflow="hidden">
+      {hasImage && <Skeleton height="160px" width="100%" />}
       <Box p="5">
         <Skeleton height="20px" width="60%" mb="3" borderRadius="md" />
         <SkeletonText noOfLines={lines} spacing="2" skeletonHeight="14px" />
@@ -124,18 +114,17 @@ export const CardSkeleton = ({ hasImage = false, lines = 3 }) => {
 /**
  * Liste için skeleton
  */
-export const ListSkeleton = ({ rows = 5, hasAvatar = false }) => {
+export const ListSkeleton = ({rows = 5, hasAvatar = false}) => {
   return (
     <VStack spacing="3" align="stretch">
-      {Array.from({ length: rows }).map((_, i) => (
+      {Array.from({length: rows}).map((_, i) => (
         <Box
           key={i}
           bg="white"
           borderRadius="lg"
           p="4"
           border="1px"
-          borderColor="gray.100"
-        >
+          borderColor="gray.100">
           <HStack spacing="4">
             {hasAvatar && <SkeletonCircle size="10" />}
             <VStack align="flex-start" spacing="2" flex="1">
@@ -153,17 +142,11 @@ export const ListSkeleton = ({ rows = 5, hasAvatar = false }) => {
 /**
  * Form için skeleton
  */
-export const FormSkeleton = ({ fields = 4 }) => {
+export const FormSkeleton = ({fields = 4}) => {
   return (
-    <Box
-      bg="white"
-      borderRadius="xl"
-      p="6"
-      border="1px"
-      borderColor="gray.100"
-    >
+    <Box bg="white" borderRadius="xl" p="6" border="1px" borderColor="gray.100">
       <VStack spacing="5" align="stretch">
-        {Array.from({ length: fields }).map((_, i) => (
+        {Array.from({length: fields}).map((_, i) => (
           <Box key={i}>
             <Skeleton height="14px" width="100px" mb="2" borderRadius="md" />
             <Skeleton height="42px" width="100%" borderRadius="lg" />
@@ -188,8 +171,7 @@ export const ProfileSkeleton = () => {
       p="6"
       border="1px"
       borderColor="gray.100"
-      textAlign="center"
-    >
+      textAlign="center">
       <SkeletonCircle size="20" mx="auto" mb="4" />
       <Skeleton height="24px" width="60%" mx="auto" mb="2" borderRadius="md" />
       <Skeleton height="16px" width="40%" mx="auto" mb="4" borderRadius="md" />
@@ -220,8 +202,8 @@ export const DetailPageSkeleton = () => {
       </HStack>
 
       {/* İçerik */}
-      <SimpleGrid columns={{ base: 1, lg: 3 }} spacing="6">
-        <Box gridColumn={{ lg: 'span 2' }}>
+      <SimpleGrid columns={{base: 1, lg: 3}} spacing="6">
+        <Box gridColumn={{lg: 'span 2'}}>
           <FormSkeleton fields={6} />
         </Box>
         <Box>
@@ -231,16 +213,3 @@ export const DetailPageSkeleton = () => {
     </VStack>
   );
 };
-
-
-
-
-
-
-
-
-
-
-
-
-

@@ -1,12 +1,20 @@
-import React, { useRef, useState } from 'react';
+import React, {useRef, useState} from 'react';
 import {
   flexRender,
   getCoreRowModel,
   useReactTable,
 } from '@tanstack/react-table';
-import { useQuery } from '@tanstack/react-query';
-import { FiTrash2, FiEdit2, FiSearch, FiChevronLeft, FiChevronRight, FiChevronsLeft, FiChevronsRight } from 'react-icons/fi';
-import { GoTriangleDown, GoTriangleUp } from 'react-icons/go';
+import {useQuery} from '@tanstack/react-query';
+import {
+  FiTrash2,
+  FiEdit2,
+  FiSearch,
+  FiChevronLeft,
+  FiChevronRight,
+  FiChevronsLeft,
+  FiChevronsRight,
+} from 'react-icons/fi';
+import {GoTriangleDown, GoTriangleUp} from 'react-icons/go';
 import useDisclosure from '../../hooks/useDisclosure';
 import useDebouncedValue from '../../hooks/useDebouncedValue';
 import Condition from './Condition';
@@ -54,7 +62,7 @@ const DataTable = ({
   emptyMessage = 'Kayıt bulunamadı',
   filters = {},
 }) => {
-  const { value, setValue, debouncedValue } = useDebouncedValue('');
+  const {value, setValue, debouncedValue} = useDebouncedValue('');
   const [sortBy, setSortBy] = useState(defaultSortBy);
   const cancelRef = useRef();
   const bgColor = useColorModeValue('white', 'gray.800');
@@ -81,7 +89,7 @@ const DataTable = ({
         page: pagination.pageIndex + 1,
         limit: pagination.pageSize,
         sortBy,
-        ...(queryEnabled ? { query: debouncedValue } : {}),
+        ...(queryEnabled ? {query: debouncedValue} : {}),
         ...filters,
       }),
   });
@@ -106,7 +114,7 @@ const DataTable = ({
     await dataQuery.refetch();
   };
 
-  const toggleSort = (header) => {
+  const toggleSort = header => {
     if (sortBy === header + ':desc') {
       setSortBy(header + ':asc');
     } else if (sortBy === header + ':asc') {
@@ -129,8 +137,7 @@ const DataTable = ({
         border="1px"
         borderColor={borderColor}
         boxShadow={shadow ? 'card' : 'none'}
-        overflow="hidden"
-      >
+        overflow="hidden">
         {/* Search Bar */}
         <Condition condition={queryEnabled}>
           <Box p="4" borderBottom="1px" borderColor={borderColor}>
@@ -141,7 +148,7 @@ const DataTable = ({
               <Input
                 placeholder="Ara..."
                 value={value}
-                onChange={(e) => setValue(e.target.value)}
+                onChange={e => setValue(e.target.value)}
                 bg={useColorModeValue('gray.50', 'gray.900')}
                 border="none"
                 _focus={{
@@ -157,9 +164,9 @@ const DataTable = ({
         <Box overflowX="auto">
           <Table>
             <Thead>
-              {table.getHeaderGroups().map((headerGroup) => (
+              {table.getHeaderGroups().map(headerGroup => (
                 <Tr key={headerGroup.id} bg={headerBg}>
-                  {headerGroup.headers.map((header) => (
+                  {headerGroup.headers.map(header => (
                     <Th
                       key={header.id}
                       cursor="pointer"
@@ -173,22 +180,23 @@ const DataTable = ({
                       borderBottom="2px"
                       borderColor={borderColor}
                       onClick={() => toggleSort(header.column.id)}
-                      _hover={{ color: 'gray.800' }}
-                      transition="color 0.2s"
-                    >
+                      _hover={{color: 'gray.800'}}
+                      transition="color 0.2s">
                       <HStack spacing="2">
                         <Text>
                           {header.isPlaceholder
                             ? null
                             : flexRender(
                                 header.column.columnDef.header,
-                                header.getContext()
+                                header.getContext(),
                               )}
                         </Text>
-                        <Condition condition={sortBy === header.column.id + ':desc'}>
+                        <Condition
+                          condition={sortBy === header.column.id + ':desc'}>
                           <GoTriangleDown />
                         </Condition>
-                        <Condition condition={sortBy === header.column.id + ':asc'}>
+                        <Condition
+                          condition={sortBy === header.column.id + ':asc'}>
                           <GoTriangleUp />
                         </Condition>
                       </HStack>
@@ -205,8 +213,7 @@ const DataTable = ({
                       letterSpacing="wider"
                       borderBottom="2px"
                       borderColor={borderColor}
-                      textAlign="right"
-                    >
+                      textAlign="right">
                       İşlemler
                     </Th>
                   </Condition>
@@ -217,47 +224,47 @@ const DataTable = ({
               {isLoading ? (
                 <Tr>
                   <Td
-                    colSpan={columns.length + (editVisible || deleteVisible ? 1 : 0)}
+                    colSpan={
+                      columns.length + (editVisible || deleteVisible ? 1 : 0)
+                    }
                     py="16"
-                    textAlign="center"
-                  >
+                    textAlign="center">
                     <Spinner size="lg" color="brand.500" />
                   </Td>
                 </Tr>
               ) : !hasData ? (
                 <Tr>
                   <Td
-                    colSpan={columns.length + (editVisible || deleteVisible ? 1 : 0)}
+                    colSpan={
+                      columns.length + (editVisible || deleteVisible ? 1 : 0)
+                    }
                     py="16"
-                    textAlign="center"
-                  >
+                    textAlign="center">
                     <Text color="gray.500" fontSize="sm">
                       {emptyMessage}
                     </Text>
                   </Td>
                 </Tr>
               ) : (
-                table.getRowModel().rows.map((row) => (
+                table.getRowModel().rows.map(row => (
                   <Tr
                     key={row.id}
-                    _hover={{ bg: hoverBg }}
+                    _hover={{bg: hoverBg}}
                     onClick={() => onRow(row.original)}
                     cursor="pointer"
                     transition="background 0.15s"
                     borderBottom="1px"
-                    borderColor={borderColor}
-                  >
-                    {row.getVisibleCells().map((cell) => (
+                    borderColor={borderColor}>
+                    {row.getVisibleCells().map(cell => (
                       <Td
                         key={cell.id}
                         py="4"
                         px="6"
                         fontSize="sm"
-                        color="gray.700"
-                      >
+                        color="gray.700">
                         {flexRender(
                           cell.column.columnDef.cell,
-                          cell.getContext()
+                          cell.getContext(),
                         )}
                       </Td>
                     ))}
@@ -271,11 +278,11 @@ const DataTable = ({
                               colorScheme="gray"
                               icon={<FiEdit2 />}
                               aria-label="Düzenle"
-                              onClick={(e) => {
+                              onClick={e => {
                                 e.stopPropagation();
                                 onEdit(row.original);
                               }}
-                              _hover={{ bg: 'blue.50', color: 'blue.500' }}
+                              _hover={{bg: 'blue.50', color: 'blue.500'}}
                             />
                           </Condition>
                           <Condition condition={deleteVisible}>
@@ -285,12 +292,12 @@ const DataTable = ({
                               colorScheme="gray"
                               icon={<FiTrash2 />}
                               aria-label="Sil"
-                              onClick={(e) => {
+                              onClick={e => {
                                 e.stopPropagation();
                                 setSelectedItem(row.original);
                                 deleteModal.open();
                               }}
-                              _hover={{ bg: 'red.50', color: 'red.500' }}
+                              _hover={{bg: 'red.50', color: 'red.500'}}
                             />
                           </Condition>
                         </HStack>
@@ -311,20 +318,22 @@ const DataTable = ({
           justify="space-between"
           align="center"
           flexWrap="wrap"
-          gap="3"
-        >
+          gap="3">
           <HStack spacing="4">
             <Text fontSize="sm" color="gray.500">
-              Toplam <Badge colorScheme="brand">{dataQuery.data?.totalResults || 0}</Badge> sonuç
+              Toplam{' '}
+              <Badge colorScheme="brand">
+                {dataQuery.data?.totalResults || 0}
+              </Badge>{' '}
+              sonuç
             </Text>
             <Select
               size="sm"
               w="auto"
               value={table.getState().pagination.pageSize}
-              onChange={(e) => table.setPageSize(Number(e.target.value))}
-              borderRadius="lg"
-            >
-              {[10, 20, 30, 50, 100].map((pageSize) => (
+              onChange={e => table.setPageSize(Number(e.target.value))}
+              borderRadius="lg">
+              {[10, 20, 30, 50, 100].map(pageSize => (
                 <option key={pageSize} value={pageSize}>
                   {pageSize} / sayfa
                 </option>
@@ -356,7 +365,7 @@ const DataTable = ({
                 size="sm"
                 type="number"
                 value={currentPage}
-                onChange={(e) => {
+                onChange={e => {
                   const page = e.target.value ? Number(e.target.value) - 1 : 0;
                   table.setPageIndex(page);
                 }}
@@ -396,8 +405,7 @@ const DataTable = ({
         leastDestructiveRef={cancelRef}
         isOpen={deleteModal.isOpen}
         onClose={deleteModal.close}
-        isCentered
-      >
+        isCentered>
         <AlertDialogOverlay>
           <AlertDialogContent borderRadius="xl" mx="4">
             <AlertDialogHeader fontSize="lg" fontWeight="bold" pb="2">
@@ -410,8 +418,7 @@ const DataTable = ({
               <Button
                 ref={cancelRef}
                 onClick={deleteModal.close}
-                variant="ghost"
-              >
+                variant="ghost">
                 Vazgeç
               </Button>
               <Button
@@ -419,8 +426,7 @@ const DataTable = ({
                 onClick={onDeletePress}
                 ml={3}
                 isLoading={isDeleting}
-                disabled={isDeleting}
-              >
+                disabled={isDeleting}>
                 Sil
               </Button>
             </AlertDialogFooter>

@@ -170,16 +170,28 @@ const EditMarket = ({id}) => {
             background="transparent"
             borderRadius="md"
             me="auto">
-            <Box display={'flex'} flexDirection="column" alignItems="center" mb="6">
+            <Box
+              display={'flex'}
+              flexDirection="column"
+              alignItems="center"
+              mb="6">
               {/* Logo Upload Area */}
               <Box
                 onClick={() => open()}
                 cursor="pointer"
                 borderRadius="xl"
                 border="2px dashed"
-                borderColor={objectUrl || (getValues('logo')?.length > 0) ? 'transparent' : 'gray.300'}
-                bg={objectUrl || (getValues('logo')?.length > 0) ? 'transparent' : 'gray.50'}
-                p={objectUrl || (getValues('logo')?.length > 0) ? '0' : '8'}
+                borderColor={
+                  objectUrl || getValues('logo')?.length > 0
+                    ? 'transparent'
+                    : 'gray.300'
+                }
+                bg={
+                  objectUrl || getValues('logo')?.length > 0
+                    ? 'transparent'
+                    : 'gray.50'
+                }
+                p={objectUrl || getValues('logo')?.length > 0 ? '0' : '8'}
                 minH="150px"
                 minW="150px"
                 maxW="200px"
@@ -189,12 +201,14 @@ const EditMarket = ({id}) => {
                 transition="all 0.2s"
                 _hover={{
                   borderColor: 'brand.400',
-                  bg: objectUrl || (getValues('logo')?.length > 0) ? 'transparent' : 'brand.50',
+                  bg:
+                    objectUrl || getValues('logo')?.length > 0
+                      ? 'transparent'
+                      : 'brand.50',
                 }}
                 position="relative"
-                overflow="hidden"
-              >
-                {objectUrl || (getValues('logo')?.length > 0) ? (
+                overflow="hidden">
+                {objectUrl || getValues('logo')?.length > 0 ? (
                   <ChakraImage
                     src={objectUrl || getCombinedLogoUrl(getValues('logo'))}
                     alt="Logo"
@@ -204,11 +218,7 @@ const EditMarket = ({id}) => {
                   />
                 ) : (
                   <VStack spacing="3">
-                    <Box
-                      p="4"
-                      bg="gray.100"
-                      borderRadius="full"
-                    >
+                    <Box p="4" bg="gray.100" borderRadius="full">
                       <Icon as={FiImage} boxSize="8" color="gray.400" />
                     </Box>
                     <VStack spacing="1">
@@ -225,13 +235,13 @@ const EditMarket = ({id}) => {
               </Box>
               {input}
               <Input type={'hidden'} {...register('logo')} />
-              {(objectUrl || (getValues('logo')?.length > 0)) && (
+              {(objectUrl || getValues('logo')?.length > 0) && (
                 <Button
                   mt="3"
                   size="sm"
                   variant="ghost"
                   colorScheme="red"
-                  onClick={(e) => {
+                  onClick={e => {
                     e.stopPropagation();
                     reset({
                       logo: '',

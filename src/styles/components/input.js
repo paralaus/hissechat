@@ -1,4 +1,4 @@
-import { mode } from '@chakra-ui/theme-tools';
+import {mode} from '@chakra-ui/theme-tools';
 
 export const inputStyles = {
   components: {
@@ -40,7 +40,7 @@ export const inputStyles = {
             borderColor: mode('gray.200', 'gray.600')(props),
             color: mode('gray.800', 'white')(props),
             borderRadius: 'lg',
-            _placeholder: { 
+            _placeholder: {
               color: mode('gray.400', 'gray.500')(props),
             },
             _hover: {
@@ -63,7 +63,7 @@ export const inputStyles = {
             borderColor: 'transparent',
             color: mode('gray.800', 'white')(props),
             borderRadius: 'lg',
-            _placeholder: { 
+            _placeholder: {
               color: mode('gray.500', 'gray.400')(props),
             },
             _hover: {
@@ -84,7 +84,7 @@ export const inputStyles = {
             border: '1.5px solid',
             borderColor: mode('gray.200', 'gray.600')(props),
             borderRadius: 'lg',
-            _placeholder: { 
+            _placeholder: {
               color: mode('gray.400', 'gray.500')(props),
             },
             _hover: {
@@ -114,7 +114,7 @@ export const inputStyles = {
           borderColor: mode('gray.200', 'gray.600')(props),
           color: mode('gray.800', 'white')(props),
           borderRadius: 'lg',
-          _placeholder: { 
+          _placeholder: {
             color: mode('gray.400', 'gray.500')(props),
           },
           _hover: {

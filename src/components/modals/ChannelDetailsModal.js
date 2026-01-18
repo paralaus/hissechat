@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, {useState} from 'react';
 import {
   Modal,
   ModalOverlay,
@@ -28,20 +28,20 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip,
-  ResponsiveContainer
+  ResponsiveContainer,
 } from 'recharts';
-import { useQuery } from '@tanstack/react-query';
-import { api } from '../../api';
-import { getCombinedLogoUrl } from '../../utils/image';
-import { format } from 'date-fns';
-import { tr } from 'date-fns/locale';
+import {useQuery} from '@tanstack/react-query';
+import {api} from '../../api';
+import {getCombinedLogoUrl} from '../../utils/image';
+import {format} from 'date-fns';
+import {tr} from 'date-fns/locale';
 
-const ChannelDetailsModal = ({ isOpen, onClose, channel }) => {
+const ChannelDetailsModal = ({isOpen, onClose, channel}) => {
   const isMarket = channel?.type === 'market';
   const marketCode = channel?.marketCode;
   const [selectedRange, setSelectedRange] = useState('1m');
 
-  const { data: marketData, isLoading } = useQuery({
+  const {data: marketData, isLoading} = useQuery({
     queryKey: ['market-details', marketCode],
     queryFn: () => api.getMarketDetail(marketCode).then(res => res.data),
     enabled: !!marketCode && isOpen && isMarket,
@@ -49,19 +49,22 @@ const ChannelDetailsModal = ({ isOpen, onClose, channel }) => {
 
   const market = marketData;
 
-  const { data: chartData, isLoading: isChartLoading } = useQuery({
+  const {data: chartData, isLoading: isChartLoading} = useQuery({
     queryKey: ['market-chart', marketCode, selectedRange],
-    queryFn: () => api.getChartData(marketCode, market?.type || 'stock', selectedRange).then(res => res.data),
+    queryFn: () =>
+      api
+        .getChartData(marketCode, market?.type || 'stock', selectedRange)
+        .then(res => res.data),
     enabled: !!marketCode && isOpen && isMarket && !!market,
   });
 
   const chartRanges = [
-    { label: '1G', value: '1d' },
-    { label: '1H', value: '1w' },
-    { label: '1A', value: '1m' },
-    { label: '3A', value: '3m' },
-    { label: '1Y', value: '1y' },
-    { label: 'Tümü', value: 'max' },
+    {label: '1G', value: '1d'},
+    {label: '1H', value: '1w'},
+    {label: '1A', value: '1m'},
+    {label: '3A', value: '3m'},
+    {label: '1Y', value: '1y'},
+    {label: 'Tümü', value: 'max'},
   ];
 
   const renderContent = () => {
@@ -75,15 +78,15 @@ const ChannelDetailsModal = ({ isOpen, onClose, channel }) => {
 
     if (isMarket && market) {
       const isUp = (market.rate || 0) >= 0;
-      
+
       return (
         <VStack spacing={6} align="stretch">
           {/* Header Section */}
           <VStack align="center" spacing={4}>
-            <Avatar 
-              size="2xl" 
-              src={getCombinedLogoUrl(market.logo)} 
-              name={market.name} 
+            <Avatar
+              size="2xl"
+              src={getCombinedLogoUrl(market.logo)}
+              name={market.name}
               borderWidth={2}
               borderColor="gray.200"
             />
@@ -91,7 +94,12 @@ const ChannelDetailsModal = ({ isOpen, onClose, channel }) => {
               <Text fontSize="2xl" fontWeight="bold" textAlign="center">
                 {market.name}
               </Text>
-              <Badge colorScheme="blue" fontSize="md" px={2} py={0.5} borderRadius="md">
+              <Badge
+                colorScheme="blue"
+                fontSize="md"
+                px={2}
+                py={0.5}
+                borderRadius="md">
                 {market.code}
               </Badge>
             </VStack>
@@ -100,49 +108,68 @@ const ChannelDetailsModal = ({ isOpen, onClose, channel }) => {
           <Divider />
 
           {/* Price Section */}
-          <HStack justify="space-around" spacing={8} bg="gray.50" p={4} borderRadius="lg">
+          <HStack
+            justify="space-around"
+            spacing={8}
+            bg="gray.50"
+            p={4}
+            borderRadius="lg">
             <Stat textAlign="center">
               <StatLabel color="gray.500">Fiyat</StatLabel>
               <StatNumber fontSize="3xl">
                 {market.price?.toFixed(2)} ₺
               </StatNumber>
               <StatHelpText>
-                {format(new Date(), 'dd MMMM HH:mm', { locale: tr })}
+                {format(new Date(), 'dd MMMM HH:mm', {locale: tr})}
               </StatHelpText>
             </Stat>
-            
+
             <Stat textAlign="center">
               <StatLabel color="gray.500">Değişim</StatLabel>
               <StatNumber fontSize="3xl" color={isUp ? 'green.500' : 'red.500'}>
                 <StatArrow type={isUp ? 'increase' : 'decrease'} />
                 {Math.abs(market.rate || 0).toFixed(2)}%
               </StatNumber>
-              <StatHelpText>
-                Günlük
-              </StatHelpText>
+              <StatHelpText>Günlük</StatHelpText>
             </Stat>
           </HStack>
 
           {/* Chart Section */}
-          <Box h="350px" w="100%" bg="white" borderRadius="lg" p={4} border="1px solid" borderColor="gray.200">
+          <Box
+            h="350px"
+            w="100%"
+            bg="white"
+            borderRadius="lg"
+            p={4}
+            border="1px solid"
+            borderColor="gray.200">
             {/* Range Selector */}
             <HStack spacing={2} mb={4} justify="center">
-              {chartRanges.map((range) => (
+              {chartRanges.map(range => (
                 <Button
                   key={range.value}
                   size="xs"
-                  variant={selectedRange === range.value ? "solid" : "ghost"}
-                  colorScheme={selectedRange === range.value ? (isUp ? "green" : "red") : "gray"}
+                  variant={selectedRange === range.value ? 'solid' : 'ghost'}
+                  colorScheme={
+                    selectedRange === range.value
+                      ? isUp
+                        ? 'green'
+                        : 'red'
+                      : 'gray'
+                  }
                   onClick={() => setSelectedRange(range.value)}
-                  borderRadius="full"
-                >
+                  borderRadius="full">
                   {range.label}
                 </Button>
               ))}
             </HStack>
 
             {isChartLoading ? (
-              <Box display="flex" justifyContent="center" alignItems="center" h="300px">
+              <Box
+                display="flex"
+                justifyContent="center"
+                alignItems="center"
+                h="300px">
                 <Spinner size="lg" />
               </Box>
             ) : chartData?.dataPoints ? (
@@ -154,44 +181,60 @@ const ChannelDetailsModal = ({ isOpen, onClose, channel }) => {
                     right: 0,
                     left: 0,
                     bottom: 0,
-                  }}
-                >
+                  }}>
                   <defs>
                     <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor={isUp ? "#48BB78" : "#F56565"} stopOpacity={0.8}/>
-                      <stop offset="95%" stopColor={isUp ? "#48BB78" : "#F56565"} stopOpacity={0}/>
+                      <stop
+                        offset="5%"
+                        stopColor={isUp ? '#48BB78' : '#F56565'}
+                        stopOpacity={0.8}
+                      />
+                      <stop
+                        offset="95%"
+                        stopColor={isUp ? '#48BB78' : '#F56565'}
+                        stopOpacity={0}
+                      />
                     </linearGradient>
                   </defs>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
-                  <XAxis 
-                    dataKey="date" 
-                    hide={true} 
+                  <CartesianGrid
+                    strokeDasharray="3 3"
+                    vertical={false}
+                    stroke="#E2E8F0"
                   />
-                  <YAxis 
-                    domain={['auto', 'auto']} 
-                    orientation="right" 
-                    tick={{fontSize: 12, fill: '#718096'}} 
+                  <XAxis dataKey="date" hide={true} />
+                  <YAxis
+                    domain={['auto', 'auto']}
+                    orientation="right"
+                    tick={{fontSize: 12, fill: '#718096'}}
                     axisLine={false}
                     tickLine={false}
-                    tickFormatter={(value) => value.toFixed(2)}
+                    tickFormatter={value => value.toFixed(2)}
                   />
-                  <Tooltip 
-                    contentStyle={{borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'}}
+                  <Tooltip
+                    contentStyle={{
+                      borderRadius: '8px',
+                      border: 'none',
+                      boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+                    }}
                     labelStyle={{color: '#718096', marginBottom: '4px'}}
                     itemStyle={{color: '#2D3748', fontWeight: 'bold'}}
-                    formatter={(value) => [`${value.toFixed(2)} ₺`, 'Fiyat']}
+                    formatter={value => [`${value.toFixed(2)} ₺`, 'Fiyat']}
                   />
-                  <Area 
-                    type="monotone" 
-                    dataKey="value" 
-                    stroke={isUp ? "#48BB78" : "#F56565"} 
-                    fillOpacity={1} 
-                    fill="url(#colorValue)" 
+                  <Area
+                    type="monotone"
+                    dataKey="value"
+                    stroke={isUp ? '#48BB78' : '#F56565'}
+                    fillOpacity={1}
+                    fill="url(#colorValue)"
                   />
                 </AreaChart>
               </ResponsiveContainer>
             ) : (
-              <Box display="flex" justifyContent="center" alignItems="center" h="100%">
+              <Box
+                display="flex"
+                justifyContent="center"
+                alignItems="center"
+                h="100%">
                 <Text color="gray.500">Grafik verisi bulunamadı.</Text>
               </Box>
             )}
@@ -200,7 +243,9 @@ const ChannelDetailsModal = ({ isOpen, onClose, channel }) => {
           {/* Info Section */}
           {market.about && (
             <Box>
-              <Text fontWeight="bold" mb={2} fontSize="lg">Hakkında</Text>
+              <Text fontWeight="bold" mb={2} fontSize="lg">
+                Hakkında
+              </Text>
               <Text color="gray.600" noOfLines={isOpen ? undefined : 3}>
                 {market.about}
               </Text>
@@ -234,16 +279,19 @@ const ChannelDetailsModal = ({ isOpen, onClose, channel }) => {
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} size="lg" isCentered scrollBehavior="inside">
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      size="lg"
+      isCentered
+      scrollBehavior="inside">
       <ModalOverlay bg="blackAlpha.600" backdropFilter="blur(5px)" />
       <ModalContent borderRadius="xl">
         <ModalHeader borderBottomWidth="1px" borderColor="gray.100">
           Detaylar
         </ModalHeader>
         <ModalCloseButton />
-        <ModalBody py={6}>
-          {renderContent()}
-        </ModalBody>
+        <ModalBody py={6}>{renderContent()}</ModalBody>
       </ModalContent>
     </Modal>
   );

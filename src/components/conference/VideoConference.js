@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, {useState, useEffect, useRef, useCallback} from 'react';
 import {
   Box,
   VStack,
@@ -43,19 +43,19 @@ import {
 } from 'react-icons/fi';
 import io from 'socket.io-client';
 import Cookies from 'js-cookie';
-import { uploadFile } from '../../api/api';
-import { Device } from 'mediasoup-client';
+import {uploadFile} from '../../api/api';
+import {Device} from 'mediasoup-client';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001';
 const SOCKET_URL = API_URL.replace('/v1', '');
 
 // ICE Servers for WebRTC
 const DEFAULT_ICE_SERVERS = [
-  { urls: 'stun:stun.l.google.com:19302' },
-  { urls: 'stun:stun1.l.google.com:19302' },
-  { urls: 'stun:stun2.l.google.com:19302' },
-  { urls: 'stun:stun3.l.google.com:19302' },
-  { urls: 'stun:stun4.l.google.com:19302' },
+  {urls: 'stun:stun.l.google.com:19302'},
+  {urls: 'stun:stun1.l.google.com:19302'},
+  {urls: 'stun:stun2.l.google.com:19302'},
+  {urls: 'stun:stun3.l.google.com:19302'},
+  {urls: 'stun:stun4.l.google.com:19302'},
 ];
 
 // Adaptive bitrate configuration
@@ -67,10 +67,10 @@ const ADAPTIVE_BITRATE = {
     fair: 300,
   },
   bitrateProfiles: {
-    excellent: { video: 1500000, audio: 64000 },
-    good: { video: 1000000, audio: 48000 },
-    fair: { video: 500000, audio: 32000 },
-    poor: { video: 200000, audio: 24000 },
+    excellent: {video: 1500000, audio: 64000},
+    good: {video: 1000000, audio: 48000},
+    fair: {video: 500000, audio: 32000},
+    poor: {video: 200000, audio: 24000},
   },
 };
 
@@ -78,17 +78,33 @@ const ADAPTIVE_BITRATE = {
 const SFU_THRESHOLD = 4;
 
 // Video participant component
-const VideoParticipant = ({ participant, isLocal, isSpeaking, isFullscreen, onFullscreen }) => {
+const VideoParticipant = ({
+  participant,
+  isLocal,
+  isSpeaking,
+  isFullscreen,
+  onFullscreen,
+}) => {
   const videoRef = useRef(null);
 
   useEffect(() => {
     if (videoRef.current && participant.stream) {
-      console.log(`[VideoParticipant] Setting srcObject for ${participant.userName}, stream active: ${participant.stream.active}, tracks: ${participant.stream.getTracks().length}`);
-      participant.stream.getTracks().forEach(t => console.log(`[VideoParticipant] Track: ${t.kind}, enabled: ${t.enabled}, state: ${t.readyState}, id: ${t.id}`));
+      console.log(
+        `[VideoParticipant] Setting srcObject for ${participant.userName}, stream active: ${participant.stream.active}, tracks: ${participant.stream.getTracks().length}`,
+      );
+      participant.stream
+        .getTracks()
+        .forEach(t =>
+          console.log(
+            `[VideoParticipant] Track: ${t.kind}, enabled: ${t.enabled}, state: ${t.readyState}, id: ${t.id}`,
+          ),
+        );
       videoRef.current.srcObject = participant.stream;
-      
+
       // Auto-play checks
-      videoRef.current.play().catch(e => console.error('[VideoParticipant] Play error:', e));
+      videoRef.current
+        .play()
+        .catch(e => console.error('[VideoParticipant] Play error:', e));
     }
   }, [participant.stream, participant.videoEnabled]);
 
@@ -102,8 +118,7 @@ const VideoParticipant = ({ participant, isLocal, isSpeaking, isFullscreen, onFu
       borderColor={isSpeaking ? 'green.400' : 'gray.700'}
       transition="all 0.2s"
       minH="200px"
-      h="100%"
-    >
+      h="100%">
       {participant.stream && participant.videoEnabled ? (
         <video
           ref={videoRef}
@@ -126,8 +141,7 @@ const VideoParticipant = ({ participant, isLocal, isSpeaking, isFullscreen, onFu
           bottom="0"
           justifyContent="center"
           alignItems="center"
-          bg="gray.800"
-        >
+          bg="gray.800">
           <Avatar
             size="2xl"
             name={participant.userName}
@@ -144,18 +158,13 @@ const VideoParticipant = ({ participant, isLocal, isSpeaking, isFullscreen, onFu
         bg="blackAlpha.700"
         px="3"
         py="1"
-        borderRadius="md"
-      >
+        borderRadius="md">
         <HStack spacing="2">
           <Text color="white" fontSize="sm" fontWeight="500">
             {isLocal ? 'Sen' : participant.userName}
           </Text>
-          {!participant.audioEnabled && (
-            <FiMicOff color="#EF4444" size={14} />
-          )}
-          {participant.handRaised && (
-            <span style={{fontSize: '14px'}}>✋</span>
-          )}
+          {!participant.audioEnabled && <FiMicOff color="#EF4444" size={14} />}
+          {participant.handRaised && <span style={{fontSize: '14px'}}>✋</span>}
         </HStack>
       </Box>
 
@@ -170,7 +179,7 @@ const VideoParticipant = ({ participant, isLocal, isSpeaking, isFullscreen, onFu
         colorScheme="whiteAlpha"
         onClick={() => onFullscreen?.(participant.odaId)}
         opacity="0"
-        _groupHover={{ opacity: 1 }}
+        _groupHover={{opacity: 1}}
         aria-label="Tam ekran"
       />
     </Box>
@@ -178,14 +187,14 @@ const VideoParticipant = ({ participant, isLocal, isSpeaking, isFullscreen, onFu
 };
 
 // Chat panel component with advanced features
-const ChatPanel = ({ 
-  messages, 
-  onSend, 
+const ChatPanel = ({
+  messages,
+  onSend,
   onSendFile,
-  currentUserId, 
-  typingUsers = [], 
-  replyingTo, 
-  onReply, 
+  currentUserId,
+  typingUsers = [],
+  replyingTo,
+  onReply,
   onCancelReply,
   onStartTyping,
   onStopTyping,
@@ -199,9 +208,9 @@ const ChatPanel = ({
   const fileInputRef = useRef(null);
 
   const EMOJIS = ['👍', '❤️', '😂', '😮', '😢', '👏'];
-  
+
   // Handle file selection
-  const handleFileSelect = (e) => {
+  const handleFileSelect = e => {
     const file = e.target.files?.[0];
     if (file) {
       onSendFile?.(file);
@@ -211,16 +220,16 @@ const ChatPanel = ({
       fileInputRef.current.value = '';
     }
   };
-  
+
   // Format file size
-  const formatFileSize = (bytes) => {
+  const formatFileSize = bytes => {
     if (bytes < 1024) return bytes + ' B';
     if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
     return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
   };
-  
+
   // Get file icon based on type
-  const getFileIcon = (type) => {
+  const getFileIcon = type => {
     if (type?.startsWith('image/')) return '🖼️';
     if (type?.startsWith('video/')) return '🎥';
     if (type?.startsWith('audio/')) return '🎵';
@@ -231,10 +240,10 @@ const ChatPanel = ({
   };
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    messagesEndRef.current?.scrollIntoView({behavior: 'smooth'});
   }, [messages]);
 
-  const handleTextChange = (e) => {
+  const handleTextChange = e => {
     const text = e.target.value;
     setMessage(text);
 
@@ -260,7 +269,7 @@ const ChatPanel = ({
     }
   };
 
-  const handleKeyPress = (e) => {
+  const handleKeyPress = e => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       handleSend();
@@ -268,7 +277,7 @@ const ChatPanel = ({
   };
 
   // Render clickable links in text
-  const renderContent = (content) => {
+  const renderContent = content => {
     const urlRegex = /(https?:\/\/[^\s]+)/g;
     const parts = content.split(urlRegex);
     return parts.map((part, i) => {
@@ -281,8 +290,7 @@ const ChatPanel = ({
             target="_blank"
             color="cyan.300"
             textDecoration="underline"
-            _hover={{ color: 'cyan.200' }}
-          >
+            _hover={{color: 'cyan.200'}}>
             {part}
           </Text>
         );
@@ -294,8 +302,15 @@ const ChatPanel = ({
   return (
     <VStack h="100%" spacing="0">
       {/* Header */}
-      <HStack w="100%" p="3" borderBottom="1px solid" borderColor="gray.700" justify="space-between">
-        <Text color="white" fontWeight="bold" fontSize="sm">💬 Sohbet</Text>
+      <HStack
+        w="100%"
+        p="3"
+        borderBottom="1px solid"
+        borderColor="gray.700"
+        justify="space-between">
+        <Text color="white" fontWeight="bold" fontSize="sm">
+          💬 Sohbet
+        </Text>
         <Badge colorScheme="blue">{messages.length} mesaj</Badge>
       </HStack>
 
@@ -310,8 +325,7 @@ const ChatPanel = ({
               ml={isOwn ? 'auto' : '0'}
               mr={isOwn ? '0' : 'auto'}
               maxW="85%"
-              role="group"
-            >
+              role="group">
               {/* Reply preview */}
               {msg.replyTo && (
                 <Box
@@ -321,39 +335,44 @@ const ChatPanel = ({
                   borderLeft="3px solid"
                   borderLeftColor="blue.400"
                   mb="1"
-                  fontSize="xs"
-                >
-                  <Text color="blue.300" fontWeight="bold">{msg.replyTo.userName}</Text>
-                  <Text color="gray.300" noOfLines={1}>{msg.replyTo.content}</Text>
+                  fontSize="xs">
+                  <Text color="blue.300" fontWeight="bold">
+                    {msg.replyTo.userName}
+                  </Text>
+                  <Text color="gray.300" noOfLines={1}>
+                    {msg.replyTo.content}
+                  </Text>
                 </Box>
               )}
-              
+
               <Box
                 p="3"
                 bg={isOwn ? 'blue.500' : 'gray.700'}
                 borderRadius="lg"
                 borderBottomRightRadius={isOwn ? 'sm' : 'lg'}
                 borderBottomLeftRadius={isOwn ? 'lg' : 'sm'}
-                position="relative"
-              >
+                position="relative">
                 {!isOwn && (
                   <Text fontSize="xs" color="blue.300" fontWeight="bold" mb="1">
                     {msg.userName}
                   </Text>
                 )}
-                
+
                 {/* File message */}
                 {msg.type === 'file' && msg.file ? (
                   <Box>
-                    <HStack 
-                      p="2" 
-                      bg={isOwn ? 'blue.600' : 'gray.600'} 
+                    <HStack
+                      p="2"
+                      bg={isOwn ? 'blue.600' : 'gray.600'}
                       borderRadius="md"
-                      spacing="3"
-                    >
+                      spacing="3">
                       <Text fontSize="2xl">{getFileIcon(msg.file.type)}</Text>
                       <VStack align="start" spacing="0" flex="1" minW="0">
-                        <Text color="white" fontSize="sm" fontWeight="500" noOfLines={1}>
+                        <Text
+                          color="white"
+                          fontSize="sm"
+                          fontWeight="500"
+                          noOfLines={1}>
                           {msg.file.name}
                         </Text>
                         <Text color="gray.300" fontSize="xs">
@@ -373,7 +392,11 @@ const ChatPanel = ({
                       />
                     </HStack>
                     {msg.content && (
-                      <Text color="white" fontSize="sm" mt="2" whiteSpace="pre-wrap">
+                      <Text
+                        color="white"
+                        fontSize="sm"
+                        mt="2"
+                        whiteSpace="pre-wrap">
                         {renderContent(msg.content)}
                       </Text>
                     )}
@@ -383,23 +406,31 @@ const ChatPanel = ({
                     {renderContent(msg.content)}
                   </Text>
                 )}
-                <Text fontSize="xs" color={isOwn ? 'blue.100' : 'gray.400'} textAlign="right" mt="1">
-                  {msg.timestamp ? new Date(msg.timestamp).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }) : ''}
+                <Text
+                  fontSize="xs"
+                  color={isOwn ? 'blue.100' : 'gray.400'}
+                  textAlign="right"
+                  mt="1">
+                  {msg.timestamp
+                    ? new Date(msg.timestamp).toLocaleTimeString('tr-TR', {
+                        hour: '2-digit',
+                        minute: '2-digit',
+                      })
+                    : ''}
                 </Text>
 
                 {/* Reactions */}
                 {msg.reactions && Object.keys(msg.reactions).length > 0 && (
                   <HStack spacing="1" mt="1" flexWrap="wrap">
                     {Object.entries(msg.reactions).map(([emoji, users]) => (
-                      <Badge 
-                        key={emoji} 
-                        bg="gray.600" 
+                      <Badge
+                        key={emoji}
+                        bg="gray.600"
                         color="white"
                         borderRadius="full"
                         px="2"
                         py="1"
-                        fontSize="xs"
-                      >
+                        fontSize="xs">
                         {emoji} {users.length}
                       </Badge>
                     ))}
@@ -413,13 +444,12 @@ const ChatPanel = ({
                   right={isOwn ? 'auto' : '-2'}
                   left={isOwn ? '-2' : 'auto'}
                   opacity="0"
-                  _groupHover={{ opacity: 1 }}
+                  _groupHover={{opacity: 1}}
                   bg="gray.800"
                   borderRadius="md"
                   p="1"
                   spacing="1"
-                  boxShadow="lg"
-                >
+                  boxShadow="lg">
                   <Tooltip label="Cevapla">
                     <IconButton
                       icon={<FiCornerUpLeft />}
@@ -436,7 +466,11 @@ const ChatPanel = ({
                       size="xs"
                       variant="ghost"
                       colorScheme="whiteAlpha"
-                      onClick={() => setShowEmojiPicker(showEmojiPicker === msg.id ? null : msg.id)}
+                      onClick={() =>
+                        setShowEmojiPicker(
+                          showEmojiPicker === msg.id ? null : msg.id,
+                        )
+                      }
                       aria-label="Tepki"
                     />
                   </Tooltip>
@@ -452,9 +486,8 @@ const ChatPanel = ({
                     p="2"
                     borderRadius="full"
                     boxShadow="lg"
-                    zIndex="10"
-                  >
-                    {EMOJIS.map((emoji) => (
+                    zIndex="10">
+                    {EMOJIS.map(emoji => (
                       <Box
                         key={emoji}
                         cursor="pointer"
@@ -462,9 +495,8 @@ const ChatPanel = ({
                           onAddReaction?.(msg.id, emoji);
                           setShowEmojiPicker(null);
                         }}
-                        _hover={{ transform: 'scale(1.3)' }}
-                        transition="transform 0.1s"
-                      >
+                        _hover={{transform: 'scale(1.3)'}}
+                        transition="transform 0.1s">
                         {emoji}
                       </Box>
                     ))}
@@ -488,15 +520,14 @@ const ChatPanel = ({
 
       {/* Reply preview */}
       {replyingTo && (
-        <HStack 
-          w="100%" 
-          px="3" 
-          py="2" 
-          bg="gray.700" 
-          borderLeft="3px solid" 
+        <HStack
+          w="100%"
+          px="3"
+          py="2"
+          bg="gray.700"
+          borderLeft="3px solid"
           borderLeftColor="blue.400"
-          justify="space-between"
-        >
+          justify="space-between">
           <VStack align="start" spacing="0" flex="1">
             <Text fontSize="xs" color="blue.300" fontWeight="bold">
               {replyingTo.userName}'e cevap
@@ -523,10 +554,10 @@ const ChatPanel = ({
           type="file"
           ref={fileInputRef}
           onChange={handleFileSelect}
-          style={{ display: 'none' }}
+          style={{display: 'none'}}
           accept="*/*"
         />
-        
+
         {/* File upload button */}
         <Tooltip label="Dosya Ekle">
           <IconButton
@@ -538,7 +569,7 @@ const ChatPanel = ({
             aria-label="Dosya Ekle"
           />
         </Tooltip>
-        
+
         <Input
           value={message}
           onChange={handleTextChange}
@@ -547,7 +578,7 @@ const ChatPanel = ({
           bg="gray.700"
           border="none"
           color="white"
-          _placeholder={{ color: 'gray.400' }}
+          _placeholder={{color: 'gray.400'}}
           flex="1"
         />
         <IconButton
@@ -563,9 +594,9 @@ const ChatPanel = ({
 };
 
 // Main VideoConference component
-const VideoConference = ({ roomId, channelId, title, onClose }) => {
+const VideoConference = ({roomId, channelId, title, onClose}) => {
   const toast = useToast();
-  
+
   // State
   const [isConnected, setIsConnected] = useState(false);
   const [isConnecting, setIsConnecting] = useState(true);
@@ -588,26 +619,26 @@ const VideoConference = ({ roomId, channelId, title, onClose }) => {
   const [showCreatePoll, setShowCreatePoll] = useState(false);
   const [newPollQuestion, setNewPollQuestion] = useState('');
   const [newPollOptions, setNewPollOptions] = useState(['', '']);
-  
+
   // Conference mode and network quality
   const [conferenceMode, setConferenceMode] = useState('mesh'); // 'mesh' or 'sfu'
   const conferenceModeRef = useRef('mesh'); // Ref to access mode inside callbacks without re-running effect
   const [networkQuality, setNetworkQuality] = useState('good'); // 'excellent', 'good', 'fair', 'poor'
-  
+
   // Refs
   const socketRef = useRef(null);
   const peersRef = useRef(new Map());
   const iceCandidateQueueRef = useRef(new Map());
   const localStreamRef = useRef(null);
   const iceServersRef = useRef(DEFAULT_ICE_SERVERS);
-  
+
   // SFU Mode Refs
   const sfuDeviceRef = useRef(null);
   const sfuSendTransportRef = useRef(null);
   const sfuRecvTransportRef = useRef(null);
   const sfuProducersRef = useRef(new Map());
   const sfuConsumersRef = useRef(new Map());
-  
+
   // Adaptive bitrate refs
   const adaptiveTimerRef = useRef(null);
   const currentQualityRef = useRef('good');
@@ -633,107 +664,129 @@ const VideoConference = ({ roomId, channelId, title, onClose }) => {
   };
 
   // Create peer connection (or return existing one)
-  const createPeerConnection = useCallback((socketId, remoteUserId, remoteUserName, remoteUserAvatar) => {
-    // Check if we already have a peer connection for this socket
-    const existingPc = peersRef.current.get(socketId);
-    if (existingPc) {
-      console.log(`Reusing existing peer connection for ${socketId}`);
-      return existingPc;
-    }
-
-    console.log(`Creating new peer connection for ${socketId} (${remoteUserName})`);
-    
-    const pc = new RTCPeerConnection({
-      iceServers: iceServersRef.current,
-      iceCandidatePoolSize: 10,
-    });
-
-    // Add local tracks
-    if (localStreamRef.current) {
-      const tracks = localStreamRef.current.getTracks();
-      console.log(`Adding ${tracks.length} local tracks to peer connection`);
-      tracks.forEach(track => {
-        pc.addTrack(track, localStreamRef.current);
-      });
-    } else {
-      console.warn('WARNING: No local stream available when creating peer connection');
-    }
-
-    // ICE candidate handler
-    pc.onicecandidate = (event) => {
-      if (event.candidate && socketRef.current) {
-        socketRef.current.emit('ice-candidate', {
-          to: socketId,
-          candidate: event.candidate,
-        });
+  const createPeerConnection = useCallback(
+    (socketId, remoteUserId, remoteUserName, remoteUserAvatar) => {
+      // Check if we already have a peer connection for this socket
+      const existingPc = peersRef.current.get(socketId);
+      if (existingPc) {
+        console.log(`Reusing existing peer connection for ${socketId}`);
+        return existingPc;
       }
-    };
 
-    // Track handler
-    pc.ontrack = (event) => {
-      console.log(`ontrack fired for ${remoteUserId}, streams: ${event.streams.length}`);
-      const remoteStream = event.streams[0];
-      if (remoteStream) {
-        const tracks = remoteStream.getTracks();
-        console.log(`Remote stream received with ${tracks.length} tracks`);
-        
-        // Log each track's details
-        tracks.forEach((track, index) => {
-          console.log(`Track ${index}: kind=${track.kind}, enabled=${track.enabled}, muted=${track.muted}, readyState=${track.readyState}`);
-        });
-        
-        // Check if video track exists and is enabled
-        const videoTracks = remoteStream.getVideoTracks();
-        const audioTracks = remoteStream.getAudioTracks();
-        console.log(`Video tracks: ${videoTracks.length}, Audio tracks: ${audioTracks.length}`);
-        
-        if (videoTracks.length > 0) {
-          const vt = videoTracks[0];
-          console.log(`Video track state: enabled=${vt.enabled}, muted=${vt.muted}, readyState=${vt.readyState}`);
-        }
-        
-        setParticipants(prev => {
-          const existing = prev.find(p => p.odaId === remoteUserId);
-          if (existing) {
-            console.log(`Updating existing participant ${remoteUserId} with stream`);
-            return prev.map(p =>
-              p.odaId === remoteUserId ? { ...p, stream: remoteStream } : p
-            );
-          }
-          console.log(`Adding new participant ${remoteUserId} with stream`);
-          return [...prev, {
-            id: socketId,
-            odaId: remoteUserId,
-            userName: remoteUserName,
-            userAvatar: remoteUserAvatar,
-            stream: remoteStream,
-            audioEnabled: true,
-            videoEnabled: true,
-            handRaised: false,
-          }];
+      console.log(
+        `Creating new peer connection for ${socketId} (${remoteUserName})`,
+      );
+
+      const pc = new RTCPeerConnection({
+        iceServers: iceServersRef.current,
+        iceCandidatePoolSize: 10,
+      });
+
+      // Add local tracks
+      if (localStreamRef.current) {
+        const tracks = localStreamRef.current.getTracks();
+        console.log(`Adding ${tracks.length} local tracks to peer connection`);
+        tracks.forEach(track => {
+          pc.addTrack(track, localStreamRef.current);
         });
       } else {
-        console.warn('WARNING: ontrack fired but no stream available');
+        console.warn(
+          'WARNING: No local stream available when creating peer connection',
+        );
       }
-    };
 
-    pc.onconnectionstatechange = () => {
-      console.log(`Peer ${remoteUserId} connection state: ${pc.connectionState}`);
-      if (pc.connectionState === 'connected') {
-        console.log(`Successfully connected to peer ${remoteUserId}`);
-      } else if (pc.connectionState === 'failed') {
-        console.error(`Peer connection failed for ${remoteUserId}`);
-      }
-    };
+      // ICE candidate handler
+      pc.onicecandidate = event => {
+        if (event.candidate && socketRef.current) {
+          socketRef.current.emit('ice-candidate', {
+            to: socketId,
+            candidate: event.candidate,
+          });
+        }
+      };
 
-    // ICE connection state handler
-    pc.oniceconnectionstatechange = () => {
-      console.log(`ICE state for ${remoteUserId}: ${pc.iceConnectionState}`);
-    };
+      // Track handler
+      pc.ontrack = event => {
+        console.log(
+          `ontrack fired for ${remoteUserId}, streams: ${event.streams.length}`,
+        );
+        const remoteStream = event.streams[0];
+        if (remoteStream) {
+          const tracks = remoteStream.getTracks();
+          console.log(`Remote stream received with ${tracks.length} tracks`);
 
-    peersRef.current.set(socketId, pc);
-    return pc;
-  }, []);
+          // Log each track's details
+          tracks.forEach((track, index) => {
+            console.log(
+              `Track ${index}: kind=${track.kind}, enabled=${track.enabled}, muted=${track.muted}, readyState=${track.readyState}`,
+            );
+          });
+
+          // Check if video track exists and is enabled
+          const videoTracks = remoteStream.getVideoTracks();
+          const audioTracks = remoteStream.getAudioTracks();
+          console.log(
+            `Video tracks: ${videoTracks.length}, Audio tracks: ${audioTracks.length}`,
+          );
+
+          if (videoTracks.length > 0) {
+            const vt = videoTracks[0];
+            console.log(
+              `Video track state: enabled=${vt.enabled}, muted=${vt.muted}, readyState=${vt.readyState}`,
+            );
+          }
+
+          setParticipants(prev => {
+            const existing = prev.find(p => p.odaId === remoteUserId);
+            if (existing) {
+              console.log(
+                `Updating existing participant ${remoteUserId} with stream`,
+              );
+              return prev.map(p =>
+                p.odaId === remoteUserId ? {...p, stream: remoteStream} : p,
+              );
+            }
+            console.log(`Adding new participant ${remoteUserId} with stream`);
+            return [
+              ...prev,
+              {
+                id: socketId,
+                odaId: remoteUserId,
+                userName: remoteUserName,
+                userAvatar: remoteUserAvatar,
+                stream: remoteStream,
+                audioEnabled: true,
+                videoEnabled: true,
+                handRaised: false,
+              },
+            ];
+          });
+        } else {
+          console.warn('WARNING: ontrack fired but no stream available');
+        }
+      };
+
+      pc.onconnectionstatechange = () => {
+        console.log(
+          `Peer ${remoteUserId} connection state: ${pc.connectionState}`,
+        );
+        if (pc.connectionState === 'connected') {
+          console.log(`Successfully connected to peer ${remoteUserId}`);
+        } else if (pc.connectionState === 'failed') {
+          console.error(`Peer connection failed for ${remoteUserId}`);
+        }
+      };
+
+      // ICE connection state handler
+      pc.oniceconnectionstatechange = () => {
+        console.log(`ICE state for ${remoteUserId}: ${pc.iceConnectionState}`);
+      };
+
+      peersRef.current.set(socketId, pc);
+      return pc;
+    },
+    [],
+  );
 
   // Calculate quality level from network stats
   const calculateQualityLevel = (rtt, packetLoss) => {
@@ -757,8 +810,11 @@ const VideoConference = ({ roomId, channelId, title, onClose }) => {
     for (const pc of pcs) {
       try {
         const stats = await pc.getStats();
-        stats.forEach((report) => {
-          if (report.type === 'candidate-pair' && report.state === 'succeeded') {
+        stats.forEach(report => {
+          if (
+            report.type === 'candidate-pair' &&
+            report.state === 'succeeded'
+          ) {
             if (report.currentRoundTripTime) {
               totalRtt += report.currentRoundTripTime * 1000;
               validStats++;
@@ -766,7 +822,10 @@ const VideoConference = ({ roomId, channelId, title, onClose }) => {
           }
           if (report.type === 'inbound-rtp' && report.kind === 'video') {
             if (report.packetsLost !== undefined && report.packetsReceived) {
-              const loss = (report.packetsLost / (report.packetsReceived + report.packetsLost)) * 100;
+              const loss =
+                (report.packetsLost /
+                  (report.packetsReceived + report.packetsLost)) *
+                100;
               totalPacketLoss += loss;
             }
           }
@@ -785,11 +844,13 @@ const VideoConference = ({ roomId, channelId, title, onClose }) => {
   }, []);
 
   // Apply adaptive bitrate to all peer connections
-  const applyAdaptiveBitrate = useCallback(async (quality) => {
+  const applyAdaptiveBitrate = useCallback(async quality => {
     const profile = ADAPTIVE_BITRATE.bitrateProfiles[quality];
     const pcs = Array.from(peersRef.current.values());
 
-    console.log(`Applying adaptive bitrate: ${quality} (video: ${profile.video / 1000}kbps)`);
+    console.log(
+      `Applying adaptive bitrate: ${quality} (video: ${profile.video / 1000}kbps)`,
+    );
 
     for (const pc of pcs) {
       try {
@@ -842,7 +903,9 @@ const VideoConference = ({ roomId, channelId, title, onClose }) => {
         currentQualityRef.current = newQuality;
         setNetworkQuality(newQuality);
         await applyAdaptiveBitrate(newQuality);
-        console.log(`Network quality changed to ${newQuality} (RTT: ${stats.rtt.toFixed(0)}ms, Loss: ${stats.packetLoss.toFixed(1)}%)`);
+        console.log(
+          `Network quality changed to ${newQuality} (RTT: ${stats.rtt.toFixed(0)}ms, Loss: ${stats.packetLoss.toFixed(1)}%)`,
+        );
       }
     }, ADAPTIVE_BITRATE.checkInterval);
   }, [gatherNetworkStats, applyAdaptiveBitrate]);
@@ -865,10 +928,10 @@ const VideoConference = ({ roomId, channelId, title, onClose }) => {
 
     try {
       console.log('Initializing SFU mode...');
-      
+
       // Get RTP capabilities from server
       const rtpCapabilities = await new Promise((resolve, reject) => {
-        socketRef.current.emit('sfu:get-rtp-capabilities', (response) => {
+        socketRef.current.emit('sfu:get-rtp-capabilities', response => {
           if (response.error) reject(new Error(response.error));
           else resolve(response.rtpCapabilities);
         });
@@ -876,13 +939,13 @@ const VideoConference = ({ roomId, channelId, title, onClose }) => {
 
       // Load device
       const device = new Device();
-      await device.load({ routerRtpCapabilities: rtpCapabilities });
+      await device.load({routerRtpCapabilities: rtpCapabilities});
       sfuDeviceRef.current = device;
       console.log('SFU Device loaded');
 
       // Create send transport
       const sendTransportParams = await new Promise((resolve, reject) => {
-        socketRef.current.emit('sfu:create-send-transport', (response) => {
+        socketRef.current.emit('sfu:create-send-transport', response => {
           if (response.error) reject(new Error(response.error));
           else resolve(response.transport);
         });
@@ -895,42 +958,56 @@ const VideoConference = ({ roomId, channelId, title, onClose }) => {
         dtlsParameters: sendTransportParams.dtlsParameters,
       });
 
-      sendTransport.on('connect', async ({ dtlsParameters }, callback, errback) => {
-        try {
-          socketRef.current.emit('sfu:connect-transport', {
-            transportId: sendTransport.id,
-            dtlsParameters,
-          }, (res) => {
-            if (res.error) errback(new Error(res.error));
-            else callback();
-          });
-        } catch (err) {
-          errback(err);
-        }
-      });
+      sendTransport.on(
+        'connect',
+        async ({dtlsParameters}, callback, errback) => {
+          try {
+            socketRef.current.emit(
+              'sfu:connect-transport',
+              {
+                transportId: sendTransport.id,
+                dtlsParameters,
+              },
+              res => {
+                if (res.error) errback(new Error(res.error));
+                else callback();
+              },
+            );
+          } catch (err) {
+            errback(err);
+          }
+        },
+      );
 
-      sendTransport.on('produce', async ({ kind, rtpParameters, appData }, callback, errback) => {
-        try {
-          socketRef.current.emit('sfu:produce', {
-            transportId: sendTransport.id,
-            kind,
-            rtpParameters,
-            appData,
-          }, (res) => {
-            if (res.error) errback(new Error(res.error));
-            else callback({ id: res.producerId });
-          });
-        } catch (err) {
-          errback(err);
-        }
-      });
+      sendTransport.on(
+        'produce',
+        async ({kind, rtpParameters, appData}, callback, errback) => {
+          try {
+            socketRef.current.emit(
+              'sfu:produce',
+              {
+                transportId: sendTransport.id,
+                kind,
+                rtpParameters,
+                appData,
+              },
+              res => {
+                if (res.error) errback(new Error(res.error));
+                else callback({id: res.producerId});
+              },
+            );
+          } catch (err) {
+            errback(err);
+          }
+        },
+      );
 
       sfuSendTransportRef.current = sendTransport;
       console.log('SFU Send transport created');
 
       // Create recv transport
       const recvTransportParams = await new Promise((resolve, reject) => {
-        socketRef.current.emit('sfu:create-recv-transport', (response) => {
+        socketRef.current.emit('sfu:create-recv-transport', response => {
           if (response.error) reject(new Error(response.error));
           else resolve(response.transport);
         });
@@ -943,19 +1020,26 @@ const VideoConference = ({ roomId, channelId, title, onClose }) => {
         dtlsParameters: recvTransportParams.dtlsParameters,
       });
 
-      recvTransport.on('connect', async ({ dtlsParameters }, callback, errback) => {
-        try {
-          socketRef.current.emit('sfu:connect-transport', {
-            transportId: recvTransport.id,
-            dtlsParameters,
-          }, (res) => {
-            if (res.error) errback(new Error(res.error));
-            else callback();
-          });
-        } catch (err) {
-          errback(err);
-        }
-      });
+      recvTransport.on(
+        'connect',
+        async ({dtlsParameters}, callback, errback) => {
+          try {
+            socketRef.current.emit(
+              'sfu:connect-transport',
+              {
+                transportId: recvTransport.id,
+                dtlsParameters,
+              },
+              res => {
+                if (res.error) errback(new Error(res.error));
+                else callback();
+              },
+            );
+          } catch (err) {
+            errback(err);
+          }
+        },
+      );
 
       sfuRecvTransportRef.current = recvTransport;
       console.log('SFU Recv transport created');
@@ -966,13 +1050,16 @@ const VideoConference = ({ roomId, channelId, title, onClose }) => {
         try {
           const producer = await sendTransport.produce({
             track,
-            encodings: track.kind === 'video' ? [
-              { maxBitrate: 150000, scaleResolutionDownBy: 4 },
-              { maxBitrate: 800000, scaleResolutionDownBy: 1 },
-            ] : undefined,
+            encodings:
+              track.kind === 'video'
+                ? [
+                    {maxBitrate: 150000, scaleResolutionDownBy: 4},
+                    {maxBitrate: 800000, scaleResolutionDownBy: 1},
+                  ]
+                : undefined,
             codecOptions: {
-              videoGoogleStartBitrate: 1000
-            }
+              videoGoogleStartBitrate: 1000,
+            },
           });
           sfuProducersRef.current.set(producer.id, producer);
           console.log(`SFU Produced ${track.kind} track: ${producer.id}`);
@@ -982,14 +1069,18 @@ const VideoConference = ({ roomId, channelId, title, onClose }) => {
       }
 
       // Get existing producers and consume them
-      socketRef.current.emit('sfu:get-producers', async (response) => {
+      socketRef.current.emit('sfu:get-producers', async response => {
         if (response.error) {
           console.error('Failed to get producers:', response.error);
           return;
         }
 
         for (const producer of response.producers) {
-          await consumeProducer(producer.producerId, producer.producerOdaId, producer.kind);
+          await consumeProducer(
+            producer.producerId,
+            producer.producerOdaId,
+            producer.kind,
+          );
         }
       });
 
@@ -1001,89 +1092,117 @@ const VideoConference = ({ roomId, channelId, title, onClose }) => {
   }, []);
 
   // Consume a producer (receive remote stream)
-  const consumeProducer = useCallback(async (producerId, producerOdaId, kind) => {
-    if (!socketRef.current || !sfuDeviceRef.current || !sfuRecvTransportRef.current) {
-      console.error('Cannot consume: missing dependencies');
-      return;
-    }
+  const consumeProducer = useCallback(
+    async (producerId, producerOdaId, kind) => {
+      if (
+        !socketRef.current ||
+        !sfuDeviceRef.current ||
+        !sfuRecvTransportRef.current
+      ) {
+        console.error('Cannot consume: missing dependencies');
+        return;
+      }
 
-    try {
-      const consumerData = await new Promise((resolve, reject) => {
-        socketRef.current.emit('sfu:consume', {
-          producerId,
-          producerOdaId,
-          rtpCapabilities: sfuDeviceRef.current.rtpCapabilities,
-        }, (response) => {
-          if (response.error) reject(new Error(response.error));
-          else resolve(response);
-        });
-      });
-
-      const consumer = await sfuRecvTransportRef.current.consume({
-        id: consumerData.consumerId,
-        producerId: consumerData.producerId,
-        kind: consumerData.kind,
-        rtpParameters: consumerData.rtpParameters,
-      });
-
-      sfuConsumersRef.current.set(consumer.id, consumer);
-
-      // Create a MediaStream from the track
-      const stream = new MediaStream([consumer.track]);
-      
-      console.log(`[SFU] Stream created for ${producerOdaId}, tracks: ${stream.getTracks().length}`);
-      stream.getTracks().forEach(t => console.log(`[SFU] Track: ${t.kind}, enabled: ${t.enabled}, state: ${t.readyState}, id: ${t.id}`));
-
-      // Update participant with new stream
-      setParticipants(prev => {
-        const existing = prev.find(p => p.odaId === producerOdaId);
-        if (existing) {
-          return prev.map(p =>
-            p.odaId === producerOdaId ? { ...p, stream } : p
+      try {
+        const consumerData = await new Promise((resolve, reject) => {
+          socketRef.current.emit(
+            'sfu:consume',
+            {
+              producerId,
+              producerOdaId,
+              rtpCapabilities: sfuDeviceRef.current.rtpCapabilities,
+            },
+            response => {
+              if (response.error) reject(new Error(response.error));
+              else resolve(response);
+            },
           );
-        }
-        return [...prev, {
-          id: `sfu-${producerOdaId}`,
-          odaId: producerOdaId,
-          userName: producerOdaId,
-          stream,
-          audioEnabled: kind === 'audio',
-          videoEnabled: kind === 'video',
-          handRaised: false,
-        }];
-      });
+        });
 
-      // Resume consumer
-      socketRef.current.emit('sfu:resume-consumer', { consumerId: consumer.id });
+        const consumer = await sfuRecvTransportRef.current.consume({
+          id: consumerData.consumerId,
+          producerId: consumerData.producerId,
+          kind: consumerData.kind,
+          rtpParameters: consumerData.rtpParameters,
+        });
 
-      console.log(`SFU Consuming ${kind} from ${producerOdaId}`);
-    } catch (err) {
-      console.error(`Failed to consume ${kind} from ${producerOdaId}:`, err);
-    }
-  }, []);
+        sfuConsumersRef.current.set(consumer.id, consumer);
+
+        // Create a MediaStream from the track
+        const stream = new MediaStream([consumer.track]);
+
+        console.log(
+          `[SFU] Stream created for ${producerOdaId}, tracks: ${stream.getTracks().length}`,
+        );
+        stream
+          .getTracks()
+          .forEach(t =>
+            console.log(
+              `[SFU] Track: ${t.kind}, enabled: ${t.enabled}, state: ${t.readyState}, id: ${t.id}`,
+            ),
+          );
+
+        // Update participant with new stream
+        setParticipants(prev => {
+          const existing = prev.find(p => p.odaId === producerOdaId);
+          if (existing) {
+            return prev.map(p =>
+              p.odaId === producerOdaId ? {...p, stream} : p,
+            );
+          }
+          return [
+            ...prev,
+            {
+              id: `sfu-${producerOdaId}`,
+              odaId: producerOdaId,
+              userName: producerOdaId,
+              stream,
+              audioEnabled: kind === 'audio',
+              videoEnabled: kind === 'video',
+              handRaised: false,
+            },
+          ];
+        });
+
+        // Resume consumer
+        socketRef.current.emit('sfu:resume-consumer', {
+          consumerId: consumer.id,
+        });
+
+        console.log(`SFU Consuming ${kind} from ${producerOdaId}`);
+      } catch (err) {
+        console.error(`Failed to consume ${kind} from ${producerOdaId}:`, err);
+      }
+    },
+    [],
+  );
 
   // Setup SFU event listeners
   const setupSfuEventListeners = useCallback(() => {
     if (!socketRef.current) return;
 
-    socketRef.current.on('sfu:new-producer', async (data) => {
+    socketRef.current.on('sfu:new-producer', async data => {
       console.log('SFU New producer:', data);
       await consumeProducer(data.producerId, data.producerOdaId, data.kind);
     });
 
-    socketRef.current.on('sfu:producer-paused', (data) => {
+    socketRef.current.on('sfu:producer-paused', data => {
       setParticipants(prev =>
-        prev.map(p => p.odaId === data.producerOdaId ? { ...p, audioEnabled: false } : p)
+        prev.map(p =>
+          p.odaId === data.producerOdaId ? {...p, audioEnabled: false} : p,
+        ),
       );
     });
 
-    socketRef.current.on('sfu:producer-resumed', (data) => {
+    socketRef.current.on('sfu:producer-resumed', data => {
       setParticipants(prev =>
-        prev.map(p => p.odaId === data.producerOdaId ? { ...p, audioEnabled: true } : p)
+        prev.map(p =>
+          p.odaId === data.producerOdaId ? {...p, audioEnabled: true} : p,
+        ),
       );
     });
 
-    socketRef.current.on('sfu:producer-closed', (data) => {
+    socketRef.current.on('sfu:producer-closed', data => {
       for (const [id, consumer] of sfuConsumersRef.current) {
         if (consumer.producerId === data.producerId) {
           consumer.close();
@@ -1142,9 +1261,9 @@ const VideoConference = ({ roomId, channelId, title, onClose }) => {
             sampleRate: 48000,
           },
           video: {
-            width: { ideal: 1280, max: 1920 },
-            height: { ideal: 720, max: 1080 },
-            frameRate: { ideal: 30, max: 30 },
+            width: {ideal: 1280, max: 1920},
+            height: {ideal: 720, max: 1080},
+            frameRate: {ideal: 30, max: 30},
             facingMode: 'user',
           },
         });
@@ -1166,9 +1285,9 @@ const VideoConference = ({ roomId, channelId, title, onClose }) => {
 
         console.log('Connecting to:', `${SOCKET_URL}/conference`);
         console.log('Token:', token ? token.substring(0, 20) + '...' : 'null');
-        
+
         socketRef.current = io(`${SOCKET_URL}/conference`, {
-          auth: { token },
+          auth: {token},
           transports: ['websocket'], // Force websocket to prevent server overload
           reconnection: true,
           reconnectionAttempts: 10,
@@ -1194,45 +1313,46 @@ const VideoConference = ({ roomId, channelId, title, onClose }) => {
           console.log('Connected to conference server');
           clearTimeout(connectionTimeout);
           console.log('Joining room:', roomId);
-          socketRef.current.emit('join-room', { roomId });
+          socketRef.current.emit('join-room', {roomId});
         });
 
         // Error from server
-        socketRef.current.on('error', (data) => {
+        socketRef.current.on('error', data => {
           console.error('Server error:', data);
           setIsConnecting(false);
-          
+
           let errorMessage = data.message || 'Konferansa katılınamadı';
           if (data.message === 'Conference not found') {
-            errorMessage = 'Bu konferans artık aktif değil. Yeni bir konferans başlatın.';
+            errorMessage =
+              'Bu konferans artık aktif değil. Yeni bir konferans başlatın.';
           }
-          
+
           toast({
             title: 'Konferans Hatası',
             description: errorMessage,
             status: 'warning',
             duration: 5000,
           });
-          
+
           // Close the conference screen if conference not found
           if (data.message === 'Conference not found') {
             setTimeout(() => onClose?.(), 2000);
           }
         });
 
-        socketRef.current.on('room-joined', async (data) => {
+        socketRef.current.on('room-joined', async data => {
           console.log('Joined room:', data);
           iceServersRef.current = data.iceServers || DEFAULT_ICE_SERVERS;
           setIsConnected(true);
           setIsConnecting(false);
-          
+
           // Set conference mode (mesh or sfu)
           // Force SFU mode for better stability across platforms
           const mode = 'sfu'; // data.mode || 'mesh';
           setConferenceMode(mode);
           conferenceModeRef.current = mode;
           console.log(`Conference mode: ${mode} (Forced SFU)`);
-          
+
           // Start adaptive bitrate monitoring
           setTimeout(() => {
             startAdaptiveMonitoring();
@@ -1247,18 +1367,18 @@ const VideoConference = ({ roomId, channelId, title, onClose }) => {
             // Mesh Mode: Create peer connections
             for (const participant of data.participants) {
               console.log('Found existing participant:', participant.userName);
-              
+
               const pc = createPeerConnection(
                 participant.socketId,
                 participant.userId,
                 participant.userName,
-                participant.userAvatar
+                participant.userAvatar,
               );
 
               try {
                 const offer = await pc.createOffer();
                 await pc.setLocalDescription(offer);
-                
+
                 socketRef.current.emit('offer', {
                   to: participant.socketId,
                   offer,
@@ -1266,62 +1386,74 @@ const VideoConference = ({ roomId, channelId, title, onClose }) => {
                   userName: currentUser?.name,
                   userAvatar: currentUser?.thumbnail,
                 });
-                console.log('Sent offer to existing participant:', participant.userName);
+                console.log(
+                  'Sent offer to existing participant:',
+                  participant.userName,
+                );
               } catch (err) {
-                console.error('Error sending offer to existing participant:', err);
+                console.error(
+                  'Error sending offer to existing participant:',
+                  err,
+                );
               }
 
               setParticipants(prev => {
                 if (prev.some(p => p.odaId === participant.userId)) return prev;
-                return [...prev, {
-                  id: participant.socketId,
-                  odaId: participant.userId,
-                  userName: participant.userName,
-                  userAvatar: participant.userAvatar,
-                  audioEnabled: true,
-                  videoEnabled: true,
-                  handRaised: false,
-                }];
+                return [
+                  ...prev,
+                  {
+                    id: participant.socketId,
+                    odaId: participant.userId,
+                    userName: participant.userName,
+                    userAvatar: participant.userAvatar,
+                    audioEnabled: true,
+                    videoEnabled: true,
+                    handRaised: false,
+                  },
+                ];
               });
             }
           }
         });
-        
+
         // Handle mode switch (mesh to sfu)
-        socketRef.current.on('mode-switch', async (data) => {
+        socketRef.current.on('mode-switch', async data => {
           console.log('Mode switch requested:', data.mode);
           if (data.mode === 'sfu' && conferenceModeRef.current !== 'sfu') {
             setConferenceMode('sfu');
             conferenceModeRef.current = 'sfu';
-            
+
             // Close all P2P connections
             peersRef.current.forEach(pc => pc.close());
             peersRef.current.clear();
-            
+
             // Initialize SFU mode
             await initializeSfuMode();
             setupSfuEventListeners();
           }
         });
 
-        socketRef.current.on('user-joined', async (data) => {
+        socketRef.current.on('user-joined', async data => {
           console.log('User joined:', data);
-          
+
           // We don't create an offer here to avoid signaling glare.
           // The new user (who just joined and received room-joined) will initiate the connection.
           // We just update the UI to show the new user.
 
           setParticipants(prev => {
             if (prev.some(p => p.odaId === data.userId)) return prev;
-            return [...prev, {
-              id: data.socketId,
-              odaId: data.userId,
-              userName: data.userName,
-              userAvatar: data.userAvatar,
-              audioEnabled: true,
-              videoEnabled: true,
-              handRaised: false,
-            }];
+            return [
+              ...prev,
+              {
+                id: data.socketId,
+                odaId: data.userId,
+                userName: data.userName,
+                userAvatar: data.userAvatar,
+                audioEnabled: true,
+                videoEnabled: true,
+                handRaised: false,
+              },
+            ];
           });
 
           toast({
@@ -1331,31 +1463,40 @@ const VideoConference = ({ roomId, channelId, title, onClose }) => {
           });
         });
 
-        socketRef.current.on('offer', async (data) => {
+        socketRef.current.on('offer', async data => {
           if (conferenceModeRef.current === 'sfu') return;
           try {
             let pc = peersRef.current.get(data.from);
-            
+
             // If we don't have a peer connection, create one
             if (!pc) {
-              pc = createPeerConnection(data.from, data.userId, data.userName || '', data.userAvatar || '');
+              pc = createPeerConnection(
+                data.from,
+                data.userId,
+                data.userName || '',
+                data.userAvatar || '',
+              );
             }
-            
+
             // Handle glare - if we're in have-local-offer state, rollback and accept the incoming offer
             // "Polite peer" pattern - we're polite, so we rollback our offer
             if (pc.signalingState === 'have-local-offer') {
               console.log('Glare detected, rolling back local offer');
-              await pc.setLocalDescription({ type: 'rollback' });
+              await pc.setLocalDescription({type: 'rollback'});
             }
-            
+
             // Now we should be in stable state
             if (pc.signalingState === 'stable') {
-              await pc.setRemoteDescription(new RTCSessionDescription(data.offer));
-              
+              await pc.setRemoteDescription(
+                new RTCSessionDescription(data.offer),
+              );
+
               // Process queued ICE candidates
               const queue = iceCandidateQueueRef.current.get(data.from);
               if (queue && queue.length > 0) {
-                console.log(`Processing ${queue.length} queued ICE candidates for ${data.from}`);
+                console.log(
+                  `Processing ${queue.length} queued ICE candidates for ${data.from}`,
+                );
                 for (const candidate of queue) {
                   await pc.addIceCandidate(new RTCIceCandidate(candidate));
                 }
@@ -1370,33 +1511,43 @@ const VideoConference = ({ roomId, channelId, title, onClose }) => {
                 answer,
               });
             } else {
-              console.log('Cannot process offer, signaling state:', pc.signalingState);
+              console.log(
+                'Cannot process offer, signaling state:',
+                pc.signalingState,
+              );
             }
           } catch (err) {
             console.error('Error handling offer:', err);
           }
         });
 
-        socketRef.current.on('answer', async (data) => {
+        socketRef.current.on('answer', async data => {
           if (conferenceModeRef.current === 'sfu') return;
           try {
             const pc = peersRef.current.get(data.from);
             if (pc) {
               // Only set remote description if we're expecting an answer
               if (pc.signalingState === 'have-local-offer') {
-                await pc.setRemoteDescription(new RTCSessionDescription(data.answer));
-                
+                await pc.setRemoteDescription(
+                  new RTCSessionDescription(data.answer),
+                );
+
                 // Process queued ICE candidates
                 const queue = iceCandidateQueueRef.current.get(data.from);
                 if (queue && queue.length > 0) {
-                  console.log(`Processing ${queue.length} queued ICE candidates for ${data.from}`);
+                  console.log(
+                    `Processing ${queue.length} queued ICE candidates for ${data.from}`,
+                  );
                   for (const candidate of queue) {
                     await pc.addIceCandidate(new RTCIceCandidate(candidate));
                   }
                   iceCandidateQueueRef.current.delete(data.from);
                 }
               } else {
-                console.log('Unexpected answer, signaling state:', pc.signalingState);
+                console.log(
+                  'Unexpected answer, signaling state:',
+                  pc.signalingState,
+                );
               }
             }
           } catch (err) {
@@ -1404,7 +1555,7 @@ const VideoConference = ({ roomId, channelId, title, onClose }) => {
           }
         });
 
-        socketRef.current.on('ice-candidate', async (data) => {
+        socketRef.current.on('ice-candidate', async data => {
           if (conferenceModeRef.current === 'sfu') return;
           try {
             const pc = peersRef.current.get(data.from);
@@ -1413,7 +1564,9 @@ const VideoConference = ({ roomId, channelId, title, onClose }) => {
                 await pc.addIceCandidate(new RTCIceCandidate(data.candidate));
               } else {
                 // Queue candidate if remote description is not set yet
-                console.log(`Queuing ICE candidate for ${data.from} (no remote description)`);
+                console.log(
+                  `Queuing ICE candidate for ${data.from} (no remote description)`,
+                );
                 const queue = iceCandidateQueueRef.current.get(data.from) || [];
                 queue.push(data.candidate);
                 iceCandidateQueueRef.current.set(data.from, queue);
@@ -1424,7 +1577,7 @@ const VideoConference = ({ roomId, channelId, title, onClose }) => {
           }
         });
 
-        socketRef.current.on('user-left', (data) => {
+        socketRef.current.on('user-left', data => {
           console.log('User left:', data);
           peersRef.current.get(data.socketId)?.close();
           peersRef.current.delete(data.socketId);
@@ -1438,38 +1591,53 @@ const VideoConference = ({ roomId, channelId, title, onClose }) => {
         });
 
         // Media controls
-        socketRef.current.on('user-audio-toggle', (data) => {
+        socketRef.current.on('user-audio-toggle', data => {
           setParticipants(prev =>
-            prev.map(p => p.odaId === data.userId ? { ...p, audioEnabled: data.enabled } : p)
+            prev.map(p =>
+              p.odaId === data.userId ? {...p, audioEnabled: data.enabled} : p,
+            ),
           );
         });
 
-        socketRef.current.on('user-video-toggle', (data) => {
+        socketRef.current.on('user-video-toggle', data => {
           setParticipants(prev =>
-            prev.map(p => p.odaId === data.userId ? { ...p, videoEnabled: data.enabled } : p)
+            prev.map(p =>
+              p.odaId === data.userId ? {...p, videoEnabled: data.enabled} : p,
+            ),
           );
         });
 
         // Hand raise
-        socketRef.current.on('hand-raise-update', (data) => {
+        socketRef.current.on('hand-raise-update', data => {
           console.log('hand-raise-update received:', data);
           setParticipants(prev => {
-            console.log('Current participants:', prev.map(p => ({ odaId: p.odaId, userName: p.userName })));
-            const updated = prev.map(p => p.odaId === data.userId ? { ...p, handRaised: data.raised } : p);
+            console.log(
+              'Current participants:',
+              prev.map(p => ({odaId: p.odaId, userName: p.userName})),
+            );
+            const updated = prev.map(p =>
+              p.odaId === data.userId ? {...p, handRaised: data.raised} : p,
+            );
             const found = prev.find(p => p.odaId === data.userId);
-            console.log('Found participant to update:', found ? found.userName : 'NOT FOUND');
+            console.log(
+              'Found participant to update:',
+              found ? found.userName : 'NOT FOUND',
+            );
             return updated;
           });
         });
 
         // User reactions (floating emojis)
-        socketRef.current.on('user-reaction', (data) => {
+        socketRef.current.on('user-reaction', data => {
           const reactionId = Date.now() + Math.random();
-          setFloatingReactions(prev => [...prev, {
-            id: reactionId,
-            emoji: data.emoji,
-            userName: data.userName,
-          }]);
+          setFloatingReactions(prev => [
+            ...prev,
+            {
+              id: reactionId,
+              emoji: data.emoji,
+              userName: data.userName,
+            },
+          ]);
           // Remove after animation
           setTimeout(() => {
             setFloatingReactions(prev => prev.filter(r => r.id !== reactionId));
@@ -1477,7 +1645,7 @@ const VideoConference = ({ roomId, channelId, title, onClose }) => {
         });
 
         // Poll events
-        socketRef.current.on('poll-created', (data) => {
+        socketRef.current.on('poll-created', data => {
           console.log('Poll created:', data);
           setPolls(prev => {
             if (prev.some(p => p.id === data.poll.id)) return prev;
@@ -1491,62 +1659,80 @@ const VideoConference = ({ roomId, channelId, title, onClose }) => {
           });
         });
 
-        socketRef.current.on('poll-vote', (data) => {
-          setPolls(prev => prev.map(poll => {
-            if (poll.id !== data.pollId) return poll;
-            const existingVote = poll.votes?.find(v => v.odaId === data.odaId);
-            if (existingVote && !poll.allowMultiple) return poll;
-            const newVotes = [...(poll.votes || []), { odaId: data.odaId, optionIndex: data.optionIndex }];
-            const newOptions = poll.options.map((opt, idx) => 
-              idx === data.optionIndex ? { ...opt, voteCount: (opt.voteCount || 0) + 1 } : opt
-            );
-            return { ...poll, votes: newVotes, options: newOptions, totalVotes: newVotes.length };
-          }));
+        socketRef.current.on('poll-vote', data => {
+          setPolls(prev =>
+            prev.map(poll => {
+              if (poll.id !== data.pollId) return poll;
+              const existingVote = poll.votes?.find(
+                v => v.odaId === data.odaId,
+              );
+              if (existingVote && !poll.allowMultiple) return poll;
+              const newVotes = [
+                ...(poll.votes || []),
+                {odaId: data.odaId, optionIndex: data.optionIndex},
+              ];
+              const newOptions = poll.options.map((opt, idx) =>
+                idx === data.optionIndex
+                  ? {...opt, voteCount: (opt.voteCount || 0) + 1}
+                  : opt,
+              );
+              return {
+                ...poll,
+                votes: newVotes,
+                options: newOptions,
+                totalVotes: newVotes.length,
+              };
+            }),
+          );
         });
 
-        socketRef.current.on('poll-closed', (data) => {
-          setPolls(prev => prev.map(poll => 
-            poll.id === data.pollId ? { ...poll, isActive: false } : poll
-          ));
+        socketRef.current.on('poll-closed', data => {
+          setPolls(prev =>
+            prev.map(poll =>
+              poll.id === data.pollId ? {...poll, isActive: false} : poll,
+            ),
+          );
         });
 
         // Chat messages
-        socketRef.current.on('chat-message', (data) => {
-          setMessages(prev => [...prev, { ...data, id: data.id || Date.now() }]);
+        socketRef.current.on('chat-message', data => {
+          setMessages(prev => [...prev, {...data, id: data.id || Date.now()}]);
         });
 
         // Typing indicators
-        socketRef.current.on('user-typing', (data) => {
+        socketRef.current.on('user-typing', data => {
           setTypingUsers(prev => {
             if (!prev.find(u => u.odaId === data.userId)) {
-              return [...prev, { odaId: data.userId, userName: data.userName }];
+              return [...prev, {odaId: data.userId, userName: data.userName}];
             }
             return prev;
           });
         });
 
-        socketRef.current.on('user-stop-typing', (data) => {
+        socketRef.current.on('user-stop-typing', data => {
           setTypingUsers(prev => prev.filter(u => u.odaId !== data.userId));
         });
 
         // Message reactions
-        socketRef.current.on('message-reaction', (data) => {
-          setMessages(prev => prev.map(msg => {
-            if (msg.id === data.messageId) {
-              const reactions = msg.reactions || {};
-              const emoji = data.emoji;
-              const userId = data.userId;
-              if (!reactions[emoji]) reactions[emoji] = [];
-              if (!reactions[emoji].includes(userId)) {
-                reactions[emoji].push(userId);
+        socketRef.current.on('message-reaction', data => {
+          setMessages(prev =>
+            prev.map(msg => {
+              if (msg.id === data.messageId) {
+                const reactions = msg.reactions || {};
+                const emoji = data.emoji;
+                const userId = data.userId;
+                if (!reactions[emoji]) reactions[emoji] = [];
+                if (!reactions[emoji].includes(userId)) {
+                  reactions[emoji].push(userId);
+                }
+                return {...msg, reactions};
               }
-              return { ...msg, reactions };
-            }
-            return msg;
-          }));
+              return msg;
+            }),
+          );
         });
 
-        socketRef.current.on('connect_error', (err) => {
+        socketRef.current.on('connect_error', err => {
           console.error('Socket connection error:', err.message, err);
           setIsConnecting(false);
           toast({
@@ -1561,11 +1747,10 @@ const VideoConference = ({ roomId, channelId, title, onClose }) => {
           console.log('Disconnected from conference');
           setIsConnected(false);
         });
-
       } catch (err) {
         console.error('Conference init error:', err);
         setIsConnecting(false);
-        
+
         if (err.name === 'NotAllowedError') {
           toast({
             title: 'İzin gerekli',
@@ -1589,24 +1774,24 @@ const VideoConference = ({ roomId, channelId, title, onClose }) => {
       // Don't cleanup in StrictMode's first unmount
       // Only cleanup when actually leaving
       console.log('Conference cleanup called');
-      
+
       // Stop adaptive monitoring
       if (adaptiveTimerRef.current) {
         clearInterval(adaptiveTimerRef.current);
         adaptiveTimerRef.current = null;
       }
-      
+
       // Cleanup SFU resources
       for (const producer of sfuProducersRef.current.values()) {
         producer.close();
       }
       sfuProducersRef.current.clear();
-      
+
       for (const consumer of sfuConsumersRef.current.values()) {
         consumer.close();
       }
       sfuConsumersRef.current.clear();
-      
+
       if (sfuSendTransportRef.current) {
         sfuSendTransportRef.current.close();
         sfuSendTransportRef.current = null;
@@ -1616,17 +1801,17 @@ const VideoConference = ({ roomId, channelId, title, onClose }) => {
         sfuRecvTransportRef.current = null;
       }
       sfuDeviceRef.current = null;
-      
+
       // Cleanup local stream
       if (localStreamRef.current) {
         localStreamRef.current.getTracks().forEach(track => track.stop());
         localStreamRef.current = null;
       }
-      
+
       // Cleanup peer connections (mesh mode)
       peersRef.current.forEach(pc => pc.close());
       peersRef.current.clear();
-      
+
       if (socketRef.current) {
         socketRef.current.emit('leave-room');
         socketRef.current.disconnect();
@@ -1635,7 +1820,15 @@ const VideoConference = ({ roomId, channelId, title, onClose }) => {
       // Reset initialization flag
       initializedRef.current = false;
     };
-  }, [roomId, createPeerConnection, toast, onClose, startAdaptiveMonitoring, initializeSfuMode, setupSfuEventListeners]);
+  }, [
+    roomId,
+    createPeerConnection,
+    toast,
+    onClose,
+    startAdaptiveMonitoring,
+    initializeSfuMode,
+    setupSfuEventListeners,
+  ]);
 
   // Toggle audio
   const toggleAudio = () => {
@@ -1644,7 +1837,7 @@ const VideoConference = ({ roomId, channelId, title, onClose }) => {
       if (audioTrack) {
         audioTrack.enabled = !audioTrack.enabled;
         setAudioEnabled(audioTrack.enabled);
-        socketRef.current?.emit('toggle-audio', { enabled: audioTrack.enabled });
+        socketRef.current?.emit('toggle-audio', {enabled: audioTrack.enabled});
       }
     }
   };
@@ -1658,7 +1851,7 @@ const VideoConference = ({ roomId, channelId, title, onClose }) => {
         const newState = !videoTrack.enabled;
         videoTrack.enabled = newState;
         setVideoEnabled(newState);
-        socketRef.current?.emit('toggle-video', { enabled: newState });
+        socketRef.current?.emit('toggle-video', {enabled: newState});
       }
     }
   };
@@ -1667,7 +1860,7 @@ const VideoConference = ({ roomId, channelId, title, onClose }) => {
   const toggleHandRaise = () => {
     const newState = !handRaised;
     setHandRaised(newState);
-    socketRef.current?.emit('hand-raise', { raised: newState });
+    socketRef.current?.emit('hand-raise', {raised: newState});
   };
 
   // Poll functions
@@ -1681,22 +1874,22 @@ const VideoConference = ({ roomId, channelId, title, onClose }) => {
       });
       return;
     }
-    
+
     const poll = {
       // Don't set ID client-side - let the backend handle it
       question: newPollQuestion.trim(),
-      options: validOptions.map(text => ({ text: text.trim(), voteCount: 0 })),
+      options: validOptions.map(text => ({text: text.trim(), voteCount: 0})),
       isActive: true,
       isAnonymous: false,
       allowMultiple: false,
       showResults: true,
     };
-    
-    socketRef.current?.emit('poll-created', { poll });
+
+    socketRef.current?.emit('poll-created', {poll});
     setNewPollQuestion('');
     setNewPollOptions(['', '']);
     setShowCreatePoll(false);
-    
+
     toast({
       title: 'Anket oluşturuldu',
       status: 'success',
@@ -1705,16 +1898,16 @@ const VideoConference = ({ roomId, channelId, title, onClose }) => {
   };
 
   const votePoll = (pollId, optionIndex) => {
-    socketRef.current?.emit('poll-vote', { pollId, optionIndex });
+    socketRef.current?.emit('poll-vote', {pollId, optionIndex});
   };
 
-  const closePoll = (pollId) => {
-    socketRef.current?.emit('poll-closed', { pollId });
+  const closePoll = pollId => {
+    socketRef.current?.emit('poll-closed', {pollId});
   };
 
   // Send chat message
   const sendMessage = (content, replyTo = null) => {
-    const messageData = { content, type: 'text' };
+    const messageData = {content, type: 'text'};
     if (replyTo) {
       messageData.replyTo = {
         id: replyTo.id,
@@ -1727,19 +1920,19 @@ const VideoConference = ({ roomId, channelId, title, onClose }) => {
   };
 
   // Send file message
-  const sendFile = async (file) => {
+  const sendFile = async file => {
     if (!file) return;
-    
+
     setIsUploading(true);
     try {
       // Upload file to server
       const response = await uploadFile(file);
       const fileUrl = response.data?.url || response.data?.fileUrl;
-      
+
       if (!fileUrl) {
-        throw new Error('Dosya URL\'si alınamadı');
+        throw new Error("Dosya URL'si alınamadı");
       }
-      
+
       // Send file message via socket
       socketRef.current?.emit('chat-message', {
         type: 'file',
@@ -1750,7 +1943,7 @@ const VideoConference = ({ roomId, channelId, title, onClose }) => {
           size: file.size,
         },
       });
-      
+
       toast({
         title: 'Dosya gönderildi',
         status: 'success',
@@ -1780,12 +1973,12 @@ const VideoConference = ({ roomId, channelId, title, onClose }) => {
 
   // Add reaction to message
   const addReaction = (messageId, emoji) => {
-    socketRef.current?.emit('message-reaction', { messageId, emoji });
+    socketRef.current?.emit('message-reaction', {messageId, emoji});
   };
 
   // Send floating reaction (visible to all participants)
-  const sendReaction = (emoji) => {
-    socketRef.current?.emit('reaction', { emoji });
+  const sendReaction = emoji => {
+    socketRef.current?.emit('reaction', {emoji});
     setShowReactionPicker(false);
   };
 
@@ -1793,12 +1986,12 @@ const VideoConference = ({ roomId, channelId, title, onClose }) => {
   const leaveConference = () => {
     // Stop adaptive monitoring
     stopAdaptiveMonitoring();
-    
+
     // Cleanup SFU if in SFU mode
     if (conferenceMode === 'sfu') {
       cleanupSfu();
     }
-    
+
     if (localStreamRef.current) {
       localStreamRef.current.getTracks().forEach(track => track.stop());
     }
@@ -1834,11 +2027,12 @@ const VideoConference = ({ roomId, channelId, title, onClose }) => {
         bg="gray.900"
         justifyContent="center"
         alignItems="center"
-        zIndex="9999"
-      >
+        zIndex="9999">
         <VStack spacing="4">
           <Spinner size="xl" color="blue.500" />
-          <Text color="white" fontSize="lg">Konferansa bağlanılıyor...</Text>
+          <Text color="white" fontSize="lg">
+            Konferansa bağlanılıyor...
+          </Text>
         </VStack>
       </Flex>
     );
@@ -1852,8 +2046,7 @@ const VideoConference = ({ roomId, channelId, title, onClose }) => {
       right="0"
       bottom="0"
       bg="gray.900"
-      zIndex="9999"
-    >
+      zIndex="9999">
       {/* Header */}
       <HStack
         px="4"
@@ -1861,30 +2054,52 @@ const VideoConference = ({ roomId, channelId, title, onClose }) => {
         bg="gray.800"
         justifyContent="space-between"
         borderBottom="1px solid"
-        borderColor="gray.700"
-      >
+        borderColor="gray.700">
         <HStack spacing="3">
-          <Box w="3" h="3" borderRadius="full" bg={isConnected ? 'green.500' : 'red.500'} />
-          <Text color="white" fontWeight="bold">{title || 'Video Konferans'}</Text>
+          <Box
+            w="3"
+            h="3"
+            borderRadius="full"
+            bg={isConnected ? 'green.500' : 'red.500'}
+          />
+          <Text color="white" fontWeight="bold">
+            {title || 'Video Konferans'}
+          </Text>
           <Badge colorScheme="blue">{allParticipants.length} katılımcı</Badge>
           <Badge colorScheme={conferenceMode === 'sfu' ? 'purple' : 'gray'}>
             {conferenceMode === 'sfu' ? 'SFU' : 'P2P'}
           </Badge>
           <Tooltip label={`Ağ Kalitesi: ${networkQuality}`}>
             <HStack spacing="1">
-              <FiWifi color={
-                networkQuality === 'excellent' ? '#48BB78' :
-                networkQuality === 'good' ? '#68D391' :
-                networkQuality === 'fair' ? '#ECC94B' : '#FC8181'
-              } />
-              <Text fontSize="xs" color={
-                networkQuality === 'excellent' ? 'green.400' :
-                networkQuality === 'good' ? 'green.300' :
-                networkQuality === 'fair' ? 'yellow.400' : 'red.400'
-              }>
-                {networkQuality === 'excellent' ? 'Mükemmel' :
-                 networkQuality === 'good' ? 'İyi' :
-                 networkQuality === 'fair' ? 'Orta' : 'Zayıf'}
+              <FiWifi
+                color={
+                  networkQuality === 'excellent'
+                    ? '#48BB78'
+                    : networkQuality === 'good'
+                      ? '#68D391'
+                      : networkQuality === 'fair'
+                        ? '#ECC94B'
+                        : '#FC8181'
+                }
+              />
+              <Text
+                fontSize="xs"
+                color={
+                  networkQuality === 'excellent'
+                    ? 'green.400'
+                    : networkQuality === 'good'
+                      ? 'green.300'
+                      : networkQuality === 'fair'
+                        ? 'yellow.400'
+                        : 'red.400'
+                }>
+                {networkQuality === 'excellent'
+                  ? 'Mükemmel'
+                  : networkQuality === 'good'
+                    ? 'İyi'
+                    : networkQuality === 'fair'
+                      ? 'Orta'
+                      : 'Zayıf'}
               </Text>
             </HStack>
           </Tooltip>
@@ -1915,8 +2130,7 @@ const VideoConference = ({ roomId, channelId, title, onClose }) => {
               colorScheme={showPollPanel ? 'purple' : 'whiteAlpha'}
               onClick={() => setShowPollPanel(!showPollPanel)}
               aria-label="Anketler"
-              position="relative"
-            >
+              position="relative">
               {polls.filter(p => p.isActive).length > 0 && (
                 <Badge
                   position="absolute"
@@ -1924,8 +2138,7 @@ const VideoConference = ({ roomId, channelId, title, onClose }) => {
                   right="-1"
                   colorScheme="red"
                   borderRadius="full"
-                  fontSize="xs"
-                >
+                  fontSize="xs">
                   {polls.filter(p => p.isActive).length}
                 </Badge>
               )}
@@ -1939,7 +2152,7 @@ const VideoConference = ({ roomId, channelId, title, onClose }) => {
         {/* Video grid */}
         <Box flex="1" p="4" overflowY="auto" position="relative">
           {/* Floating Reactions */}
-          {floatingReactions.map((reaction) => (
+          {floatingReactions.map(reaction => (
             <Box
               key={reaction.id}
               position="absolute"
@@ -1950,14 +2163,23 @@ const VideoConference = ({ roomId, channelId, title, onClose }) => {
               animation="floatUp 3s ease-out forwards"
               sx={{
                 '@keyframes floatUp': {
-                  '0%': { opacity: 1, transform: 'translateX(-50%) translateY(0) scale(1)' },
-                  '100%': { opacity: 0, transform: 'translateX(-50%) translateY(-200px) scale(1.5)' },
+                  '0%': {
+                    opacity: 1,
+                    transform: 'translateX(-50%) translateY(0) scale(1)',
+                  },
+                  '100%': {
+                    opacity: 0,
+                    transform: 'translateX(-50%) translateY(-200px) scale(1.5)',
+                  },
                 },
-              }}
-            >
+              }}>
               <VStack spacing="1">
                 <Text fontSize="4xl">{reaction.emoji}</Text>
-                <Badge bg="blackAlpha.700" color="white" borderRadius="full" px="2">
+                <Badge
+                  bg="blackAlpha.700"
+                  color="white"
+                  borderRadius="full"
+                  px="2">
                   {reaction.userName}
                 </Badge>
               </VStack>
@@ -1966,8 +2188,7 @@ const VideoConference = ({ roomId, channelId, title, onClose }) => {
           <Grid
             templateColumns={`repeat(${Math.min(allParticipants.length, 3)}, 1fr)`}
             gap="4"
-            h="100%"
-          >
+            h="100%">
             {allParticipants.map((participant, idx) => (
               <GridItem key={participant.odaId || idx} role="group">
                 <VideoParticipant
@@ -1988,8 +2209,7 @@ const VideoConference = ({ roomId, channelId, title, onClose }) => {
             w="350px"
             bg="gray.800"
             borderLeft="1px solid"
-            borderColor="gray.700"
-          >
+            borderColor="gray.700">
             {showChat && (
               <ChatPanel
                 messages={messages}
@@ -2008,11 +2228,15 @@ const VideoConference = ({ roomId, channelId, title, onClose }) => {
             )}
             {showParticipants && !showChat && !showPollPanel && (
               <VStack p="4" align="stretch" spacing="2">
-                <Text color="white" fontWeight="bold" mb="2">Katılımcılar</Text>
+                <Text color="white" fontWeight="bold" mb="2">
+                  Katılımcılar
+                </Text>
                 {allParticipants.map((p, idx) => (
                   <HStack key={idx} p="2" bg="gray.700" borderRadius="md">
                     <Avatar size="sm" name={p.userName} src={p.userAvatar} />
-                    <Text color="white" flex="1">{p.userName}</Text>
+                    <Text color="white" flex="1">
+                      {p.userName}
+                    </Text>
                     {!p.audioEnabled && <FiMicOff color="#EF4444" />}
                     {!p.videoEnabled && <FiVideoOff color="#EF4444" />}
                     {p.handRaised && <span>✋</span>}
@@ -2021,19 +2245,25 @@ const VideoConference = ({ roomId, channelId, title, onClose }) => {
               </VStack>
             )}
             {showPollPanel && (
-              <VStack p="4" align="stretch" spacing="3" h="100%" overflowY="auto">
+              <VStack
+                p="4"
+                align="stretch"
+                spacing="3"
+                h="100%"
+                overflowY="auto">
                 <HStack justify="space-between">
-                  <Text color="white" fontWeight="bold">📊 Anketler</Text>
+                  <Text color="white" fontWeight="bold">
+                    📊 Anketler
+                  </Text>
                   <Button
                     size="sm"
                     colorScheme="purple"
                     leftIcon={<span>+</span>}
-                    onClick={() => setShowCreatePoll(true)}
-                  >
+                    onClick={() => setShowCreatePoll(true)}>
                     Oluştur
                   </Button>
                 </HStack>
-                
+
                 {/* Create Poll Form */}
                 {showCreatePoll && (
                   <Box bg="gray.700" p="3" borderRadius="md">
@@ -2041,24 +2271,24 @@ const VideoConference = ({ roomId, channelId, title, onClose }) => {
                       <Input
                         placeholder="Soru..."
                         value={newPollQuestion}
-                        onChange={(e) => setNewPollQuestion(e.target.value)}
+                        onChange={e => setNewPollQuestion(e.target.value)}
                         bg="gray.600"
                         color="white"
-                        _placeholder={{ color: 'gray.400' }}
+                        _placeholder={{color: 'gray.400'}}
                       />
                       {newPollOptions.map((opt, idx) => (
                         <HStack key={idx}>
                           <Input
                             placeholder={`Seçenek ${idx + 1}`}
                             value={opt}
-                            onChange={(e) => {
+                            onChange={e => {
                               const newOpts = [...newPollOptions];
                               newOpts[idx] = e.target.value;
                               setNewPollOptions(newOpts);
                             }}
                             bg="gray.600"
                             color="white"
-                            _placeholder={{ color: 'gray.400' }}
+                            _placeholder={{color: 'gray.400'}}
                           />
                           {newPollOptions.length > 2 && (
                             <IconButton
@@ -2066,7 +2296,11 @@ const VideoConference = ({ roomId, channelId, title, onClose }) => {
                               size="sm"
                               colorScheme="red"
                               variant="ghost"
-                              onClick={() => setNewPollOptions(newPollOptions.filter((_, i) => i !== idx))}
+                              onClick={() =>
+                                setNewPollOptions(
+                                  newPollOptions.filter((_, i) => i !== idx),
+                                )
+                              }
                             />
                           )}
                         </HStack>
@@ -2076,34 +2310,46 @@ const VideoConference = ({ roomId, channelId, title, onClose }) => {
                           size="sm"
                           variant="ghost"
                           colorScheme="gray"
-                          onClick={() => setNewPollOptions([...newPollOptions, ''])}
-                        >
+                          onClick={() =>
+                            setNewPollOptions([...newPollOptions, ''])
+                          }>
                           + Seçenek Ekle
                         </Button>
                       )}
                       <HStack>
-                        <Button size="sm" colorScheme="purple" onClick={createPoll}>
+                        <Button
+                          size="sm"
+                          colorScheme="purple"
+                          onClick={createPoll}>
                           Anketi Gönder
                         </Button>
-                        <Button size="sm" variant="ghost" onClick={() => setShowCreatePoll(false)}>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => setShowCreatePoll(false)}>
                           İptal
                         </Button>
                       </HStack>
                     </VStack>
                   </Box>
                 )}
-                
+
                 {/* Poll List */}
                 {polls.length === 0 ? (
                   <Text color="gray.400" textAlign="center" py="4">
                     Henüz anket yok
                   </Text>
                 ) : (
-                  polls.map((poll) => {
-                    const hasVoted = poll.votes?.some(v => v.odaId === currentUser?.id);
-                    const myVote = poll.votes?.find(v => v.odaId === currentUser?.id);
-                    const totalVotes = poll.totalVotes || poll.votes?.length || 0;
-                    
+                  polls.map(poll => {
+                    const hasVoted = poll.votes?.some(
+                      v => v.odaId === currentUser?.id,
+                    );
+                    const myVote = poll.votes?.find(
+                      v => v.odaId === currentUser?.id,
+                    );
+                    const totalVotes =
+                      poll.totalVotes || poll.votes?.length || 0;
+
                     return (
                       <Box
                         key={poll.id}
@@ -2111,8 +2357,7 @@ const VideoConference = ({ roomId, channelId, title, onClose }) => {
                         p="3"
                         borderRadius="md"
                         border="1px solid"
-                        borderColor={poll.isActive ? 'purple.500' : 'gray.600'}
-                      >
+                        borderColor={poll.isActive ? 'purple.500' : 'gray.600'}>
                         <HStack justify="space-between" mb="2">
                           <Text color="white" fontWeight="600" fontSize="sm">
                             {poll.question}
@@ -2121,14 +2366,17 @@ const VideoConference = ({ roomId, channelId, title, onClose }) => {
                             {poll.isActive ? 'Aktif' : 'Kapandı'}
                           </Badge>
                         </HStack>
-                        
+
                         <VStack spacing="1" align="stretch">
                           {poll.options.map((option, idx) => {
-                            const percentage = totalVotes > 0 
-                              ? Math.round((option.voteCount / totalVotes) * 100) 
-                              : 0;
+                            const percentage =
+                              totalVotes > 0
+                                ? Math.round(
+                                    (option.voteCount / totalVotes) * 100,
+                                  )
+                                : 0;
                             const isSelected = myVote?.optionIndex === idx;
-                            
+
                             return (
                               <Box
                                 key={idx}
@@ -2136,11 +2384,22 @@ const VideoConference = ({ roomId, channelId, title, onClose }) => {
                                 bg={isSelected ? 'purple.600' : 'gray.600'}
                                 p="3"
                                 borderRadius="md"
-                                cursor={poll.isActive && !hasVoted ? 'pointer' : 'default'}
-                                onClick={() => poll.isActive && !hasVoted && votePoll(poll.id, idx)}
-                                _hover={poll.isActive && !hasVoted ? { bg: 'purple.700' } : {}}
-                                overflow="hidden"
-                              >
+                                cursor={
+                                  poll.isActive && !hasVoted
+                                    ? 'pointer'
+                                    : 'default'
+                                }
+                                onClick={() =>
+                                  poll.isActive &&
+                                  !hasVoted &&
+                                  votePoll(poll.id, idx)
+                                }
+                                _hover={
+                                  poll.isActive && !hasVoted
+                                    ? {bg: 'purple.700'}
+                                    : {}
+                                }
+                                overflow="hidden">
                                 {(hasVoted || !poll.isActive) && (
                                   <Box
                                     position="absolute"
@@ -2148,16 +2407,28 @@ const VideoConference = ({ roomId, channelId, title, onClose }) => {
                                     top="0"
                                     bottom="0"
                                     width={`${percentage}%`}
-                                    bg={isSelected ? 'purple.400' : 'purple.500'}
+                                    bg={
+                                      isSelected ? 'purple.400' : 'purple.500'
+                                    }
                                     opacity="0.4"
                                     transition="width 0.5s ease"
                                   />
                                 )}
-                                <VStack position="relative" align="stretch" spacing="1">
+                                <VStack
+                                  position="relative"
+                                  align="stretch"
+                                  spacing="1">
                                   <HStack justify="space-between">
                                     <HStack spacing="2">
-                                      {isSelected && <span style={{color: '#4ade80'}}>✓</span>}
-                                      <Text color="white" fontSize="sm" fontWeight={isSelected ? '600' : '400'}>
+                                      {isSelected && (
+                                        <span style={{color: '#4ade80'}}>
+                                          ✓
+                                        </span>
+                                      )}
+                                      <Text
+                                        color="white"
+                                        fontSize="sm"
+                                        fontWeight={isSelected ? '600' : '400'}>
                                         {option.text}
                                       </Text>
                                     </HStack>
@@ -2166,8 +2437,7 @@ const VideoConference = ({ roomId, channelId, title, onClose }) => {
                                         colorScheme="purple"
                                         fontSize="sm"
                                         fontWeight="bold"
-                                        px="2"
-                                      >
+                                        px="2">
                                         {percentage}%
                                       </Badge>
                                     )}
@@ -2182,21 +2452,21 @@ const VideoConference = ({ roomId, channelId, title, onClose }) => {
                             );
                           })}
                         </VStack>
-                        
+
                         <HStack mt="2" justify="space-between">
                           <Text color="gray.400" fontSize="xs">
                             {totalVotes} oy
                           </Text>
-                          {poll.isActive && poll.createdBy?.odaId === currentUser?.id && (
-                            <Button
-                              size="xs"
-                              colorScheme="red"
-                              variant="ghost"
-                              onClick={() => closePoll(poll.id)}
-                            >
-                              Kapat
-                            </Button>
-                          )}
+                          {poll.isActive &&
+                            poll.createdBy?.odaId === currentUser?.id && (
+                              <Button
+                                size="xs"
+                                colorScheme="red"
+                                variant="ghost"
+                                onClick={() => closePoll(poll.id)}>
+                                Kapat
+                              </Button>
+                            )}
                         </HStack>
                       </Box>
                     );
@@ -2219,8 +2489,7 @@ const VideoConference = ({ roomId, channelId, title, onClose }) => {
         bg="gray.800"
         borderTop="1px solid"
         borderColor="gray.700"
-        spacing="4"
-      >
+        spacing="4">
         <Tooltip label={audioEnabled ? 'Mikrofonu Kapat' : 'Mikrofonu Aç'}>
           <IconButton
             icon={audioEnabled ? <FiMic /> : <FiMicOff />}
@@ -2265,7 +2534,7 @@ const VideoConference = ({ roomId, channelId, title, onClose }) => {
               aria-label="Tepki"
             />
           </Tooltip>
-          
+
           {/* Reaction Picker */}
           {showReactionPicker && (
             <HStack
@@ -2278,17 +2547,15 @@ const VideoConference = ({ roomId, channelId, title, onClose }) => {
               borderRadius="full"
               boxShadow="dark-lg"
               spacing="2"
-              zIndex="1000"
-            >
-              {['👍', '❤️', '😂', '👏', '🎉', '🔥'].map((emoji) => (
+              zIndex="1000">
+              {['👍', '❤️', '😂', '👏', '🎉', '🔥'].map(emoji => (
                 <Box
                   key={emoji}
                   cursor="pointer"
                   fontSize="2xl"
                   onClick={() => sendReaction(emoji)}
-                  _hover={{ transform: 'scale(1.3)' }}
-                  transition="transform 0.1s"
-                >
+                  _hover={{transform: 'scale(1.3)'}}
+                  transition="transform 0.1s">
                   {emoji}
                 </Box>
               ))}
@@ -2312,4 +2579,3 @@ const VideoConference = ({ roomId, channelId, title, onClose }) => {
 };
 
 export default VideoConference;
-

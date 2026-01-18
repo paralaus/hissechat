@@ -1,6 +1,6 @@
-import { extendTheme } from '@chakra-ui/react';
-import { inputStyles } from './components/input';
-import { buttonStyles } from './components/button';
+import {extendTheme} from '@chakra-ui/react';
+import {inputStyles} from './components/input';
+import {buttonStyles} from './components/button';
 
 // Modern renk paleti
 const colors = {
@@ -127,7 +127,8 @@ const styles = {
       color: 'gray.800',
     },
     '*': {
-      transition: 'background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease',
+      transition:
+        'background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease',
     },
   },
 };
