@@ -58,7 +58,7 @@ import {
 } from 'react-icons/fi';
 import {getCombinedLogoUrl} from '../../../utils/image';
 import {format} from 'date-fns';
-import {add} from 'date-fns';
+
 import {tr} from 'date-fns/locale';
 import { useLocation, useNavigate } from 'react-router-dom';
 
@@ -584,86 +584,76 @@ const Moderation = () => {
 
   // Merge VİOP markets with existing channels
   const mergedViopChannels = React.useMemo(() => {
-    if (!viopMarketsData) return [];
-    return viopMarketsData.map(market => {
-      const existingChannel = channelsData?.find(c => c.marketCode === market.code);
-      if (existingChannel) return existingChannel;
-      return {
-        id: null,
-        name: market.name,
-        marketCode: market.code,
-        type: 'market',
-        isVirtual: true,
-      };
-    });
-  }, [viopMarketsData, channelsData]);
-
-  // Merge Crypto markets with existing channels
+      if (!viopMarketsData) return [];
+      return viopMarketsData.map(market => {
+          const existingChannel = channelsData?.find(c => c.marketCode === market.code);
+          if (existingChannel) return existingChannel;
+          return {
+              id: null,
+              name: market.name,
+              marketCode: market.code,
+              type: 'market',
+              isVirtual: true,
+          };
+      });
+  }, [viopMarketsData, channelsData]);  // Merge Crypto markets with existing channels
   const mergedCryptoChannels = React.useMemo(() => {
-    if (!cryptoMarketsData) return [];
-    return cryptoMarketsData.map(market => {
-      const existingChannel = channelsData?.find(c => c.marketCode === market.code);
-      if (existingChannel) return existingChannel;
-      return {
-        id: null,
-        name: market.name,
-        marketCode: market.code,
-        type: 'market',
-        isVirtual: true,
-      };
-    });
-  }, [cryptoMarketsData, channelsData]);
-
-  // Merge Stock markets with existing channels
+      if (!cryptoMarketsData) return [];
+      return cryptoMarketsData.map(market => {
+          const existingChannel = channelsData?.find(c => c.marketCode === market.code);
+          if (existingChannel) return existingChannel;
+          return {
+              id: null,
+              name: market.name,
+              marketCode: market.code,
+              type: 'market',
+              isVirtual: true,
+          };
+      });
+  }, [cryptoMarketsData, channelsData]);  // Merge Stock markets with existing channels
   const mergedStockChannels = React.useMemo(() => {
-    if (!stockMarketsData) return [];
-    return stockMarketsData.map(market => {
-      const existingChannel = channelsData?.find(c => c.marketCode === market.code);
-      if (existingChannel) return existingChannel;
-      return {
-        id: null,
-        name: market.name,
-        marketCode: market.code,
-        type: 'market',
-        isVirtual: true,
-      };
-    });
-  }, [stockMarketsData, channelsData]);
-
-  // Merge Funds with existing channels
+      if (!stockMarketsData) return [];
+      return stockMarketsData.map(market => {
+          const existingChannel = channelsData?.find(c => c.marketCode === market.code);
+          if (existingChannel) return existingChannel;
+          return {
+              id: null,
+              name: market.name,
+              marketCode: market.code,
+              type: 'market',
+              isVirtual: true,
+          };
+      });
+  }, [stockMarketsData, channelsData]);  // Merge Funds with existing channels
   const mergedFundChannels = React.useMemo(() => {
-    if (!fundsData) return [];
-    return fundsData.map(fund => {
-      const existingChannel = channelsData?.find(c => c.fundCode === fund.code);
-      if (existingChannel) return existingChannel;
-      return {
-        id: null,
-        name: fund.name,
-        fundCode: fund.code,
-        type: 'fund',
-        isVirtual: true,
-      };
-    });
-  }, [fundsData, channelsData]);
-
-  const marketChannels = mergedStockChannels;
+      if (!fundsData) return [];
+      return fundsData.map(fund => {
+          const existingChannel = channelsData?.find(c => c.fundCode === fund.code);
+          if (existingChannel) return existingChannel;
+          return {
+              id: null,
+              name: fund.name,
+              fundCode: fund.code,
+              type: 'fund',
+              isVirtual: true,
+          };
+      });
+  }, [fundsData, channelsData]);  const marketChannels = mergedStockChannels;
   const viopChannels = mergedViopChannels;
   const fundChannels = mergedFundChannels;
   const cryptoChannels = mergedCryptoChannels;
-  const vipChannels = vipChannelsData || [];
-  const otherChannels = channelsData?.filter(c => c.type !== 'market' && c.type !== 'vip' && c.type !== 'fund') || [];
-
-  // Combine all channels for dropdown
-  const allChannels = React.useMemo(() => {
+const allChannels = React.useMemo(() => {
+    const vipChannels = vipChannelsData || [];
+    const otherChannels = channelsData?.filter(c => c.type !== 'market' && c.type !== 'vip' && c.type !== 'fund') || [];
     return [
-      ...marketChannels,
-      ...viopChannels,
-      ...fundChannels,
-      ...cryptoChannels,
-      ...vipChannels,
-      ...otherChannels
-    ].filter(c => c.id); // Only show initiated channels in moderation filter
-  }, [marketChannels, viopChannels, fundChannels, cryptoChannels, vipChannels, otherChannels]);
+        ...marketChannels,
+        ...viopChannels,
+        ...fundChannels,
+        ...cryptoChannels,
+        ...vipChannels,
+        ...otherChannels,
+    ].sort((a, b) => a.label.localeCompare(b.label));
+}, [marketChannels, viopChannels, fundChannels, cryptoChannels, vipChannelsData, channelsData]);
 
   // Fetch messages for moderation
   const {
