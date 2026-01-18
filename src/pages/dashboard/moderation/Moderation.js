@@ -694,6 +694,39 @@ const allChannels = React.useMemo(() => {
     initialPageParam: 1,
   });
 
+  const { data: profanityStatsData } = useQuery({
+    queryKey: ['moderation-stats', 'profanity'],
+    queryFn: () =>
+      api.getMessagesForModeration({
+        limit: 1,
+        page: 1,
+        showProfanity: true,
+      }).then(res => res.data),
+    staleTime: 30000,
+  });
+
+  const { data: flaggedStatsData } = useQuery({
+    queryKey: ['moderation-stats', 'flagged'],
+    queryFn: () =>
+      api.getMessagesForModeration({
+        limit: 1,
+        page: 1,
+        showFlagged: true,
+      }).then(res => res.data),
+    staleTime: 30000,
+  });
+
+  const { data: blockedStatsData } = useQuery({
+    queryKey: ['moderation-stats', 'blocked'],
+    queryFn: () =>
+      api.getMessagesForModeration({
+        limit: 1,
+        page: 1,
+        showBlocked: true,
+      }).then(res => res.data),
+    staleTime: 30000,
+  });
+
   const {data: bannedUsersData, isLoading: isBannedUsersLoading} = useQuery({
     queryKey: ['banned-users-moderation', selectedChannel],
     queryFn: () => fetchAll(api.getBlacklists, {
@@ -1001,21 +1034,19 @@ const allChannels = React.useMemo(() => {
     if (!id) return;
     removeBannedTextMutation.mutate(id);
   };
-
-  // Stats
-  const blockedCount = messages.filter(m => m.isBlocked).length;
-  const flaggedCount = messages.filter(m => m.isFlagged).length;
+  const profanityTotal = profanityStatsData?.totalResults || 0;
+  const flaggedTotal = flaggedStatsData?.totalResults || 0;
+  const blockedTotal = blockedStatsData?.totalResults || 0;
 
   return (
     <Page title="İçerik Moderasyonu">
       <VStack spacing={6} align="stretch">
-        {/* Stats */}
         <SimpleGrid columns={{base: 1, md: 3}} spacing={4}>
           <Card>
             <CardBody>
               <Stat>
-                <StatLabel>Toplam Mesaj</StatLabel>
-                <StatNumber>{messagesData?.pages?.[0]?.totalResults || 0}</StatNumber>
+                <StatLabel>Uygunsuz Kelime İçeren Mesajlar</StatLabel>
+                <StatNumber>{profanityTotal}</StatNumber>
               </Stat>
             </CardBody>
           </Card>
@@ -1024,9 +1055,9 @@ const allChannels = React.useMemo(() => {
               <Stat>
                 <HStack mb={2}>
                   <FiAlertTriangle color="orange" />
-                  <StatLabel>Şikayet Edilen</StatLabel>
+                  <StatLabel>Şikayet Edilen Mesajlar</StatLabel>
                 </HStack>
-                <StatNumber color="orange.500">{flaggedCount}</StatNumber>
+                <StatNumber color="orange.500">{flaggedTotal}</StatNumber>
               </Stat>
             </CardBody>
           </Card>
@@ -1035,9 +1066,9 @@ const allChannels = React.useMemo(() => {
               <Stat>
                 <HStack mb={2}>
                   <FiShield color="red" />
-                  <StatLabel>Engellenen</StatLabel>
+                  <StatLabel>Engellenen Mesajlar</StatLabel>
                 </HStack>
-                <StatNumber color="red.500">{blockedCount}</StatNumber>
+                <StatNumber color="red.500">{blockedTotal}</StatNumber>
               </Stat>
             </CardBody>
           </Card>
