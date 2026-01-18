@@ -324,14 +324,6 @@ const Channels = () => {
     staleTime: 5 * 60 * 1000,
   });
 
-  // Fetch active products for prices
-  const {data: productsData} = useQuery({
-    queryKey: ['products'],
-    queryFn: () => api.getProducts({limit: 1000}), // Fetch all products
-    select: res => res.data,
-    enabled: false, // No longer needed for prices as we use market/fund data
-  });
-
   // Fetch all channels with pagination
   const {
     data: allChannelsPages,
@@ -689,7 +681,7 @@ const Channels = () => {
         isVirtual: true, // Flag to indicate this needs initiation
       };
     });
-  }, [stockMarketsData, allChannelsData]);
+  }, [viopMarketsData, allChannelsData]);
 
   const mergedCommodityChannels = React.useMemo(() => {
     return commodityMarketsData.map(market => {
@@ -795,9 +787,6 @@ const Channels = () => {
     privateChannelsPages?.pages?.[0]?.totalResults ||
     0;
 
-  // For 'All', we sum them up or use list count if available
-  const totalAllChannels = allChannelsPages?.pages?.[0]?.totalResults || 0; // This is 'My Channels' count
-
   const totalAllCombinedCount =
     (totalStockResults || 0) +
     (totalCryptoResults || 0) +
@@ -900,18 +889,6 @@ const Channels = () => {
       }
     });
   };
-
-  // Separate channels by type and sort by message count
-  // We use the fetched and merged lists for VIOP and Funds now
-  const isCrypto = c => c.type === 'market' && c.category === 'kripto';
-  // Note: isViop check is less critical for the tab now as we use direct fetch, but good for "Others" exclusion
-  const isViop = c =>
-    c.type === 'market' &&
-    (c.marketCode?.startsWith('F_') ||
-      c.name?.toUpperCase().includes('VİOP') ||
-      c.marketCode?.includes('VIOP'));
-  const isFund = c => c.type === 'fund';
-  const isStock = c => c.type === 'market' && !isViop(c) && !isCrypto(c);
 
   const stockChannels = filterAndSortChannels(mergedStockChannels);
   const cryptoChannels = filterAndSortChannels(mergedCryptoChannels);

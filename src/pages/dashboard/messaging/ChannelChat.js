@@ -87,7 +87,6 @@ import {
   FiArchive,
   FiFilter,
   FiMessageSquare,
-  FiHeart,
   FiArrowDown,
 } from 'react-icons/fi';
 import EmojiPicker from 'emoji-picker-react';
@@ -397,13 +396,6 @@ const MessageBubble = ({
   const time = message.createdAt
     ? format(new Date(message.createdAt), 'HH:mm', {locale: tr})
     : '';
-
-  const hasMedia =
-    message.image ||
-    message.video ||
-    message.audio ||
-    message.file ||
-    message.conference?.roomId;
 
   // If message is deleted or has no content (and not blocked), don't render
   const hasContent =
@@ -1714,24 +1706,6 @@ const ChannelChat = () => {
       }
 
       await sendMessageMutation.mutateAsync(body);
-    } catch (error) {
-      toast({
-        title: getErrorMessage(error),
-        status: 'error',
-        position: 'top',
-      });
-    } finally {
-      setIsSending(false);
-    }
-  };
-
-  const handleSendHeart = async () => {
-    try {
-      setIsSending(true);
-      // Send heart emoji message directly
-      await api.sendChannelMessage(channelId, {text: '❤️'});
-      shouldScrollToBottomRef.current = true;
-      queryClient.invalidateQueries(['channel-messages', channelId]);
     } catch (error) {
       toast({
         title: getErrorMessage(error),
