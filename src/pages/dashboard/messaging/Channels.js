@@ -862,11 +862,11 @@ const Channels = () => {
 
         case SORT_OPTIONS.NAME_ASC:
           // Sort by name A-Z
-          return (a.name || '').localeCompare(b.name || '', 'tr');
+          return `${a.name ?? ''}`.localeCompare(`${b.name ?? ''}`, 'tr');
 
         case SORT_OPTIONS.NAME_DESC:
           // Sort by name Z-A
-          return (b.name || '').localeCompare(a.name || '', 'tr');
+          return `${b.name ?? ''}`.localeCompare(`${a.name ?? ''}`, 'tr');
 
         case SORT_OPTIONS.RISING:
           // Sort by rate descending (Highest first)

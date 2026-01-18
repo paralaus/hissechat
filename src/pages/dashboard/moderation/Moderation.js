@@ -718,7 +718,12 @@ const Moderation = () => {
       ...cryptoChannels,
       ...vipChannels,
       ...otherChannels,
-    ].sort((a, b) => a.label.localeCompare(b.label));
+    ].sort((a, b) =>
+      `${a.label ?? a.name ?? ''}`.localeCompare(
+        `${b.label ?? b.name ?? ''}`,
+        'tr',
+      ),
+    );
   }, [
     marketChannels,
     viopChannels,
