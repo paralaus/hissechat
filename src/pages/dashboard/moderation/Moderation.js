@@ -927,6 +927,23 @@ const Moderation = () => {
 
   // Filter by search term
   const filteredMessages = messages.filter(msg => {
+    if (filterType === 'blocked' && !msg.isBlocked) {
+      return false;
+    }
+    if (
+      filterType === 'flagged' &&
+      !msg.isFlagged &&
+      !(msg.reportCount > 0)
+    ) {
+      return false;
+    }
+    if (
+      filterType === 'profanity' &&
+      !(msg.profanityWords && msg.profanityWords.length > 0)
+    ) {
+      return false;
+    }
+
     if (!searchTerm) return true;
     const term = searchTerm.toLowerCase();
     return (
