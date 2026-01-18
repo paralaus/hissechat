@@ -524,7 +524,7 @@ const BannedUserCard = ({ blacklistEntry, onUnban, isUnbanning }) => {
     </Card>
   );
 };
-
+// Main Moderation Component
 const Moderation = () => {
   const toast = useToast();
   const queryClient = useQueryClient();
