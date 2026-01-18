@@ -1014,7 +1014,7 @@ const Moderation = () => {
 
   // Stats
   const blockedCount = messages.filter(m => m.isBlocked).length;
-  const flaggedCount = messages.filter(m => m.isFlagged && !m.isBlocked).length;
+  const flaggedCount = messages.filter(m => m.isFlagged).length;
 
   return (
     <Page title="İçerik Moderasyonu">
