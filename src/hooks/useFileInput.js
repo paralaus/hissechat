@@ -35,15 +35,14 @@ const useFileInput = (options = {}) => {
       setVideoMetadata(null);
       setThumbnail(null);
 
-      if (!file) return true;
+      if (!file) return { valid: true };
 
       // Check general file size
       const sizeMB = file.size / (1024 * 1024);
       if (sizeMB > maxSizeMB) {
-        setValidationError(
-          `Dosya boyutu çok büyük (${sizeMB.toFixed(1)}MB). Maksimum: ${maxSizeMB}MB`,
-        );
-        return false;
+        const error = `Dosya boyutu çok büyük (${sizeMB.toFixed(1)}MB). Maksimum: ${maxSizeMB}MB`;
+        setValidationError(error);
+        return { valid: false, error };
       }
 
       // If it's a video file, do additional validation
@@ -55,9 +54,10 @@ const useFileInput = (options = {}) => {
           });
 
           if (!result.success) {
-            setValidationError(result.errors.map(e => e.message).join('\n'));
+            const error = result.errors.map(e => e.message).join('\n');
+            setValidationError(error);
             setIsProcessing(false);
-            return false;
+            return { valid: false, error };
           }
 
           setVideoMetadata(result.metadata);
@@ -65,6 +65,12 @@ const useFileInput = (options = {}) => {
             setThumbnail(result.thumbnail);
           }
           setIsProcessing(false);
+          return { 
+            valid: true, 
+            metadata: result.metadata, 
+            thumbnail: result.thumbnail,
+            processedFile: result.processedFile // In case we want to use the processed file
+          };
         } catch (err) {
           console.warn('Video validation error:', err);
           setIsProcessing(false);
@@ -72,7 +78,7 @@ const useFileInput = (options = {}) => {
         }
       }
 
-      return true;
+      return { valid: true };
     },
     [maxSizeMB],
   );
@@ -90,8 +96,8 @@ const useFileInput = (options = {}) => {
       const file = files[0];
 
       if (validateOnSelect) {
-        const isValid = await validateFile(file);
-        if (!isValid) {
+        const result = await validateFile(file);
+        if (!result.valid) {
           // Still allow selection but show error
           setSelected(files);
           return;
@@ -105,18 +111,18 @@ const useFileInput = (options = {}) => {
   );
 
   const upload = async (options = {}) => {
-    if (!selected) return false;
+    const file = options.file || selected?.[0];
+    
+    if (!file) return false;
 
-    // Don't upload if there's a validation error
-    if (validationError && options.blockOnError !== false) {
+    // Don't upload if there's a validation error (only if using selected file)
+    if (!options.file && validationError && options.blockOnError !== false) {
       console.warn('Upload blocked due to validation error:', validationError);
       return false;
     }
 
     try {
       setUploadProgress(0);
-
-      const file = selected[0];
 
       // Handle progress updates
       const onProgress = progress => {
