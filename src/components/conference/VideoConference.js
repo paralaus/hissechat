@@ -53,7 +53,7 @@ import {processVideoForUpload} from '../../utils/videoOptimizer';
 
 // New Server URL (Droplet)
 const SERVER_URL = 'https://api.appandcapital.com.tr';
-const API_URL = process.env.REACT_APP_API_URL || `${SERVER_URL}/v1`;
+// const API_URL = process.env.REACT_APP_API_URL || `${SERVER_URL}/v1`;
 // const SOCKET_URL = API_URL.replace('/v1', '');
 const SOCKET_URL = SERVER_URL;
 
@@ -2176,6 +2176,7 @@ const VideoConference = ({roomId, channelId, title, onClose}) => {
         recordingTimerRef,
       });
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     roomId,
     createPeerConnection,
@@ -2185,8 +2186,6 @@ const VideoConference = ({roomId, channelId, title, onClose}) => {
     currentUser?.id,
     currentUser?.name,
     currentUser?.thumbnail,
-    // toast ve onClose bağımlılıkları çıkartıldı çünkü referansları değiştiğinde yeniden bağlanmaya sebep oluyor
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   ]);
 
   // Toggle audio
