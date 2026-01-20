@@ -1078,6 +1078,12 @@ const VideoConference = ({roomId, channelId, title, onClose}) => {
       }
 
       try {
+        console.log(`[SFU] Consuming ${kind} from producer ${producerOdaId} (ID: ${producerId})`);
+        
+        if (!producerOdaId) {
+            console.error('[SFU] CRITICAL ERROR: producerOdaId is missing!');
+        }
+
         const consumerData = await new Promise((resolve, reject) => {
           socketRef.current.emit(
             'sfu:consume',
@@ -1108,10 +1114,46 @@ const VideoConference = ({roomId, channelId, title, onClose}) => {
         sfuConsumersRef.current.set(consumer.id, consumer);
 
         // Create a MediaStream from the track
-        const stream = new MediaStream([consumer.track]);
+        let stream;
+        
+        setParticipants(prev => {
+          const existing = prev.find(p => p.odaId === producerOdaId);
+          
+          if (existing && existing.stream) {
+             console.log(`[SFU] Merging tracks for ${producerOdaId}. Existing tracks: ${existing.stream.getTracks().length}`);
+             existing.stream.addTrack(consumer.track);
+             stream = existing.stream;
+             
+             return prev.map(p =>
+               p.odaId === producerOdaId ? {...p, stream} : p,
+             );
+          } else {
+             stream = new MediaStream([consumer.track]);
+             console.log(`[SFU] Created new stream for ${producerOdaId}`);
+             
+             if (existing) {
+               return prev.map(p =>
+                 p.odaId === producerOdaId ? {...p, stream} : p,
+               );
+             }
+             
+             return [
+                ...prev,
+                {
+                  id: `sfu-${producerOdaId}`,
+                  odaId: producerOdaId,
+                  userName: producerOdaId, // Will be updated from user-joined event or if available
+                  stream,
+                  audioEnabled: kind === 'audio' || true, // Default to true, updated by producer events
+                  videoEnabled: kind === 'video' || true,
+                  handRaised: false,
+                },
+              ];
+          }
+        });
 
         console.log(
-          `[SFU] Stream created for ${producerOdaId}, tracks: ${stream.getTracks().length}, kind: ${kind}`,
+          `[SFU] Stream ready for ${producerOdaId}, tracks: ${stream ? stream.getTracks().length : 'N/A'}, kind: ${kind}`,
         );
         
         // Monitor track status
@@ -1129,26 +1171,7 @@ const VideoConference = ({roomId, channelId, title, onClose}) => {
         };
 
         // Update participant with new stream
-        setParticipants(prev => {
-          const existing = prev.find(p => p.odaId === producerOdaId);
-          if (existing) {
-            return prev.map(p =>
-              p.odaId === producerOdaId ? {...p, stream} : p,
-            );
-          }
-          return [
-            ...prev,
-            {
-              id: `sfu-${producerOdaId}`,
-              odaId: producerOdaId,
-              userName: producerOdaId, // Will be updated from user-joined event or if available
-              stream,
-              audioEnabled: kind === 'audio' || true, // Default to true, updated by producer events
-              videoEnabled: kind === 'video' || true,
-              handRaised: false,
-            },
-          ];
-        });
+        // (State update already handled above with track merging)
 
         // Resume consumer
         console.log(`[SFU] Resuming consumer ${consumer.id} for ${producerOdaId}`);
@@ -1317,12 +1340,14 @@ const VideoConference = ({roomId, channelId, title, onClose}) => {
         }
 
         // Get existing producers and consume them
+        console.log('SFU Fetching existing producers...');
         socketRef.current.emit('sfu:get-producers', async response => {
           if (response.error) {
             console.error('Failed to get producers:', response.error);
             return;
           }
 
+          console.log('SFU Existing producers:', response.producers);
           for (const producer of response.producers) {
             await consumeProducer(
               producer.producerId,
@@ -1346,11 +1371,12 @@ const VideoConference = ({roomId, channelId, title, onClose}) => {
     if (!socketRef.current) return;
 
     socketRef.current.on('sfu:new-producer', async data => {
-      console.log('SFU New producer:', data);
+      console.log('SFU New producer received:', data);
       await consumeProducer(data.producerId, data.producerOdaId, data.kind);
     });
 
     socketRef.current.on('sfu:producer-paused', data => {
+      console.log('SFU Producer paused:', data);
       setParticipants(prev =>
         prev.map(p =>
           p.odaId === data.producerOdaId ? {...p, audioEnabled: false} : p,
@@ -1359,6 +1385,7 @@ const VideoConference = ({roomId, channelId, title, onClose}) => {
     });
 
     socketRef.current.on('sfu:producer-resumed', data => {
+      console.log('SFU Producer resumed:', data);
       setParticipants(prev =>
         prev.map(p =>
           p.odaId === data.producerOdaId ? {...p, audioEnabled: true} : p,
@@ -1367,6 +1394,7 @@ const VideoConference = ({roomId, channelId, title, onClose}) => {
     });
 
     socketRef.current.on('sfu:producer-closed', data => {
+      console.log('SFU Producer closed:', data);
       for (const [id, consumer] of sfuConsumersRef.current) {
         if (consumer.producerId === data.producerId) {
           consumer.close();
@@ -1718,18 +1746,28 @@ const VideoConference = ({roomId, channelId, title, onClose}) => {
 
           // Initialize participants state from room data
           if (data.participants && data.participants.length > 0) {
+            console.log('Initializing participants from room data:', data.participants);
             setParticipants(prev => {
               const newParticipants = data.participants
-                .filter(p => !prev.some(existing => existing.odaId === p.userId))
-                .map(p => ({
-                  id: p.socketId,
-                  odaId: p.userId,
-                  userName: p.userName,
-                  userAvatar: p.userAvatar,
-                  audioEnabled: true,
-                  videoEnabled: true,
-                  handRaised: false,
-                }));
+                .filter(p => {
+                    const pId = p.userId || p.id;
+                    const exists = prev.some(existing => existing.odaId === pId);
+                    if (exists) console.log(`Participant ${p.userName} (${pId}) already exists, skipping`);
+                    return !exists;
+                })
+                .map(p => {
+                  const pId = p.userId || p.id;
+                  console.log(`Mapping participant: ${p.userName} -> odaId: ${pId}`);
+                  return {
+                    id: p.socketId,
+                    odaId: pId,
+                    userName: p.userName,
+                    userAvatar: p.userAvatar,
+                    audioEnabled: true,
+                    videoEnabled: true,
+                    handRaised: false,
+                  };
+                });
               return [...prev, ...newParticipants];
             });
           }
@@ -1825,10 +1863,11 @@ const VideoConference = ({roomId, channelId, title, onClose}) => {
           setParticipants(prev => {
             // Merge existing stream/track data with new participant info
             return participantList.map(newP => {
-              const existing = prev.find(p => p.odaId === newP.userId);
+              const targetId = newP.userId || newP.odaId || newP.id;
+              const existing = prev.find(p => p.odaId === targetId);
               return {
                 ...newP,
-                odaId: newP.userId, // Ensure odaId is set
+                odaId: targetId, // Ensure odaId is set
                 stream: existing?.stream, // Keep existing stream
                 audioEnabled: existing ? existing.audioEnabled : newP.audioEnabled,
                 videoEnabled: existing ? existing.videoEnabled : newP.videoEnabled,
@@ -1860,14 +1899,24 @@ const VideoConference = ({roomId, channelId, title, onClose}) => {
           // We just update the UI to show the new user.
 
           setParticipants(prev => {
-            console.log('Processing user-joined. Current participants count:', prev.length);
-            if (prev.some(p => p.odaId === data.userId)) {
-              console.log('User already in participants list:', data.userName);
+            const targetId = data.userId || data.id;
+            console.log('Processing user-joined. Target ID:', targetId, 'Current count:', prev.length);
+            
+            if (prev.some(p => p.odaId === targetId)) {
+              console.log('User already in participants list (by odaId):', data.userName);
               return prev;
             }
+            
+            // Check if we have this user by socketId but missing odaId (edge case)
+            const existingBySocket = prev.find(p => p.id === data.socketId);
+            if (existingBySocket) {
+               console.log('User found by socketId but missing odaId, updating:', existingBySocket);
+               return prev.map(p => p.id === data.socketId ? {...p, odaId: targetId, userName: data.userName} : p);
+            }
+
             const newP = {
               id: data.socketId,
-              odaId: data.userId,
+              odaId: targetId,
               userName: data.userName,
               userAvatar: data.userAvatar,
               audioEnabled: true,
@@ -2014,6 +2063,7 @@ const VideoConference = ({roomId, channelId, title, onClose}) => {
 
         // Media controls
         socketRef.current.on('user-audio-toggle', data => {
+          console.log('Audio toggle received:', data);
           setParticipants(prev =>
             prev.map(p =>
               p.odaId === data.userId ? {...p, audioEnabled: data.enabled} : p,
@@ -2022,6 +2072,7 @@ const VideoConference = ({roomId, channelId, title, onClose}) => {
         });
 
         socketRef.current.on('user-video-toggle', data => {
+          console.log('Video toggle received:', data);
           setParticipants(prev =>
             prev.map(p =>
               p.odaId === data.userId ? {...p, videoEnabled: data.enabled} : p,
@@ -2035,17 +2086,26 @@ const VideoConference = ({roomId, channelId, title, onClose}) => {
           setParticipants(prev => {
             console.log(
               'Current participants:',
-              prev.map(p => ({odaId: p.odaId, userName: p.userName})),
+              prev.map(p => ({odaId: p.odaId, userName: p.userName, id: p.id})),
             );
-            const updated = prev.map(p =>
-              p.odaId === data.userId ? {...p, handRaised: data.raised} : p,
-            );
-            const found = prev.find(p => p.odaId === data.userId);
+            
+            // Search by multiple IDs to be robust
+            const targetId = data.userId || data.id;
+            const found = prev.find(p => p.odaId === targetId || p.id === targetId || p.odaId === data.userId);
+            
             console.log(
               'Found participant to update:',
               found ? found.userName : 'NOT FOUND',
+              'Searching for:', targetId, data.userId
             );
-            return updated;
+
+            if (!found) return prev;
+
+            return prev.map(p =>
+              (p.odaId === targetId || p.id === targetId || p.odaId === data.userId) 
+                ? {...p, handRaised: data.raised} 
+                : p,
+            );
           });
         });
 
