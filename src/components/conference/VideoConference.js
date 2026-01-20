@@ -51,8 +51,11 @@ import {Device} from 'mediasoup-client';
 import resumableUploader from '../../utils/resumableUpload';
 import {processVideoForUpload} from '../../utils/videoOptimizer';
 
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001';
-const SOCKET_URL = API_URL.replace('/v1', '');
+// New Server URL (Droplet)
+const SERVER_URL = 'https://api.appandcapital.com.tr';
+const API_URL = process.env.REACT_APP_API_URL || `${SERVER_URL}/v1`;
+// const SOCKET_URL = API_URL.replace('/v1', '');
+const SOCKET_URL = SERVER_URL;
 
 // ICE Servers for WebRTC
 const DEFAULT_ICE_SERVERS = [
@@ -98,12 +101,12 @@ const cleanupConferenceResources = ({
     adaptiveTimerRef.current = null;
   }
 
-  if (recordingTimerRef.current) {
+  if (recordingTimerRef && recordingTimerRef.current) {
     clearInterval(recordingTimerRef.current);
     recordingTimerRef.current = null;
   }
 
-  if (screenStreamRef.current) {
+  if (screenStreamRef && screenStreamRef.current) {
     screenStreamRef.current.getTracks().forEach(track => track.stop());
     screenStreamRef.current = null;
   }
@@ -1617,7 +1620,7 @@ const VideoConference = ({roomId, channelId, title, onClose}) => {
           reconnection: true,
           reconnectionAttempts: 10,
           timeout: 20000,
-          forceNew: true,
+          forceNew: false,
         });
 
         // Recording events
@@ -2176,15 +2179,14 @@ const VideoConference = ({roomId, channelId, title, onClose}) => {
   }, [
     roomId,
     createPeerConnection,
-    toast,
-    onClose,
     startAdaptiveMonitoring,
     initializeSfuMode,
     setupSfuEventListeners,
     currentUser?.id,
     currentUser?.name,
     currentUser?.thumbnail,
-    isConnected,
+    // toast ve onClose bağımlılıkları çıkartıldı çünkü referansları değiştiğinde yeniden bağlanmaya sebep oluyor
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   ]);
 
   // Toggle audio

@@ -11,6 +11,9 @@ const CHUNK_SIZE = 256 * 1024;
 const RESUMABLE_THRESHOLD = 5 * 1024 * 1024;
 const UPLOAD_STATE_PREFIX = 'resumable_upload_';
 
+// Media Server URL (New Droplet)
+const MEDIA_SERVER_URL = 'https://api.appandcapital.com.tr/v1';
+
 class ResumableUploader {
   constructor() {
     this.isPaused = false;
@@ -85,6 +88,7 @@ class ResumableUploader {
     formData.append('file', file);
 
     const response = await apiClient.post('/upload/file', formData, {
+      baseURL: MEDIA_SERVER_URL,
       headers: {
         'Content-Type': 'multipart/form-data',
       },
@@ -297,6 +301,7 @@ class ResumableUploader {
   async initServerUpload(data) {
     return this.withRetry(async () => {
       const response = await apiClient.post('/upload/init-resumable', data, {
+        baseURL: MEDIA_SERVER_URL,
         timeout: 15000,
       });
       return response.data;
@@ -305,7 +310,10 @@ class ResumableUploader {
 
   async uploadChunk(data) {
     return this.withRetry(async () => {
-      await apiClient.post('/upload/chunk', data, {timeout: 30000});
+      await apiClient.post('/upload/chunk', data, {
+        baseURL: MEDIA_SERVER_URL,
+        timeout: 30000
+      });
     });
   }
 
@@ -314,7 +322,10 @@ class ResumableUploader {
       const response = await apiClient.post(
         '/upload/complete-resumable',
         {uploadId: serverUploadId},
-        {timeout: 60000},
+        {
+          baseURL: MEDIA_SERVER_URL,
+          timeout: 60000
+        },
       );
       return response.data;
     });
