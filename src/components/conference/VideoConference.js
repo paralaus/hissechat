@@ -1175,9 +1175,16 @@ const VideoConference = ({roomId, channelId, title, onClose}) => {
 
         // Resume consumer
         console.log(`[SFU] Resuming consumer ${consumer.id} for ${producerOdaId}`);
-        socketRef.current.emit('sfu:resume-consumer', {
+        
+        // Try multiple event names and parameter formats to ensure server compatibility
+        const resumePayload = {
           consumerId: consumer.id,
-        });
+          consumer_id: consumer.id,
+        };
+        
+        socketRef.current.emit('sfu:resume-consumer', resumePayload);
+        socketRef.current.emit('resumeConsumer', resumePayload);
+        
         consumer.resume();
 
         console.log(`SFU Consuming ${kind} from ${producerOdaId} done`);
@@ -2085,24 +2092,24 @@ const VideoConference = ({roomId, channelId, title, onClose}) => {
           console.log('hand-raise-update received:', data);
           setParticipants(prev => {
             console.log(
-              'Current participants:',
-              prev.map(p => ({odaId: p.odaId, userName: p.userName, id: p.id})),
+              'Current participants for hand-raise:',
+              JSON.stringify(prev.map(p => ({odaId: p.odaId, userName: p.userName, id: p.id, userId: p.userId}))),
             );
             
             // Search by multiple IDs to be robust
             const targetId = data.userId || data.id;
-            const found = prev.find(p => p.odaId === targetId || p.id === targetId || p.odaId === data.userId);
+            const found = prev.find(p => p.odaId === targetId || p.id === targetId || p.odaId === data.userId || p.userId === targetId);
             
             console.log(
               'Found participant to update:',
-              found ? found.userName : 'NOT FOUND',
+              found ? (found.userName || 'Unknown') : 'NOT FOUND',
               'Searching for:', targetId, data.userId
             );
 
             if (!found) return prev;
 
             return prev.map(p =>
-              (p.odaId === targetId || p.id === targetId || p.odaId === data.userId) 
+              (p.odaId === targetId || p.id === targetId || p.odaId === data.userId || p.userId === targetId) 
                 ? {...p, handRaised: data.raised} 
                 : p,
             );
