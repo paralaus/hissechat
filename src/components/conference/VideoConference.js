@@ -1471,6 +1471,22 @@ const VideoConference = ({roomId, channelId, title, onClose}) => {
   }, [spotlightUserId]);
 
   // Screen Share
+  const stopScreenShare = useCallback(async () => {
+    if (screenStreamRef.current) {
+      screenStreamRef.current.getTracks().forEach(track => track.stop());
+      screenStreamRef.current = null;
+      setIsScreenSharing(false);
+
+      if (conferenceMode === 'sfu') {
+          const producer = sfuProducersRef.current.get('screen');
+          if (producer) {
+              producer.close();
+              sfuProducersRef.current.delete('screen');
+          }
+      }
+    }
+  }, [conferenceMode]);
+
   const startScreenShare = useCallback(async () => {
     try {
       const stream = await navigator.mediaDevices.getDisplayMedia({
@@ -1524,22 +1540,6 @@ const VideoConference = ({roomId, channelId, title, onClose}) => {
       });
     }
   }, [conferenceMode, toast, stopScreenShare]);
-
-  const stopScreenShare = useCallback(async () => {
-    if (screenStreamRef.current) {
-      screenStreamRef.current.getTracks().forEach(track => track.stop());
-      screenStreamRef.current = null;
-      setIsScreenSharing(false);
-
-      if (conferenceMode === 'sfu') {
-          const producer = sfuProducersRef.current.get('screen');
-          if (producer) {
-              producer.close();
-              sfuProducersRef.current.delete('screen');
-          }
-      }
-    }
-  }, [conferenceMode]);
 
   // Recording
   const toggleRecording = useCallback(() => {
