@@ -174,7 +174,11 @@ const VideoParticipant = ({
       // Auto-play checks
       videoRef.current
         .play()
-        .catch(e => console.error('[VideoParticipant] Play error:', e));
+        .catch(e => {
+          // Ignore AbortError which happens when component unmounts quickly
+          if (e.name === 'AbortError') return;
+          console.error('[VideoParticipant] Play error:', e);
+        });
     }
   }, [participant.stream, participant.videoEnabled, participant.userName]);
 
@@ -2165,6 +2169,8 @@ const VideoConference = ({roomId, channelId, title, onClose}) => {
         peersRef,
         socketRef,
         initializedRef,
+        screenStreamRef,
+        recordingTimerRef,
       });
     };
   }, [
