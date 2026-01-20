@@ -1706,6 +1706,24 @@ const VideoConference = ({roomId, channelId, title, onClose}) => {
             startAdaptiveMonitoring();
           }, 2000);
 
+          // Initialize participants state from room data
+          if (data.participants && data.participants.length > 0) {
+            setParticipants(prev => {
+              const newParticipants = data.participants
+                .filter(p => !prev.some(existing => existing.odaId === p.userId))
+                .map(p => ({
+                  id: p.socketId,
+                  odaId: p.userId,
+                  userName: p.userName,
+                  userAvatar: p.userAvatar,
+                  audioEnabled: true,
+                  videoEnabled: true,
+                  handRaised: false,
+                }));
+              return [...prev, ...newParticipants];
+            });
+          }
+
           // Handle connection based on mode
           if (mode === 'sfu') {
             // SFU Mode: Initialize mediasoup client
@@ -1825,26 +1843,29 @@ const VideoConference = ({roomId, channelId, title, onClose}) => {
         });
 
         socketRef.current.on('user-joined', async data => {
-          console.log('User joined:', data);
-
+          console.log('User joined event received:', data);
+          
           // We don't create an offer here to avoid signaling glare.
           // The new user (who just joined and received room-joined) will initiate the connection.
           // We just update the UI to show the new user.
 
           setParticipants(prev => {
-            if (prev.some(p => p.odaId === data.userId)) return prev;
-            return [
-              ...prev,
-              {
-                id: data.socketId,
-                odaId: data.userId,
-                userName: data.userName,
-                userAvatar: data.userAvatar,
-                audioEnabled: true,
-                videoEnabled: true,
-                handRaised: false,
-              },
-            ];
+            console.log('Processing user-joined. Current participants count:', prev.length);
+            if (prev.some(p => p.odaId === data.userId)) {
+              console.log('User already in participants list:', data.userName);
+              return prev;
+            }
+            const newP = {
+              id: data.socketId,
+              odaId: data.userId,
+              userName: data.userName,
+              userAvatar: data.userAvatar,
+              audioEnabled: true,
+              videoEnabled: true,
+              handRaised: false,
+            };
+            console.log('Adding new participant:', newP);
+            return [...prev, newP];
           });
 
           toast({
