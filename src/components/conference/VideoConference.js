@@ -1111,15 +1111,22 @@ const VideoConference = ({roomId, channelId, title, onClose}) => {
         const stream = new MediaStream([consumer.track]);
 
         console.log(
-          `[SFU] Stream created for ${producerOdaId}, tracks: ${stream.getTracks().length}`,
+          `[SFU] Stream created for ${producerOdaId}, tracks: ${stream.getTracks().length}, kind: ${kind}`,
         );
-        stream
-          .getTracks()
-          .forEach(t =>
-            console.log(
-              `[SFU] Track: ${t.kind}, enabled: ${t.enabled}, state: ${t.readyState}, id: ${t.id}`,
-            ),
-          );
+        
+        // Monitor track status
+        const track = consumer.track;
+        console.log(
+          `[SFU] Track details: kind=${track.kind}, enabled=${track.enabled}, state=${track.readyState}, muted=${track.muted}, id=${track.id}`
+        );
+        
+        track.onmute = () => {
+          console.log(`[SFU] Track muted: ${track.id} (producer: ${producerOdaId})`);
+        };
+        
+        track.onunmute = () => {
+          console.log(`[SFU] Track unmuted: ${track.id} (producer: ${producerOdaId})`);
+        };
 
         // Update participant with new stream
         setParticipants(prev => {
@@ -1134,21 +1141,23 @@ const VideoConference = ({roomId, channelId, title, onClose}) => {
             {
               id: `sfu-${producerOdaId}`,
               odaId: producerOdaId,
-              userName: producerOdaId,
+              userName: producerOdaId, // Will be updated from user-joined event or if available
               stream,
-              audioEnabled: kind === 'audio',
-              videoEnabled: kind === 'video',
+              audioEnabled: kind === 'audio' || true, // Default to true, updated by producer events
+              videoEnabled: kind === 'video' || true,
               handRaised: false,
             },
           ];
         });
 
         // Resume consumer
+        console.log(`[SFU] Resuming consumer ${consumer.id} for ${producerOdaId}`);
         socketRef.current.emit('sfu:resume-consumer', {
           consumerId: consumer.id,
         });
+        consumer.resume();
 
-        console.log(`SFU Consuming ${kind} from ${producerOdaId}`);
+        console.log(`SFU Consuming ${kind} from ${producerOdaId} done`);
       } catch (err) {
         console.error(`Failed to consume ${kind} from ${producerOdaId}:`, err);
       }
@@ -1291,8 +1300,9 @@ const VideoConference = ({roomId, channelId, title, onClose}) => {
               encodings:
                 track.kind === 'video'
                   ? [
-                      {maxBitrate: 150000, scaleResolutionDownBy: 4},
-                      {maxBitrate: 800000, scaleResolutionDownBy: 1},
+                      {maxBitrate: 100000, scaleResolutionDownBy: 4},
+                      {maxBitrate: 300000, scaleResolutionDownBy: 2},
+                      {maxBitrate: 900000, scaleResolutionDownBy: 1},
                     ]
                   : undefined,
               codecOptions: {
