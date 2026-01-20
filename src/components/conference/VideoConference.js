@@ -1086,10 +1086,10 @@ const VideoConference = ({roomId, channelId, title, onClose}) => {
 
         const consumerData = await new Promise((resolve, reject) => {
           socketRef.current.emit(
-            'sfu:consume',
+            'consume',
             {
               producerId,
-              producerOdaId,
+              consumerTransportId: sfuRecvTransportRef.current.id,
               rtpCapabilities: sfuDeviceRef.current.rtpCapabilities,
             },
             response => {
@@ -1100,7 +1100,7 @@ const VideoConference = ({roomId, channelId, title, onClose}) => {
         });
 
         const consumer = await sfuRecvTransportRef.current.consume({
-          id: consumerData.consumerId,
+          id: consumerData.id,
           producerId: consumerData.producerId,
           kind: consumerData.kind,
           rtpParameters: consumerData.rtpParameters,
@@ -1182,7 +1182,6 @@ const VideoConference = ({roomId, channelId, title, onClose}) => {
           consumer_id: consumer.id,
         };
         
-        socketRef.current.emit('sfu:resume-consumer', resumePayload);
         socketRef.current.emit('resumeConsumer', resumePayload);
         
         consumer.resume();
@@ -1208,9 +1207,9 @@ const VideoConference = ({roomId, channelId, title, onClose}) => {
 
         // Get RTP capabilities from server
         const rtpCapabilities = await new Promise((resolve, reject) => {
-          socketRef.current.emit('sfu:get-rtp-capabilities', response => {
+          socketRef.current.emit('getRouterRtpCapabilities', {}, response => {
             if (response.error) reject(new Error(response.error));
-            else resolve(response.rtpCapabilities);
+            else resolve(response);
           });
         });
 
@@ -1222,9 +1221,9 @@ const VideoConference = ({roomId, channelId, title, onClose}) => {
 
         // Create send transport
         const sendTransportParams = await new Promise((resolve, reject) => {
-          socketRef.current.emit('sfu:create-send-transport', response => {
+          socketRef.current.emit('createWebRtcTransport', response => {
             if (response.error) reject(new Error(response.error));
-            else resolve(response.transport);
+            else resolve(response);
           });
         });
 
@@ -1240,9 +1239,9 @@ const VideoConference = ({roomId, channelId, title, onClose}) => {
           async ({dtlsParameters}, callback, errback) => {
             try {
               socketRef.current.emit(
-                'sfu:connect-transport',
+                'connectTransport',
                 {
-                  transportId: sendTransport.id,
+                  transport_id: sendTransport.id,
                   dtlsParameters,
                 },
                 res => {
@@ -1261,16 +1260,16 @@ const VideoConference = ({roomId, channelId, title, onClose}) => {
           async ({kind, rtpParameters, appData}, callback, errback) => {
             try {
               socketRef.current.emit(
-                'sfu:produce',
+                'produce',
                 {
-                  transportId: sendTransport.id,
+                  producerTransportId: sendTransport.id,
                   kind,
                   rtpParameters,
                   appData,
                 },
                 res => {
                   if (res.error) errback(new Error(res.error));
-                  else callback({id: res.producerId});
+                  else callback({id: res.producer_id});
                 },
               );
             } catch (err) {
@@ -1284,9 +1283,9 @@ const VideoConference = ({roomId, channelId, title, onClose}) => {
 
         // Create recv transport
         const recvTransportParams = await new Promise((resolve, reject) => {
-          socketRef.current.emit('sfu:create-recv-transport', response => {
+          socketRef.current.emit('createWebRtcTransport', response => {
             if (response.error) reject(new Error(response.error));
-            else resolve(response.transport);
+            else resolve(response);
           });
         });
 
@@ -1302,9 +1301,9 @@ const VideoConference = ({roomId, channelId, title, onClose}) => {
           async ({dtlsParameters}, callback, errback) => {
             try {
               socketRef.current.emit(
-                'sfu:connect-transport',
+                'connectTransport',
                 {
-                  transportId: recvTransport.id,
+                  transport_id: recvTransport.id,
                   dtlsParameters,
                 },
                 res => {
@@ -1338,6 +1337,7 @@ const VideoConference = ({roomId, channelId, title, onClose}) => {
               codecOptions: {
                 videoGoogleStartBitrate: 1000,
               },
+              appData: { mediaType: track.kind },
             });
             sfuProducersRef.current.set(producer.id, producer);
             console.log(`SFU Produced ${track.kind} track: ${producer.id}`);
@@ -1348,21 +1348,7 @@ const VideoConference = ({roomId, channelId, title, onClose}) => {
 
         // Get existing producers and consume them
         console.log('SFU Fetching existing producers...');
-        socketRef.current.emit('sfu:get-producers', async response => {
-          if (response.error) {
-            console.error('Failed to get producers:', response.error);
-            return;
-          }
-
-          console.log('SFU Existing producers:', response.producers);
-          for (const producer of response.producers) {
-            await consumeProducer(
-              producer.producerId,
-              producer.producerOdaId,
-              producer.kind,
-            );
-          }
-        });
+        socketRef.current.emit('getProducers');
 
         console.log('SFU mode initialized successfully');
       } catch (err) {
@@ -1377,33 +1363,21 @@ const VideoConference = ({roomId, channelId, title, onClose}) => {
   const setupSfuEventListeners = useCallback(() => {
     if (!socketRef.current) return;
 
-    socketRef.current.on('sfu:new-producer', async data => {
-      console.log('SFU New producer received:', data);
-      await consumeProducer(data.producerId, data.producerOdaId, data.kind);
+    socketRef.current.on('newProducers', async producers => {
+      console.log('SFU New producers received:', producers);
+      for (const producer of producers) {
+        await consumeProducer(
+            producer.producer_id,
+            producer.peer_name,
+            producer.type || producer.kind
+        );
+      }
     });
 
-    socketRef.current.on('sfu:producer-paused', data => {
-      console.log('SFU Producer paused:', data);
-      setParticipants(prev =>
-        prev.map(p =>
-          p.odaId === data.producerOdaId ? {...p, audioEnabled: false} : p,
-        ),
-      );
-    });
-
-    socketRef.current.on('sfu:producer-resumed', data => {
-      console.log('SFU Producer resumed:', data);
-      setParticipants(prev =>
-        prev.map(p =>
-          p.odaId === data.producerOdaId ? {...p, audioEnabled: true} : p,
-        ),
-      );
-    });
-
-    socketRef.current.on('sfu:producer-closed', data => {
-      console.log('SFU Producer closed:', data);
+    socketRef.current.on('consumerClosed', data => {
+      console.log('SFU Consumer closed:', data);
       for (const [id, consumer] of sfuConsumersRef.current) {
-        if (consumer.producerId === data.producerId) {
+        if (consumer.id === data.consumer_id) {
           consumer.close();
           sfuConsumersRef.current.delete(id);
           break;
@@ -1450,7 +1424,7 @@ const VideoConference = ({roomId, channelId, title, onClose}) => {
       } else {
         if (!consumer.paused) {
           console.log(`[SFU] Pausing video consumer for ${producerOdaId}`);
-          socketRef.current?.emit('sfu:pause-consumer', { consumerId: consumer.id });
+          // socketRef.current?.emit('pauseConsumer', { consumerId: consumer.id });
           consumer.pause();
         }
       }
