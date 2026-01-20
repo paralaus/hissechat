@@ -755,7 +755,9 @@ const VideoConference = ({roomId, channelId, title, onClose}) => {
   const [replyingTo, setReplyingTo] = useState(null);
   const [showReactionPicker, setShowReactionPicker] = useState(false);
   const [floatingReactions, setFloatingReactions] = useState([]);
-  const {upload, validateFile, isUploading, uploadProgress} = useFileInput();
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  // const {upload, validateFile, isUploading, uploadProgress} = useFileInput();
   const [polls, setPolls] = useState([]);
   const [showPollPanel, setShowPollPanel] = useState(false);
   const [showCreatePoll, setShowCreatePoll] = useState(false);
