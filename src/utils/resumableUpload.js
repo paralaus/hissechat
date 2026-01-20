@@ -12,7 +12,7 @@ const RESUMABLE_THRESHOLD = 5 * 1024 * 1024;
 const UPLOAD_STATE_PREFIX = 'resumable_upload_';
 
 // Media Server URL (New Droplet)
-const MEDIA_SERVER_URL = 'https://api.appandcapital.com.tr/v1';
+const MEDIA_SERVER_URL = 'https://api.appandcapital.com.tr';
 
 class ResumableUploader {
   constructor() {
