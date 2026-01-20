@@ -55,7 +55,8 @@ import {processVideoForUpload} from '../../utils/videoOptimizer';
 const SERVER_URL = 'https://api.appandcapital.com.tr';
 // const API_URL = process.env.REACT_APP_API_URL || `${SERVER_URL}/v1`;
 // const SOCKET_URL = API_URL.replace('/v1', '');
-const SOCKET_URL = SERVER_URL;
+// const SOCKET_URL = SERVER_URL;
+const SOCKET_URL = 'http://104.248.212.6:4000'; // Direct access to video server (HTTP/WS)
 
 // ICE Servers for WebRTC
 const DEFAULT_ICE_SERVERS = [
