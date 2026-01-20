@@ -1639,11 +1639,12 @@ const VideoConference = ({roomId, channelId, title, onClose}) => {
         socketRef.current = io(SOCKET_URL, {
           path: '/socket.io', // Default path
           auth: {token},
-          transports: ['websocket'], // Force websocket to prevent server overload
+          transports: ['websocket', 'polling'], // Allow polling fallback
           reconnection: true,
           reconnectionAttempts: 10,
           timeout: 20000,
           forceNew: false,
+          rejectUnauthorized: false // Dev only: Accept self-signed certs if needed
         });
 
         // Recording events
