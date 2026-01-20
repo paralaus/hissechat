@@ -35,8 +35,6 @@ class ResumableUploader {
   async upload(options) {
     const {
       file, // Browser File object
-      onProgress,
-      onComplete,
       onError,
       forceResumable,
     } = options;
@@ -335,6 +333,7 @@ class ResumableUploader {
         if (tries > attempts || this.isCancelled) throw err;
 
         console.log(`[Upload] Retry ${tries}/${attempts} in ${delay}ms`);
+        // eslint-disable-next-line no-loop-func
         await new Promise(r => setTimeout(r, delay));
         delay = Math.min(maxDelayMs, delay * 2);
       }

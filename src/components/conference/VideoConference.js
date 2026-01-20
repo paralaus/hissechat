@@ -19,14 +19,6 @@ import {
   MenuButton,
   MenuList,
   MenuItem,
-  Modal,
-  ModalOverlay,
-  ModalContent,
-  ModalHeader,
-  ModalBody,
-  ModalFooter,
-  ModalCloseButton,
-  useDisclosure,
   Image,
   Progress,
 } from '@chakra-ui/react';
@@ -55,7 +47,6 @@ import {
 } from 'react-icons/fi';
 import io from 'socket.io-client';
 import Cookies from 'js-cookie';
-import {uploadFile} from '../../api/api';
 import {Device} from 'mediasoup-client';
 import resumableUploader from '../../utils/resumableUpload';
 import {processVideoForUpload} from '../../utils/videoOptimizer';
@@ -1532,7 +1523,7 @@ const VideoConference = ({roomId, channelId, title, onClose}) => {
         isClosable: true,
       });
     }
-  }, [conferenceMode, toast]);
+  }, [conferenceMode, toast, stopScreenShare]);
 
   const stopScreenShare = useCallback(async () => {
     if (screenStreamRef.current) {
@@ -2298,7 +2289,7 @@ const VideoConference = ({roomId, channelId, title, onClose}) => {
       }
 
       // Upload file using resumable upload
-      const fileUrl = await resumableUploader.upload({
+      await resumableUploader.upload({
         file: processResult.processedFile,
         onProgress: progress => {
           setUploadProgress(progress.percentage);
