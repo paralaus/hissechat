@@ -15,6 +15,20 @@ import {
   Input,
   Button,
   Flex,
+  Menu,
+  MenuButton,
+  MenuList,
+  MenuItem,
+  Modal,
+  ModalOverlay,
+  ModalContent,
+  ModalHeader,
+  ModalBody,
+  ModalFooter,
+  ModalCloseButton,
+  useDisclosure,
+  Image,
+  Progress,
 } from '@chakra-ui/react';
 import {
   FiMic,
@@ -32,11 +46,19 @@ import {
   FiPaperclip,
   FiDownload,
   FiWifi,
+  FiMonitor,
+  FiDisc,
+  FiGrid,
+  FiLayout,
+  FiStopCircle,
+  FiAnchor,
 } from 'react-icons/fi';
 import io from 'socket.io-client';
 import Cookies from 'js-cookie';
 import {uploadFile} from '../../api/api';
 import {Device} from 'mediasoup-client';
+import resumableUploader from '../../utils/resumableUpload';
+import {processVideoForUpload} from '../../utils/videoOptimizer';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001';
 const SOCKET_URL = API_URL.replace('/v1', '');
@@ -77,10 +99,22 @@ const cleanupConferenceResources = ({
   peersRef,
   socketRef,
   initializedRef,
+  screenStreamRef,
+  recordingTimerRef,
 }) => {
   if (adaptiveTimerRef.current) {
     clearInterval(adaptiveTimerRef.current);
     adaptiveTimerRef.current = null;
+  }
+
+  if (recordingTimerRef.current) {
+    clearInterval(recordingTimerRef.current);
+    recordingTimerRef.current = null;
+  }
+
+  if (screenStreamRef.current) {
+    screenStreamRef.current.getTracks().forEach(track => track.stop());
+    screenStreamRef.current = null;
   }
 
   for (const producer of sfuProducersRef.current.values()) {
@@ -127,6 +161,8 @@ const VideoParticipant = ({
   isSpeaking,
   isFullscreen,
   onFullscreen,
+  isSpotlighted,
+  onSpotlight,
 }) => {
   const videoRef = useRef(null);
 
@@ -212,19 +248,31 @@ const VideoParticipant = ({
       </Box>
 
       {/* Fullscreen button */}
-      <IconButton
-        icon={isFullscreen ? <FiMinimize /> : <FiMaximize />}
+      <HStack
         position="absolute"
         top="2"
         right="2"
-        size="sm"
-        variant="ghost"
-        colorScheme="whiteAlpha"
-        onClick={() => onFullscreen?.(participant.odaId)}
+        spacing={1}
         opacity="0"
         _groupHover={{opacity: 1}}
-        aria-label="Tam ekran"
-      />
+        transition="opacity 0.2s">
+        <IconButton
+          icon={<FiAnchor />}
+          size="sm"
+          variant={isSpotlighted ? 'solid' : 'ghost'}
+          colorScheme={isSpotlighted ? 'blue' : 'whiteAlpha'}
+          onClick={() => onSpotlight?.(participant.odaId)}
+          aria-label={isSpotlighted ? 'Sabitlemeyi Kaldır' : 'Sabitle'}
+        />
+        <IconButton
+          icon={isFullscreen ? <FiMinimize /> : <FiMaximize />}
+          size="sm"
+          variant="ghost"
+          colorScheme="whiteAlpha"
+          onClick={() => onFullscreen?.(participant.odaId)}
+          aria-label="Tam ekran"
+        />
+      </HStack>
     </Box>
   );
 };
@@ -243,6 +291,7 @@ const ChatPanel = ({
   onStopTyping,
   onAddReaction,
   isUploading = false,
+  uploadProgress = 0,
 }) => {
   const [message, setMessage] = useState('');
   const [showEmojiPicker, setShowEmojiPicker] = useState(null);
@@ -404,6 +453,32 @@ const ChatPanel = ({
                 {/* File message */}
                 {msg.type === 'file' && msg.file ? (
                   <Box>
+                    {/* Inline Media Preview */}
+                    {msg.file.type?.startsWith('image/') && (
+                      <Image
+                        src={msg.file.url}
+                        alt={msg.file.name}
+                        maxH="200px"
+                        borderRadius="md"
+                        mb="2"
+                        objectFit="cover"
+                        cursor="pointer"
+                        onClick={() => window.open(msg.file.url, '_blank')}
+                      />
+                    )}
+                    {msg.file.type?.startsWith('video/') && (
+                      <Box
+                        as="video"
+                        controls
+                        src={msg.file.url}
+                        maxH="300px"
+                        w="100%"
+                        borderRadius="md"
+                        mb="2"
+                        outline="none"
+                      />
+                    )}
+                    
                     <HStack
                       p="2"
                       bg={isOwn ? 'blue.600' : 'gray.600'}
@@ -590,8 +665,28 @@ const ChatPanel = ({
         </HStack>
       )}
 
+      {/* Upload Progress */}
+      {isUploading && (
+        <Box px="3" py="2" bg="gray.700" borderTop="1px solid" borderColor="gray.600">
+          <HStack spacing="3">
+            <Text fontSize="xs" color="blue.300" whiteSpace="nowrap">
+              Yükleniyor... %{uploadProgress}
+            </Text>
+            <Progress
+              value={uploadProgress}
+              size="xs"
+              colorScheme="blue"
+              flex="1"
+              borderRadius="full"
+              hasStripe
+              isAnimated
+            />
+          </HStack>
+        </Box>
+      )}
+
       {/* Input */}
-      <HStack p="3" w="100%" borderTop="1px solid" borderColor="gray.700">
+      <HStack p="3" w="100%" borderTop={!isUploading ? "1px solid" : "none"} borderColor="gray.700">
         {/* Hidden file input */}
         <input
           type="file"
@@ -647,6 +742,12 @@ const VideoConference = ({roomId, channelId, title, onClose}) => {
   const [participants, setParticipants] = useState([]);
   const [audioEnabled, setAudioEnabled] = useState(true);
   const [videoEnabled, setVideoEnabled] = useState(true);
+  const [isScreenSharing, setIsScreenSharing] = useState(false);
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordingDuration, setRecordingDuration] = useState(0);
+  const [viewMode, setViewMode] = useState('grid'); // 'grid', 'speaker', 'spotlight'
+  const [spotlightUserId, setSpotlightUserId] = useState(null);
+  const [activeSpeakerId, setActiveSpeakerId] = useState(null);
   const [showChat, setShowChat] = useState(false);
   const [showParticipants, setShowParticipants] = useState(false);
   const [messages, setMessages] = useState([]);
@@ -657,6 +758,7 @@ const VideoConference = ({roomId, channelId, title, onClose}) => {
   const [showReactionPicker, setShowReactionPicker] = useState(false);
   const [floatingReactions, setFloatingReactions] = useState([]);
   const [isUploading, setIsUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
   const [polls, setPolls] = useState([]);
   const [showPollPanel, setShowPollPanel] = useState(false);
   const [showCreatePoll, setShowCreatePoll] = useState(false);
@@ -673,6 +775,8 @@ const VideoConference = ({roomId, channelId, title, onClose}) => {
   const peersRef = useRef(new Map());
   const iceCandidateQueueRef = useRef(new Map());
   const localStreamRef = useRef(null);
+  const screenStreamRef = useRef(null);
+  const recordingTimerRef = useRef(null);
   const iceServersRef = useRef(DEFAULT_ICE_SERVERS);
 
   // SFU Mode Refs
@@ -995,7 +1099,12 @@ const VideoConference = ({roomId, channelId, title, onClose}) => {
           producerId: consumerData.producerId,
           kind: consumerData.kind,
           rtpParameters: consumerData.rtpParameters,
+          appData: { producerOdaId }, // Attach producerOdaId to appData
         });
+
+        // Also attach directly for easier access if needed
+        consumer.appData = { ...consumer.appData, producerOdaId };
+        consumer.producerOdaId = producerOdaId;
 
         sfuConsumersRef.current.set(consumer.id, consumer);
 
@@ -1259,6 +1368,78 @@ const VideoConference = ({roomId, channelId, title, onClose}) => {
     });
   }, [consumeProducer]);
 
+  // Update video priorities based on visibility and active speaker
+  const updateVideoPriorities = useCallback((visibleParticipantIds, currentActiveSpeakerId) => {
+    if (conferenceMode !== 'sfu' || !socketRef.current) return;
+
+    sfuConsumersRef.current.forEach(consumer => {
+      if (consumer.kind !== 'video') return;
+
+      const producerOdaId = consumer.appData?.producerOdaId || consumer.producerOdaId; // Check appData first if stored there
+      // In consumeProducer we set: id: `sfu-${producerOdaId}`... wait, where do we store producerOdaId on consumer?
+      // In consumeProducer: const consumer = await sfuRecvTransportRef.current.consume(...)
+      // We didn't attach producerOdaId to consumer object explicitly in the read code, but we might need to.
+      // Let's check consumeProducer again.
+      
+      // We need to attach producerOdaId to consumer to identify it here.
+      // I'll update consumeProducer as well or rely on a map.
+      
+      const isVisible = visibleParticipantIds.includes(producerOdaId);
+      const isActiveSpeaker = producerOdaId === currentActiveSpeakerId;
+
+      if (isVisible) {
+        if (consumer.paused) {
+          console.log(`[SFU] Resuming video consumer for ${producerOdaId}`);
+          socketRef.current?.emit('sfu:resume-consumer', { consumerId: consumer.id });
+          consumer.resume();
+        }
+
+        // Adjust quality layers
+        // 0: low (thumbnail), 1: medium (grid), 2: high (speaker)
+        const preferredLayer = isActiveSpeaker ? 2 : 1; 
+        
+        socketRef.current?.emit('sfu:consumer-set-layers', { 
+          consumerId: consumer.id,
+          spatialLayer: preferredLayer,
+          temporalLayer: 2 
+        });
+      } else {
+        if (!consumer.paused) {
+          console.log(`[SFU] Pausing video consumer for ${producerOdaId}`);
+          socketRef.current?.emit('sfu:pause-consumer', { consumerId: consumer.id });
+          consumer.pause();
+        }
+      }
+    });
+  }, [conferenceMode]);
+
+  // Effect to trigger video priority updates
+  useEffect(() => {
+    if (conferenceMode !== 'sfu') return;
+
+    // Determine visible participants and active speaker
+    const allParticipantIds = participants.map(p => p.odaId);
+    let visibleIds = [];
+    let effectiveActiveId = activeSpeakerId;
+
+    if (viewMode === 'grid') {
+      // In grid, everyone is visible
+      visibleIds = allParticipantIds;
+    } else {
+      // In speaker/spotlight mode
+      // Main user is spotlight user OR active speaker OR first remote user
+      const mainUserId = spotlightUserId || activeSpeakerId || (participants.length > 0 ? participants[0].odaId : null);
+      
+      effectiveActiveId = mainUserId; // The main user gets high quality
+      visibleIds = allParticipantIds; // We still show others in the strip, so they are visible
+      // If we had pagination, we would filter here.
+    }
+
+    updateVideoPriorities(visibleIds, effectiveActiveId);
+
+  }, [participants, viewMode, spotlightUserId, activeSpeakerId, conferenceMode, updateVideoPriorities]);
+
+
   // Cleanup SFU resources
   const cleanupSfu = useCallback(() => {
     for (const producer of sfuProducersRef.current.values()) {
@@ -1283,6 +1464,109 @@ const VideoConference = ({roomId, channelId, title, onClose}) => {
     sfuDeviceRef.current = null;
     console.log('SFU resources cleaned up');
   }, []);
+
+  // Spotlight
+  const toggleSpotlight = useCallback((userId) => {
+    if (spotlightUserId === userId) {
+      setSpotlightUserId(null);
+      // If we were in speaker mode and unspotlighted, we might want to stay in speaker mode
+      // or go back to grid. Usually stay in speaker mode but dynamic.
+      // Or if the user manually switched to grid, we respect that.
+      // But if we clicked "Pin", we usually expect to see that user.
+    } else {
+      setSpotlightUserId(userId);
+      setViewMode('speaker');
+    }
+  }, [spotlightUserId]);
+
+  // Screen Share
+  const startScreenShare = useCallback(async () => {
+    try {
+      const stream = await navigator.mediaDevices.getDisplayMedia({
+        video: true,
+        audio: true,
+      });
+
+      screenStreamRef.current = stream;
+      setIsScreenSharing(true);
+
+      const videoTrack = stream.getVideoTracks()[0];
+
+      videoTrack.onended = () => {
+        stopScreenShare();
+      };
+
+      if (conferenceMode === 'sfu' && sfuSendTransportRef.current) {
+        try {
+          const producer = await sfuSendTransportRef.current.produce({
+            track: videoTrack,
+            encodings: [{maxBitrate: 1500000, scaleResolutionDownBy: 1}],
+            appData: {source: 'screen'},
+          });
+          sfuProducersRef.current.set('screen', producer);
+          
+          producer.on('transportclose', () => {
+             sfuProducersRef.current.delete('screen');
+          });
+          
+          producer.on('trackended', () => {
+             stopScreenShare();
+          });
+          
+        } catch (err) {
+          console.error('SFU Screen share produce error:', err);
+        }
+      } else {
+        // Mesh mode: Add track to all peers
+        peersRef.current.forEach(pc => {
+             stream.getTracks().forEach(track => pc.addTrack(track, stream));
+        });
+      }
+    } catch (err) {
+      console.error('Error starting screen share:', err);
+      toast({
+        title: 'Ekran paylaşımı hatası',
+        description: err.message,
+        status: 'error',
+        duration: 3000,
+        isClosable: true,
+      });
+    }
+  }, [conferenceMode, toast]);
+
+  const stopScreenShare = useCallback(async () => {
+    if (screenStreamRef.current) {
+      screenStreamRef.current.getTracks().forEach(track => track.stop());
+      screenStreamRef.current = null;
+      setIsScreenSharing(false);
+
+      if (conferenceMode === 'sfu') {
+          const producer = sfuProducersRef.current.get('screen');
+          if (producer) {
+              producer.close();
+              sfuProducersRef.current.delete('screen');
+          }
+      }
+    }
+  }, [conferenceMode]);
+
+  // Recording
+  const toggleRecording = useCallback(() => {
+    if (!socketRef.current) return;
+
+    if (isRecording) {
+      socketRef.current.emit('stop-recording');
+    } else {
+      socketRef.current.emit('start-recording');
+    }
+  }, [isRecording]);
+
+  // Format duration
+  const formatDuration = (seconds) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  };
 
   // Track if already initialized (for StrictMode)
   const initializedRef = useRef(false);
@@ -1339,6 +1623,25 @@ const VideoConference = ({roomId, channelId, title, onClose}) => {
           reconnectionAttempts: 10,
           timeout: 20000,
           forceNew: true,
+        });
+
+        // Recording events
+        socketRef.current.on('recording-started', () => {
+          setIsRecording(true);
+          setRecordingDuration(0);
+          recordingTimerRef.current = setInterval(() => {
+            setRecordingDuration(prev => prev + 1);
+          }, 1000);
+          toast({ title: 'Kayıt başlatıldı', status: 'info' });
+        });
+
+        socketRef.current.on('recording-stopped', () => {
+          setIsRecording(false);
+          if (recordingTimerRef.current) {
+            clearInterval(recordingTimerRef.current);
+            recordingTimerRef.current = null;
+          }
+          toast({ title: 'Kayıt durduruldu', status: 'info' });
         });
 
         // Connection timeout
@@ -1477,6 +1780,49 @@ const VideoConference = ({roomId, channelId, title, onClose}) => {
             await initializeSfuMode();
             setupSfuEventListeners();
           }
+        });
+
+        socketRef.current.on('dominantSpeaker', ({peer_id}) => {
+          setActiveSpeakerId(peer_id);
+        });
+
+        // Mobile compatibility handlers
+        socketRef.current.on('dominant-speaker', ({producerOdaId}) => {
+          setActiveSpeakerId(producerOdaId);
+        });
+
+        socketRef.current.on('participants-updated', data => {
+          console.log('Participants updated:', data);
+          const participantList = Array.isArray(data) ? data : data.participants || [];
+          
+          setParticipants(prev => {
+            // Merge existing stream/track data with new participant info
+            return participantList.map(newP => {
+              const existing = prev.find(p => p.odaId === newP.userId);
+              return {
+                ...newP,
+                odaId: newP.userId, // Ensure odaId is set
+                stream: existing?.stream, // Keep existing stream
+                audioEnabled: existing ? existing.audioEnabled : newP.audioEnabled,
+                videoEnabled: existing ? existing.videoEnabled : newP.videoEnabled,
+                handRaised: newP.handRaised,
+              };
+            });
+          });
+        });
+
+        socketRef.current.on('new-poll', data => {
+          console.log('New poll received:', data);
+          setPolls(prev => {
+             if (prev.some(p => p.id === data.id)) return prev;
+             return [...prev, data];
+          });
+          toast({
+            title: '📊 Yeni Anket',
+            description: data.question,
+            status: 'info',
+            duration: 3000,
+          });
         });
 
         socketRef.current.on('user-joined', async data => {
@@ -1938,30 +2284,47 @@ const VideoConference = ({roomId, channelId, title, onClose}) => {
     if (!file) return;
 
     setIsUploading(true);
+    setUploadProgress(0);
     try {
-      // Upload file to server
-      const response = await uploadFile(file);
-      const fileUrl = response.data?.url || response.data?.fileUrl;
-
-      if (!fileUrl) {
-        throw new Error("Dosya URL'si alınamadı");
-      }
-
-      // Send file message via socket
-      socketRef.current?.emit('chat-message', {
-        type: 'file',
-        file: {
-          name: file.name,
-          url: fileUrl,
-          type: file.type,
-          size: file.size,
+      // Process video
+      const processResult = await processVideoForUpload(file, {
+        onProgress: (stage, progress) => {
+          console.log(`Processing stage: ${stage}, progress: ${progress}%`);
         },
       });
 
-      toast({
-        title: 'Dosya gönderildi',
-        status: 'success',
-        duration: 2000,
+      if (!processResult.success) {
+        throw new Error(processResult.error || 'Video işleme başarısız');
+      }
+
+      // Upload file using resumable upload
+      const fileUrl = await resumableUploader.upload({
+        file: processResult.processedFile,
+        onProgress: progress => {
+          setUploadProgress(progress.percentage);
+        },
+        onComplete: url => {
+          // Send file message via socket
+          socketRef.current?.emit('chat-message', {
+            type: 'file',
+            file: {
+              name: file.name,
+              url: url,
+              type: file.type,
+              size: file.size,
+              thumbnail: processResult.thumbnail,
+            },
+          });
+
+          toast({
+            title: 'Dosya gönderildi',
+            status: 'success',
+            duration: 2000,
+          });
+        },
+        onError: error => {
+          throw error;
+        },
       });
     } catch (err) {
       console.error('File upload error:', err);
@@ -1973,6 +2336,7 @@ const VideoConference = ({roomId, channelId, title, onClose}) => {
       });
     } finally {
       setIsUploading(false);
+      setUploadProgress(0);
     }
   };
 
@@ -2199,22 +2563,78 @@ const VideoConference = ({roomId, channelId, title, onClose}) => {
               </VStack>
             </Box>
           ))}
-          <Grid
-            templateColumns={`repeat(${Math.min(allParticipants.length, 3)}, 1fr)`}
-            gap="4"
-            h="100%">
-            {allParticipants.map((participant, idx) => (
-              <GridItem key={participant.odaId || idx} role="group">
-                <VideoParticipant
-                  participant={participant}
-                  isLocal={participant.odaId === currentUser?.id}
-                  isSpeaking={false}
-                  isFullscreen={fullscreenUser === participant.odaId}
-                  onFullscreen={setFullscreenUser}
-                />
-              </GridItem>
-            ))}
-          </Grid>
+          {viewMode === 'grid' ? (
+            <Grid
+              templateColumns={`repeat(${Math.ceil(
+                Math.sqrt(allParticipants.length),
+              )}, 1fr)`}
+              gap="4"
+              h="100%"
+              autoRows="minmax(200px, 1fr)">
+              {allParticipants.map((participant, idx) => (
+                <GridItem key={participant.odaId || idx} role="group">
+                  <VideoParticipant
+                    participant={participant}
+                    isLocal={participant.odaId === currentUser?.id}
+                    isSpeaking={participant.odaId === activeSpeakerId}
+                    isFullscreen={fullscreenUser === participant.odaId}
+                    onFullscreen={setFullscreenUser}
+                    isSpotlighted={spotlightUserId === participant.odaId}
+                    onSpotlight={toggleSpotlight}
+                  />
+                </GridItem>
+              ))}
+            </Grid>
+          ) : (
+            <Flex h="100%" direction="column" gap="4">
+              <Box flex="1" bg="gray.900" borderRadius="xl" overflow="hidden">
+                {(() => {
+                  const mainParticipant = spotlightUserId
+                    ? allParticipants.find(p => p.odaId === spotlightUserId)
+                    : allParticipants.find(p => p.odaId !== currentUser?.id) ||
+                      localParticipant;
+
+                  if (!mainParticipant) return null;
+
+                  return (
+                    <VideoParticipant
+                      participant={mainParticipant}
+                      isLocal={mainParticipant.odaId === currentUser?.id}
+                      isSpeaking={mainParticipant.odaId === activeSpeakerId}
+                      isFullscreen={fullscreenUser === mainParticipant.odaId}
+                      onFullscreen={setFullscreenUser}
+                      isSpotlighted={spotlightUserId === mainParticipant.odaId}
+                      onSpotlight={toggleSpotlight}
+                    />
+                  );
+                })()}
+              </Box>
+              <HStack h="150px" spacing="4" overflowX="auto" pb="2">
+                {allParticipants
+                  .filter(
+                    p =>
+                      p.odaId !==
+                      (spotlightUserId ||
+                        allParticipants.find(ap => ap.odaId !== currentUser?.id)
+                          ?.odaId ||
+                        currentUser?.id),
+                  )
+                  .map((participant, idx) => (
+                    <Box key={participant.odaId || idx} minW="200px" h="100%">
+                      <VideoParticipant
+                        participant={participant}
+                        isLocal={participant.odaId === currentUser?.id}
+                        isSpeaking={participant.odaId === activeSpeakerId}
+                        isFullscreen={fullscreenUser === participant.odaId}
+                        onFullscreen={setFullscreenUser}
+                        isSpotlighted={spotlightUserId === participant.odaId}
+                        onSpotlight={toggleSpotlight}
+                      />
+                    </Box>
+                  ))}
+              </HStack>
+            </Flex>
+          )}
         </Box>
 
         {/* Side panels */}
@@ -2238,6 +2658,7 @@ const VideoConference = ({roomId, channelId, title, onClose}) => {
                 onStopTyping={stopTyping}
                 onAddReaction={addReaction}
                 isUploading={isUploading}
+                uploadProgress={uploadProgress}
               />
             )}
             {showParticipants && !showChat && !showPollPanel && (
@@ -2536,6 +2957,78 @@ const VideoConference = ({roomId, channelId, title, onClose}) => {
             aria-label="El Kaldır"
           />
         </Tooltip>
+
+        <Tooltip label={isScreenSharing ? 'Paylaşımı Durdur' : 'Ekran Paylaş'}>
+          <IconButton
+            icon={isScreenSharing ? <FiStopCircle /> : <FiMonitor />}
+            size="lg"
+            borderRadius="full"
+            colorScheme={isScreenSharing ? 'red' : 'gray'}
+            onClick={isScreenSharing ? stopScreenShare : startScreenShare}
+            aria-label="Ekran Paylaşımı"
+          />
+        </Tooltip>
+
+        <Tooltip label={isRecording ? 'Kaydı Durdur' : 'Kaydı Başlat'}>
+          <HStack spacing={0}>
+            <IconButton
+              icon={<FiDisc />}
+              size="lg"
+              borderRadius={isRecording ? 'full' : 'full'}
+              borderTopRightRadius={isRecording ? 0 : 'full'}
+              borderBottomRightRadius={isRecording ? 0 : 'full'}
+              colorScheme={isRecording ? 'red' : 'gray'}
+              onClick={toggleRecording}
+              aria-label="Kayıt"
+              className={isRecording ? 'pulse-animation' : ''}
+            />
+            {isRecording && (
+              <Box
+                bg="red.600"
+                h="48px"
+                display="flex"
+                alignItems="center"
+                px={3}
+                borderTopRightRadius="full"
+                borderBottomRightRadius="full">
+                <Text color="white" fontWeight="bold">
+                  {formatDuration(recordingDuration)}
+                </Text>
+              </Box>
+            )}
+          </HStack>
+        </Tooltip>
+
+        <Menu placement="top">
+          <Tooltip label="Görünüm">
+            <MenuButton
+              as={IconButton}
+              icon={viewMode === 'grid' ? <FiGrid /> : <FiLayout />}
+              size="lg"
+              borderRadius="full"
+              colorScheme="gray"
+              aria-label="Görünüm Modu"
+            />
+          </Tooltip>
+          <MenuList bg="gray.800" borderColor="gray.700">
+            <MenuItem
+              bg="gray.800"
+              _hover={{bg: 'gray.700'}}
+              color="white"
+              icon={<FiGrid />}
+              onClick={() => setViewMode('grid')}>
+              Izgara Görünümü
+            </MenuItem>
+            <MenuItem
+              bg="gray.800"
+              _hover={{bg: 'gray.700'}}
+              color="white"
+              icon={<FiLayout />}
+              onClick={() => setViewMode('speaker')}>
+              Konuşmacı Görünümü
+            </MenuItem>
+          </MenuList>
+        </Menu>
 
         <Box position="relative">
           <Tooltip label="Tepki Gönder">
