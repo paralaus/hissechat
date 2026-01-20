@@ -52,7 +52,7 @@ import resumableUploader from '../../utils/resumableUpload';
 import {processVideoForUpload} from '../../utils/videoOptimizer';
 
 // New Server URL (Droplet)
-const SERVER_URL = 'https://api.appandcapital.com.tr';
+// const SERVER_URL = 'https://api.appandcapital.com.tr';
 // const API_URL = process.env.REACT_APP_API_URL || `${SERVER_URL}/v1`;
 // const SOCKET_URL = API_URL.replace('/v1', '');
 // const SOCKET_URL = SERVER_URL;
