@@ -51,12 +51,9 @@ import {Device} from 'mediasoup-client';
 import resumableUploader from '../../utils/resumableUpload';
 import {processVideoForUpload} from '../../utils/videoOptimizer';
 
-// New Server URL (Droplet)
+// Server URL (Droplet)
 const SERVER_URL = 'https://api.appandcapital.com.tr:4000'; // Port 4000 for Video Server (WSS)
-// const API_URL = process.env.REACT_APP_API_URL || `${SERVER_URL}/v1`;
-// const SOCKET_URL = API_URL.replace('/v1', '');
 const SOCKET_URL = SERVER_URL;
-// const SOCKET_URL = 'http://104.248.212.6:4000'; // Direct access to video server (HTTP/WS)
 
 // ICE Servers for WebRTC
 const DEFAULT_ICE_SERVERS = [
