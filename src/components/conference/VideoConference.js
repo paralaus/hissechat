@@ -52,7 +52,7 @@ import resumableUploader from '../../utils/resumableUpload';
 import {processVideoForUpload} from '../../utils/videoOptimizer';
 
 // Server URL (Droplet)
-const SERVER_URL = 'https://api.appandcapital.com.tr:4000'; // Port 4000 for Video Server (WSS)
+const SERVER_URL = 'https://api.appandcapital.com.tr'; // Uses default port (443) via Nginx proxy
 const SOCKET_URL = SERVER_URL;
 
 // ICE Servers for WebRTC
