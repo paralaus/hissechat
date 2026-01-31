@@ -770,6 +770,13 @@ const VideoConference = ({roomId, channelId, title, onClose}) => {
   // Refs
   const socketRef = useRef(null);
   const peersRef = useRef(new Map());
+  const participantsRef = useRef([]); // Ref to access participants inside callbacks
+  
+  // Keep participants ref in sync with state
+  useEffect(() => {
+    participantsRef.current = participants;
+  }, [participants]);
+
   const iceCandidateQueueRef = useRef(new Map());
   const localStreamRef = useRef(null);
   const screenStreamRef = useRef(null);
@@ -1389,7 +1396,7 @@ const VideoConference = ({roomId, channelId, title, onClose}) => {
       // If we still don't have producerOdaId, use socketId as fallback or wait for user-joined
       if (!producerOdaId) {
          // Check if we can find it in participants state (closure)
-         const p = participants.find(p => p.id === producerSocketId);
+         const p = participantsRef.current.find(p => p.id === producerSocketId);
          if (p) producerOdaId = p.odaId;
       }
 
@@ -1410,7 +1417,7 @@ const VideoConference = ({roomId, channelId, title, onClose}) => {
           sfuConsumersRef.current.delete(consumerId);
       }
     });
-  }, [consumeProducer, participants]);
+  }, [consumeProducer]);
 
   // Update video priorities based on visibility and active speaker
   const updateVideoPriorities = useCallback((visibleParticipantIds, currentActiveSpeakerId) => {
