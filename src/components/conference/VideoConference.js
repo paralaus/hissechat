@@ -1693,10 +1693,14 @@ const VideoConference = ({roomId, channelId, title, onClose}) => {
         const socketUrl = `${SOCKET_URL}/conference`;
 
         socketRef.current = io(socketUrl, {
-          path: '/socket.io', // Default path
-          auth: {token},
-          transports: ['websocket'], // Force websocket for stability
-          reconnection: true,
+      path: '/socket.io', // Default path
+      auth: {token},
+      query: {
+        name: currentUser?.name || currentUser?.userName || currentUser?.email || 'Admin User',
+        avatar: currentUser?.avatar || '',
+      },
+      transports: ['websocket'], // Force websocket for stability
+      reconnection: true,
           reconnectionAttempts: 10,
           timeout: 20000,
           forceNew: true,
