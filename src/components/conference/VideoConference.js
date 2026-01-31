@@ -1180,7 +1180,7 @@ const VideoConference = ({roomId, channelId, title, onClose}) => {
           consumer_id: consumer.id,
         };
         
-        socketRef.current.emit('resumeConsumer', resumePayload);
+        socketRef.current.emit('sfu:resume-consumer', resumePayload);
         
         consumer.resume();
 
@@ -1205,9 +1205,9 @@ const VideoConference = ({roomId, channelId, title, onClose}) => {
 
         // Get RTP capabilities from server
         const rtpCapabilities = await new Promise((resolve, reject) => {
-          socketRef.current.emit('getRouterRtpCapabilities', {}, response => {
+          socketRef.current.emit('sfu:get-rtp-capabilities', {}, response => {
             if (response.error) reject(new Error(response.error));
-            else resolve(response);
+            else resolve(response.rtpCapabilities);
           });
         });
 
@@ -1219,9 +1219,9 @@ const VideoConference = ({roomId, channelId, title, onClose}) => {
 
         // Create send transport
         const sendTransportParams = await new Promise((resolve, reject) => {
-          socketRef.current.emit('createWebRtcTransport', response => {
+          socketRef.current.emit('sfu:create-send-transport', response => {
             if (response.error) reject(new Error(response.error));
-            else resolve(response);
+            else resolve(response.transport);
           });
         });
 
@@ -1237,9 +1237,9 @@ const VideoConference = ({roomId, channelId, title, onClose}) => {
           async ({dtlsParameters}, callback, errback) => {
             try {
               socketRef.current.emit(
-                'connectTransport',
+                'sfu:connect-transport',
                 {
-                  transport_id: sendTransport.id,
+                  transportId: sendTransport.id,
                   dtlsParameters,
                 },
                 res => {
@@ -1258,16 +1258,16 @@ const VideoConference = ({roomId, channelId, title, onClose}) => {
           async ({kind, rtpParameters, appData}, callback, errback) => {
             try {
               socketRef.current.emit(
-                'produce',
+                'sfu:produce',
                 {
-                  producerTransportId: sendTransport.id,
+                  transportId: sendTransport.id,
                   kind,
                   rtpParameters,
                   appData,
                 },
                 res => {
                   if (res.error) errback(new Error(res.error));
-                  else callback({id: res.producer_id});
+                  else callback({id: res.producerId});
                 },
               );
             } catch (err) {
@@ -1281,9 +1281,9 @@ const VideoConference = ({roomId, channelId, title, onClose}) => {
 
         // Create recv transport
         const recvTransportParams = await new Promise((resolve, reject) => {
-          socketRef.current.emit('createWebRtcTransport', response => {
+          socketRef.current.emit('sfu:create-recv-transport', response => {
             if (response.error) reject(new Error(response.error));
-            else resolve(response);
+            else resolve(response.transport);
           });
         });
 
@@ -1299,9 +1299,9 @@ const VideoConference = ({roomId, channelId, title, onClose}) => {
           async ({dtlsParameters}, callback, errback) => {
             try {
               socketRef.current.emit(
-                'connectTransport',
+                'sfu:connect-transport',
                 {
-                  transport_id: recvTransport.id,
+                  transportId: recvTransport.id,
                   dtlsParameters,
                 },
                 res => {
@@ -1361,28 +1361,56 @@ const VideoConference = ({roomId, channelId, title, onClose}) => {
   const setupSfuEventListeners = useCallback(() => {
     if (!socketRef.current) return;
 
-    socketRef.current.on('newProducers', async producers => {
-      console.log('SFU New producers received:', producers);
-      for (const producer of producers) {
-        await consumeProducer(
-            producer.producer_id,
-            producer.peer_name,
-            producer.type || producer.kind
-        );
+    socketRef.current.on('sfu:new-producer', async (data) => {
+      console.log('SFU New producer received:', data);
+      const { producerId, producerSocketId, kind, appData } = data;
+      
+      // Find the participant to get their OdaID
+      // We might need to look up by socketId if odaId is not in appData
+      let producerOdaId = appData?.producerOdaId;
+      
+      if (!producerOdaId) {
+          // Try to find in participants list
+          // Note: participants ref might be stale in callback, consider using a ref for participants or functional state update if possible,
+          // but here we just need to call consumeProducer.
+          // For now, let's rely on appData or passed params. 
+          // If we can't find it, we might have an issue.
+          // However, we can also pass producerSocketId and let consumeProducer resolve it or just pass it as is.
+          // But consumeProducer expects producerOdaId for UI mapping.
+          
+          // Let's try to find it in the participants array from state (might be stale closure) or ref
+          // We don't have participantsRef visible here in this scope, but we can assume it's accessible or use the state.
+          // Actually, we do have participants state.
+          
+          // Better approach: server should probably include userId in the event, but for now let's try to get it.
+          // If media-server doesn't send userId, we rely on socketId map.
       }
+      
+      // If we still don't have producerOdaId, use socketId as fallback or wait for user-joined
+      if (!producerOdaId) {
+         // Check if we can find it in participants state (closure)
+         const p = participants.find(p => p.id === producerSocketId);
+         if (p) producerOdaId = p.odaId;
+      }
+
+      await consumeProducer(
+          producerId,
+          producerOdaId || producerSocketId, // Fallback
+          kind
+      );
     });
 
-    socketRef.current.on('consumerClosed', data => {
+    socketRef.current.on('sfu:consumer-closed', data => {
       console.log('SFU Consumer closed:', data);
-      for (const [id, consumer] of sfuConsumersRef.current) {
-        if (consumer.id === data.consumer_id) {
+      const consumerId = data.consumerId || data.consumer_id;
+      
+      if (sfuConsumersRef.current.has(consumerId)) {
+          const consumer = sfuConsumersRef.current.get(consumerId);
           consumer.close();
-          sfuConsumersRef.current.delete(id);
-          break;
-        }
+          sfuConsumersRef.current.delete(consumerId);
       }
     });
-  }, [consumeProducer]);
+  }, [consumeProducer, participants]);
 
   // Update video priorities based on visibility and active speaker
   const updateVideoPriorities = useCallback((visibleParticipantIds, currentActiveSpeakerId) => {
@@ -1632,15 +1660,17 @@ const VideoConference = ({roomId, channelId, title, onClose}) => {
         console.log('Connecting to:', SOCKET_URL);
         console.log('Token:', token ? token.substring(0, 20) + '...' : 'null');
 
-        // Use root namespace unless server defines /conference
-        socketRef.current = io(SOCKET_URL, {
+        // Use /conference namespace
+        const socketUrl = `${SOCKET_URL}/conference`;
+
+        socketRef.current = io(socketUrl, {
           path: '/socket.io', // Default path
           auth: {token},
-          transports: ['websocket', 'polling'], // Allow polling fallback
+          transports: ['websocket'], // Force websocket for stability
           reconnection: true,
           reconnectionAttempts: 10,
           timeout: 20000,
-          forceNew: false,
+          forceNew: true,
           rejectUnauthorized: false // Dev only: Accept self-signed certs if needed
         });
 
