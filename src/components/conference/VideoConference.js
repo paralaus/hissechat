@@ -1687,18 +1687,21 @@ const VideoConference = ({roomId, channelId, title, onClose}) => {
         }
 
         console.log('Connecting to:', SOCKET_URL);
+        console.log('CurrentUser:', currentUser);
+        const userName = currentUser?.name || currentUser?.userName || currentUser?.email || 'Admin User';
+        console.log('Using UserName:', userName);
         console.log('Token:', token ? token.substring(0, 20) + '...' : 'null');
 
         // Use /conference namespace
         const socketUrl = `${SOCKET_URL}/conference`;
 
         socketRef.current = io(socketUrl, {
-      path: '/socket.io', // Default path
-      auth: {token},
-      query: {
-        name: currentUser?.name || currentUser?.userName || currentUser?.email || 'Admin User',
-        avatar: currentUser?.avatar || '',
-      },
+          path: '/socket.io', // Default path
+          auth: {token},
+          query: {
+            name: userName,
+            avatar: currentUser?.avatar || '',
+          },
       transports: ['websocket'], // Force websocket for stability
       reconnection: true,
           reconnectionAttempts: 10,
