@@ -1417,6 +1417,28 @@ const VideoConference = ({roomId, channelId, title, onClose}) => {
           sfuConsumersRef.current.delete(consumerId);
       }
     });
+
+    // Handle existing producers (array)
+    socketRef.current.on('newProducers', async (producers) => {
+      console.log('SFU Existing producers received:', producers.length);
+      
+      for (const p of producers) {
+        const { producer_id, producer_socket_id, kind, appData } = p;
+        let producerOdaId = appData?.producerOdaId;
+
+        if (!producerOdaId) {
+             // Check if we can find it in participants state (closure)
+             const participant = participantsRef.current.find(pt => pt.id === producer_socket_id);
+             if (participant) producerOdaId = participant.odaId;
+        }
+
+        await consumeProducer(
+            producer_id,
+            producerOdaId || producer_socket_id, // Fallback
+            kind
+        );
+      }
+    });
   }, [consumeProducer]);
 
   // Update video priorities based on visibility and active speaker
