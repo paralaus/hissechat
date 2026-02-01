@@ -51,8 +51,16 @@ import {Device} from 'mediasoup-client';
 import resumableUploader from '../../utils/resumableUpload';
 import {processVideoForUpload} from '../../utils/videoOptimizer';
 
-// Server URL (Droplet)
-const SERVER_URL = 'https://api.appandcapital.com.tr'; // Uses default port (443) via Nginx proxy
+// Server URL
+const getSocketUrl = () => {
+  if (process.env.REACT_APP_API_URL) {
+    return process.env.REACT_APP_API_URL.replace(/\/v1\/?$/, '');
+  }
+  // Fallback to localhost:3000 if not set (matching backend default port)
+  return 'http://localhost:3000';
+};
+
+const SERVER_URL = getSocketUrl();
 const SOCKET_URL = SERVER_URL;
 
 // ICE Servers for WebRTC
