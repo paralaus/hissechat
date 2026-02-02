@@ -52,6 +52,7 @@ const channelCategories = [
 const object = {
   name: yup.string().required('Bu alan zorunludur.'),
   thumbnail: yup.string(),
+  type: yup.string().default('normal'),
   category: yup.string().notRequired(),
   about: yup.string().required('Bu alan zorunludur.'),
   admins: yup.array().required('Bu alan zorunludur.'),
@@ -65,7 +66,7 @@ const object = {
 
 const schema = yup.object().shape(object);
 
-const EditVipChannel = ({id}) => {
+const EditChannel = ({id}) => {
   const isNew = !id || id === 'new';
   const toast = useToast();
   const deleteModal = useDisclosure();
@@ -89,11 +90,14 @@ const EditVipChannel = ({id}) => {
     trigger,
   } = useForm({
     resolver: yupResolver(schema),
+    defaultValues: {
+      type: 'normal',
+    }
   });
 
   const {mutateAsync, isPending} = useMutation({
     mutationFn: values =>
-      isNew ? api.createVipChannel(values) : api.updateChannel(id, values),
+      isNew ? api.createChannel(values) : api.updateChannel(id, values),
   });
 
   const {mutateAsync: deleteItem, isPending: isDeleting} = useMutation({
@@ -130,7 +134,7 @@ const EditVipChannel = ({id}) => {
           position: 'top',
         });
       }
-      navigate(routes.vipChannels.path);
+      navigate(routes.allChannels.path);
     } catch (error) {
       toast({
         title: getErrorMessage(error),
@@ -148,7 +152,7 @@ const EditVipChannel = ({id}) => {
         status: 'success',
         position: 'top',
       });
-      navigate(routes.vipChannels.path);
+      navigate(routes.allChannels.path);
     } catch (error) {
       toast({
         title: getErrorMessage(error),
@@ -561,7 +565,7 @@ const EditVipChannel = ({id}) => {
 
 const Page = () => {
   const {id} = useParams();
-  return <EditVipChannel key={id} id={id} />;
+  return <EditChannel key={id} id={id} />;
 };
 
 export default Page;

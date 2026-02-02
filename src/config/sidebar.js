@@ -147,6 +147,12 @@ export const sidebarRoutes = [
         icon: IoMdAdd,
         exact: true,
       },
+      {
+        name: 'Normal Kanal Ekle',
+        path: routes.editChannel.getPath('new'),
+        icon: IoMdAdd,
+        exact: true,
+      },
     ],
   },
   {

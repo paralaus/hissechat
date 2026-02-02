@@ -246,6 +246,10 @@ export const createVipChannel = async body => {
   return apiClient.post('/channels/vip', body);
 };
 
+export const createChannel = async body => {
+  return apiClient.post('/channels', body);
+};
+
 export const initiateMarketChannel = async marketCode => {
   return apiClient.post('/channels/initiate/market', {marketCode});
 };
