@@ -288,7 +288,7 @@ const Home = () => {
       title: 'Engellenen Kullanıcılar',
       amount: blockedUsers?.totalResults || 0,
       icon: <FiUserX {...iconProps} />,
-      path: routes.moderation.path,
+      path: `${routes.moderation.path}?filter=blocked`,
     },
   ];
 
