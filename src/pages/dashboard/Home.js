@@ -14,6 +14,7 @@ import {
   FiLayers,
   FiPieChart,
   FiCpu,
+  FiUserX,
 } from 'react-icons/fi';
 import {useQuery} from '@tanstack/react-query';
 import {NavLink} from 'react-router-dom';
@@ -103,6 +104,14 @@ const Home = () => {
     queryFn: () =>
       api
         .getMessagesForModeration({showBlocked: true, limit: 1, page: 1})
+        .then(res => res.data),
+  });
+
+  const {data: blockedUsers} = useQuery({
+    queryKey: ['blacklist', 'users', 'count'],
+    queryFn: () =>
+      api
+        .getBlacklists({type: 'user-id', isActive: true, limit: 1})
         .then(res => res.data),
   });
 
@@ -274,6 +283,12 @@ const Home = () => {
       amount: blockedMessages?.totalResults || 0,
       icon: <FiShield {...iconProps} />,
       path: `${routes.moderation.path}?filter=blocked`,
+    },
+    {
+      title: 'Engellenen Kullanıcılar',
+      amount: blockedUsers?.totalResults || 0,
+      icon: <FiUserX {...iconProps} />,
+      path: routes.moderation.path,
     },
   ];
 
