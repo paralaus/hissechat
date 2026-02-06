@@ -16,8 +16,8 @@ const fetchData = async options => {
   const params = {...options};
   if (params.query) {
     params.productId = params.query;
-    delete params.query;
   }
+  delete params.query;
   const response = await api.getPurchases(params);
   return response.data;
 };
