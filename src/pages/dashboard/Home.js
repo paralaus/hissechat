@@ -1,7 +1,7 @@
 // Force Vercel rebuild - v2
 import {MiniStatistics, Page, StatisticsSkeleton} from '../../components';
 import {SimpleGrid, Box, Heading, Divider} from '@chakra-ui/react';
-import {FaUserClock, FaUsers, FaChartLine} from 'react-icons/fa';
+import {FaUserClock, FaUsers, FaChartLine, FaApple, FaGooglePlay} from 'react-icons/fa';
 import {RiVipFill, RiMoneyDollarCircleFill} from 'react-icons/ri';
 import {BiSolidMessageDetail} from 'react-icons/bi';
 import {MdInsertChart, MdReport, MdShoppingCart} from 'react-icons/md';
@@ -175,6 +175,18 @@ const Home = () => {
       value: 'monthlySubscribers',
       amount: data?.monthlySubscribers,
       icon: <RiMoneyDollarCircleFill {...iconProps} />,
+    },
+    {
+      title: 'Apple Aboneleri',
+      value: 'appleSubscribers',
+      amount: data?.appleSubscribers,
+      icon: <FaApple {...iconProps} />,
+    },
+    {
+      title: 'Google Aboneleri',
+      value: 'googleSubscribers',
+      amount: data?.googleSubscribers,
+      icon: <FaGooglePlay {...iconProps} />,
     },
     {
       title: 'Toplam Kullanıcı',
