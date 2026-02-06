@@ -53,6 +53,14 @@ const Subscriptions = () => {
       },
     },
     {
+      header: 'Kanal',
+      accessorKey: 'channel',
+      cell: ({getValue}) => {
+        const value = getValue();
+        return <Text>{value?.name || '-'}</Text>;
+      },
+    },
+    {
       header: 'Ürün',
       accessorKey: 'productId',
       cell: ({getValue}) => <Badge>{getValue()}</Badge>,
