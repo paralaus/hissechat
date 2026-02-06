@@ -343,6 +343,10 @@ export const getSuggestions = async params => {
   return apiClient.get('/suggestions', {params});
 };
 
+export const getAppRatings = async params => {
+  return apiClient.get('/app-ratings', {params});
+};
+
 export const getSuggestion = async id => {
   return apiClient.get(`/suggestions/suggestions/${id}`);
 };

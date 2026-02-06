@@ -59,6 +59,9 @@ export const routes = {
   suggestions: {
     path: '/dashboard/suggestions',
   },
+  appRatings: {
+    path: '/dashboard/app-ratings',
+  },
   editSuggestion: {
     getPath: id => `/dashboard/suggestions/${id}`,
   },

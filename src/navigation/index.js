@@ -34,6 +34,7 @@ import EditPolicy from '../pages/dashboard/policies/EditPolicy';
 import Policies from '../pages/dashboard/policies/Policies';
 import EditSuggestion from '../pages/dashboard/suggestions/EditSuggestion';
 import Suggestions from '../pages/dashboard/suggestions/Suggestions';
+import AppRatings from '../pages/dashboard/app-ratings/AppRatings';
 import SendPushNotification from '../pages/dashboard/push-notification/SendPushNotification';
 import Reports from '../pages/dashboard/reports/Reports';
 import ReportDetail from '../pages/dashboard/reports/ReportDetail';
@@ -305,6 +306,13 @@ const router = createBrowserRouter(
           />
           <Route index element={<Suggestions />} />
         </Route>
+        <Route
+          path="app-ratings"
+          element={<AppRatings />}
+          handle={{
+            crumb: () => <Text>Uygulama Değerlendirmeleri</Text>,
+          }}
+        />
         <Route
           path="vipapplications"
           handle={{

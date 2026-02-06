@@ -175,6 +175,13 @@ export const sidebarRoutes = [
     ],
   },
   {
+    name: 'Uygulama Değerlendirmeleri',
+    icon: MdLightbulbOutline,
+    path: routes.appRatings.path,
+    exact: true,
+    group: 'İçerik Yönetimi',
+  },
+  {
     name: 'Reklamlar',
     icon: FaAd,
     group: 'İçerik Yönetimi',
