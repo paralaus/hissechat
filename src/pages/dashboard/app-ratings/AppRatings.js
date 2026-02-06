@@ -18,7 +18,10 @@ const AppRatings = () => {
   return (
     <Page title="Uygulama Değerlendirmeleri">
       <DataTable
-        deleteVisible={false}
+        deleteVisible={true}
+        onDelete={async rating => {
+          await api.deleteAppRating(rating.id);
+        }}
         onRow={row => detailModal.open(row)}
         columns={[
           {

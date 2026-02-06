@@ -347,6 +347,10 @@ export const getAppRatings = async params => {
   return apiClient.get('/app-ratings', {params});
 };
 
+export const deleteAppRating = async id => {
+  return apiClient.delete(`/app-ratings/${id}`);
+};
+
 export const getSuggestion = async id => {
   return apiClient.get(`/suggestions/suggestions/${id}`);
 };
