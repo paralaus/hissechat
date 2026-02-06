@@ -38,26 +38,30 @@ const Subscriptions = () => {
 
   const columns = [
     {
-      Header: 'Kullanıcı',
-      accessor: 'user',
-      Cell: ({value}) => (
-        <Box>
-          <Text fontWeight="bold">{value?.name || 'İsimsiz'}</Text>
-          <Text fontSize="sm" color="gray.500">
-            {value?.email}
-          </Text>
-        </Box>
-      ),
+      header: 'Kullanıcı',
+      accessorKey: 'user',
+      cell: ({getValue}) => {
+        const value = getValue();
+        return (
+          <Box>
+            <Text fontWeight="bold">{value?.name || 'İsimsiz'}</Text>
+            <Text fontSize="sm" color="gray.500">
+              {value?.email}
+            </Text>
+          </Box>
+        );
+      },
     },
     {
-      Header: 'Ürün',
-      accessor: 'productId',
-      Cell: ({value}) => <Badge>{value}</Badge>,
+      header: 'Ürün',
+      accessorKey: 'productId',
+      cell: ({getValue}) => <Badge>{getValue()}</Badge>,
     },
     {
-      Header: 'Platform',
-      accessor: 'platform',
-      Cell: ({value}) => {
+      header: 'Platform',
+      accessorKey: 'platform',
+      cell: ({getValue}) => {
+        const value = getValue();
         if (value === 'apple') {
           return (
             <Badge colorScheme="gray" display="flex" alignItems="center" gap={1}>
@@ -76,27 +80,25 @@ const Subscriptions = () => {
       },
     },
     {
-      Header: 'Başlangıç',
-      accessor: 'purchaseTime', // Backend sends purchaseTime or startTime? Check schema if possible, usually purchaseTime or createdAt
-      Cell: ({row}) => {
-        // purchaseTime might be string or timestamp. Let's assume standard createdAt or similar. 
-        // Checking purchase.validation.js, there is no strict schema for output shown, but input has receipt.
-        // Assuming createdAt or purchaseTime.
+      header: 'Başlangıç',
+      accessorKey: 'purchaseTime',
+      cell: ({row}) => {
         const date = row.original.createdAt || row.original.purchaseTime;
         return date ? format(new Date(date), 'dd MMM yyyy HH:mm', {locale: tr}) : '-';
       },
     },
     {
-      Header: 'Bitiş',
-      accessor: 'expiryTime',
-      Cell: ({value}) => {
+      header: 'Bitiş',
+      accessorKey: 'expiryTime',
+      cell: ({getValue}) => {
+        const value = getValue();
         return value ? format(new Date(value), 'dd MMM yyyy HH:mm', {locale: tr}) : '-';
       },
     },
     {
-      Header: 'Durum',
+      header: 'Durum',
       id: 'status',
-      Cell: ({row}) => {
+      cell: ({row}) => {
         const isExpired = row.original.isExpired;
         const expiryTime = new Date(row.original.expiryTime).getTime();
         const now = Date.now();
