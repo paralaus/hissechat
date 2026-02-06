@@ -11,6 +11,7 @@ import {useState} from 'react';
 import {format} from 'date-fns';
 import {tr} from 'date-fns/locale';
 import {FaApple, FaGooglePlay} from 'react-icons/fa';
+import {useQuery} from '@tanstack/react-query';
 
 const fetchData = async options => {
   const params = {...options, hasChannel: true, distinctUser: true, activeOnly: true};
@@ -25,6 +26,11 @@ const fetchData = async options => {
 const Subscriptions = () => {
   const [filterParams, setFilterParams] = useState({});
 
+  const {data: channels} = useQuery({
+    queryKey: ['channels', 'all'],
+    queryFn: () => api.getAllChannels({limit: 1000}).then(res => res.data.results),
+  });
+
   const handlePlatformFilter = e => {
     const value = e.target.value;
     const newParams = {...filterParams};
@@ -32,6 +38,17 @@ const Subscriptions = () => {
       newParams.platform = value;
     } else {
       delete newParams.platform;
+    }
+    setFilterParams(newParams);
+  };
+
+  const handleChannelFilter = e => {
+    const value = e.target.value;
+    const newParams = {...filterParams};
+    if (value) {
+      newParams.channel = value;
+    } else {
+      delete newParams.channel;
     }
     setFilterParams(newParams);
   };
@@ -131,6 +148,17 @@ const Subscriptions = () => {
         >
           <option value="apple">Apple App Store</option>
           <option value="google">Google Play Store</option>
+        </Select>
+        <Select
+          placeholder="Tüm Kanallar"
+          maxW="300px"
+          onChange={handleChannelFilter}
+        >
+          {channels?.map(channel => (
+            <option key={channel.id} value={channel.id}>
+              {channel.name}
+            </option>
+          ))}
         </Select>
       </HStack>
       <DataTable
