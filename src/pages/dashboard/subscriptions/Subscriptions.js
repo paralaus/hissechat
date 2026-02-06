@@ -44,7 +44,7 @@ const Subscriptions = () => {
         const value = getValue();
         return (
           <Box>
-            <Text fontWeight="bold">{value?.name || 'İsimsiz'}</Text>
+            <Text fontWeight="bold">{value?.fullname || 'İsimsiz'}</Text>
             <Text fontSize="sm" color="gray.500">
               {value?.email}
             </Text>
