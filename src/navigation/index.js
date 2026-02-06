@@ -52,6 +52,7 @@ import Moderation from '../pages/dashboard/moderation/Moderation';
 import ArchivedMessages from '../pages/dashboard/messaging/ArchivedMessages';
 import Conferences from '../pages/dashboard/conferences/Conferences';
 import DbStats from '../pages/dashboard/database/DbStats';
+import Subscriptions from '../pages/dashboard/subscriptions/Subscriptions';
 
 const rootLoader = async ({request}) => {
   const {pathname} = new URL(request.url);
@@ -397,6 +398,13 @@ const router = createBrowserRouter(
           element={<ArchivedMessages />}
           handle={{
             crumb: () => <Text>Arşiv</Text>,
+          }}
+        />
+        <Route
+          path="subscriptions"
+          element={<Subscriptions />}
+          handle={{
+            crumb: () => <Text>Abonelikler</Text>,
           }}
         />
         <Route

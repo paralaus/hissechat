@@ -19,7 +19,7 @@ import {AiOutlineUserAdd, AiOutlineProduct} from 'react-icons/ai';
 import {BiLineChart} from 'react-icons/bi';
 import {HiOutlineDocumentPlus} from 'react-icons/hi2';
 import {FaRegFileAlt, FaAd} from 'react-icons/fa';
-import {RiVipLine, RiChatPollLine} from 'react-icons/ri';
+import {RiVipLine, RiChatPollLine, RiMoneyDollarCircleFill} from 'react-icons/ri';
 import {GoListUnordered} from 'react-icons/go';
 import {IoMdAdd} from 'react-icons/io';
 import {MdOutlineReport, MdLightbulbOutline} from 'react-icons/md';
@@ -31,6 +31,13 @@ export const sidebarRoutes = [
     name: 'Anasayfa',
     icon: FiHome,
     path: routes.dashboard.path,
+    exact: true,
+    group: 'Genel',
+  },
+  {
+    name: 'Abonelikler',
+    icon: RiMoneyDollarCircleFill,
+    path: routes.subscriptions.path,
     exact: true,
     group: 'Genel',
   },

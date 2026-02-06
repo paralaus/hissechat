@@ -119,6 +119,9 @@ export const routes = {
   conferences: {
     path: '/dashboard/conferences',
   },
+  subscriptions: {
+    path: '/dashboard/subscriptions',
+  },
   databaseStats: {
     path: '/dashboard/database-stats',
   },

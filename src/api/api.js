@@ -295,6 +295,10 @@ export const getProduct = async id => {
   return apiClient.get(`/products/${id}`);
 };
 
+export const getPurchases = async params => {
+  return apiClient.get('/purchases', {params});
+};
+
 export const getNotifications = async params => {
   return apiClient.get('/notifications', {params});
 };
