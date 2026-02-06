@@ -13,7 +13,7 @@ import {tr} from 'date-fns/locale';
 import {FaApple, FaGooglePlay} from 'react-icons/fa';
 
 const fetchData = async options => {
-  const params = {...options};
+  const params = {...options, hasChannel: true};
   if (params.query) {
     params.productId = params.query;
   }
