@@ -27,8 +27,8 @@ const Subscriptions = () => {
   const [filterParams, setFilterParams] = useState({});
 
   const {data: channels} = useQuery({
-    queryKey: ['channels', 'all'],
-    queryFn: () => api.getAllChannels({limit: 1000}).then(res => res.data.results),
+    queryKey: ['channels', 'vip'],
+    queryFn: () => api.getVipChannels({limit: 1000}).then(res => res.data.results),
   });
 
   const handlePlatformFilter = e => {
