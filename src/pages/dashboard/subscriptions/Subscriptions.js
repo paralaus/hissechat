@@ -16,7 +16,7 @@ import {useQuery} from '@tanstack/react-query';
 const fetchData = async options => {
   const params = {...options, hasChannel: true, distinctUser: true, activeOnly: true};
   if (params.query) {
-    params.productId = params.query;
+    params.search = params.query;
   }
   delete params.query;
   const response = await api.getPurchases(params);
@@ -166,7 +166,7 @@ const Subscriptions = () => {
         fetchData={fetchData}
         filters={filterParams}
         queryEnabled={true}
-        searchPlaceholder="Ürün ID ara..."
+        searchPlaceholder="Kullanıcı veya Ürün ID ara..."
       />
     </Page>
   );
