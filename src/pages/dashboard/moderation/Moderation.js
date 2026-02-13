@@ -662,9 +662,9 @@ const Moderation = () => {
   const [filterType, setFilterType] = useState(() => {
     const params = new URLSearchParams(location.search);
     const initial = params.get('filter');
-    const allowed = ['all', 'flagged', 'blocked', 'profanity', 'reports', 'channel_reports'];
+    const allowed = ['all', 'blocked', 'profanity', 'reports', 'channel_reports'];
     return allowed.includes(initial) ? initial : 'profanity';
-  }); // 'all', 'flagged', 'blocked', 'profanity'
+  }); // 'all', 'blocked', 'profanity'
   const [searchTerm, setSearchTerm] = useState('');
   const [bannedTextSearch, setBannedTextSearch] = useState('');
   const [bannedTextSearchDebounced, setBannedTextSearchDebounced] =
@@ -951,7 +951,7 @@ const Moderation = () => {
 
     const params = new URLSearchParams(location.search);
     const qFilter = params.get('filter');
-    const allowed = ['all', 'flagged', 'blocked', 'profanity', 'reports', 'channel_reports'];
+    const allowed = ['all', 'blocked', 'profanity', 'reports', 'channel_reports'];
     if (allowed.includes(qFilter) && qFilter !== filterType) {
       setFilterType(qFilter);
     }
@@ -1325,7 +1325,6 @@ const Moderation = () => {
                 onChange={e => handleFilterTypeChange(e.target.value)}
                 maxW="200px">
                 <option value="profanity">🚫 Uygunsuz Kelime İçerenler</option>
-                <option value="flagged">⚠️ Şikayet Edilenler</option>
                 <option value="blocked">🛡️ Engellenenler</option>
                 <option value="reports">📢 Kullanıcı Şikayetleri</option>
                 <option value="channel_reports">📢 Kanal Şikayetleri</option>
