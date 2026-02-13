@@ -269,12 +269,6 @@ export const sidebarRoutes = [
     ],
   },
   {
-    name: 'Raporlar',
-    icon: MdOutlineReport,
-    path: routes.reports.path,
-    group: 'Sistem',
-  },
-  {
     name: 'Bildirim Gönder',
     icon: FiBell,
     path: routes.sendPushNotification.path,
