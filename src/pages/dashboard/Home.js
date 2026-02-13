@@ -126,6 +126,17 @@ const Home = () => {
         .then(res => res.data),
   });
 
+  const {data: channelReports} = useQuery({
+    queryKey: ['reports', 'channel', 'count'],
+    queryFn: () =>
+      api
+        .getReports({
+          type: 'channel',
+          limit: 1,
+        })
+        .then(res => res.data),
+  });
+
   // Kara liste artık ayrı bir ekran olarak gösterilmiyor
 
   const {data: products} = useQuery({
@@ -294,6 +305,12 @@ const Home = () => {
       amount: userReports?.totalResults || 0,
       icon: <MdReport {...iconProps} />,
       path: `${routes.moderation.path}?filter=reports`,
+    },
+    {
+      title: 'Şikayet Edilen Kanal Sayısı',
+      amount: channelReports?.totalResults || 0,
+      icon: <MdReport {...iconProps} />,
+      path: `${routes.moderation.path}?filter=channel_reports`,
     },
     {
       title: 'Şikayet Edilen Mesajlar',
