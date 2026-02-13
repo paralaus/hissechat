@@ -163,7 +163,7 @@ const MessageCard = ({
                       </Text>
                     </HStack>
                     
-                    {message.reportType === 'user' && message.sub && (
+                    {message.sub && (
                        <HStack justify="space-between">
                          <HStack>
                             <Badge colorScheme="red" minW="100px" textAlign="center">Şikayet Edilen</Badge>
