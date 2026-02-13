@@ -772,6 +772,8 @@ const Moderation = () => {
 
         if (filterType === 'channel_reports') {
           reportParams.type = 'channel';
+        } else if (filterType === 'reports') {
+          reportParams.type = ['user', 'general', 'complaint', 'spam'];
         }
 
         const res = await api.getReports(reportParams);
