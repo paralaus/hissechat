@@ -22,7 +22,7 @@ import {FaRegFileAlt, FaAd} from 'react-icons/fa';
 import {RiVipLine, RiChatPollLine, RiMoneyDollarCircleFill} from 'react-icons/ri';
 import {GoListUnordered} from 'react-icons/go';
 import {IoMdAdd} from 'react-icons/io';
-import {MdOutlineReport, MdLightbulbOutline} from 'react-icons/md';
+import {MdLightbulbOutline} from 'react-icons/md';
 import {routes} from './routes';
 
 export const sidebarRoutes = [
