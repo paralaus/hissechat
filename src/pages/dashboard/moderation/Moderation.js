@@ -318,26 +318,26 @@ const MessageCard = ({
 
             {/* Actions */}
             <HStack justify="flex-end" spacing={2}>
-              <Button
-                size="sm"
-                colorScheme="gray"
-                variant="outline"
-                leftIcon={<FiSlash />}
-                onClick={blacklistModal.onOpen}>
-                Kelime Yasakla
-              </Button>
-              <Button
-                size="sm"
-                colorScheme="purple"
-                variant="outline"
-                leftIcon={<FiUserX />}
-                onClick={banModal.onOpen}
-                isLoading={isBanning}>
-                Kullanıcıyı Banla
-              </Button>
-
               {!message.isReport && (
                 <>
+                  <Button
+                    size="sm"
+                    colorScheme="gray"
+                    variant="outline"
+                    leftIcon={<FiSlash />}
+                    onClick={blacklistModal.onOpen}>
+                    Kelime Yasakla
+                  </Button>
+                  <Button
+                    size="sm"
+                    colorScheme="purple"
+                    variant="outline"
+                    leftIcon={<FiUserX />}
+                    onClick={banModal.onOpen}
+                    isLoading={isBanning}>
+                    Kullanıcıyı Banla
+                  </Button>
+
                   {message.isBlocked ? (
                     <Button
                       size="sm"
