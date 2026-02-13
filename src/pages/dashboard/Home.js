@@ -115,6 +115,14 @@ const Home = () => {
         .then(res => res.data),
   });
 
+  const {data: userReports} = useQuery({
+    queryKey: ['reports', 'user', 'count'],
+    queryFn: () =>
+      api
+        .getReports({type: 'user', limit: 1})
+        .then(res => res.data),
+  });
+
   // Kara liste artık ayrı bir ekran olarak gösterilmiyor
 
   const {data: products} = useQuery({
@@ -279,10 +287,10 @@ const Home = () => {
 
   const moderationStats = [
     {
-      title: 'Son Raporlar',
-      amount: data?.latelyReports,
+      title: 'Şikayet Edilen Kullanıcı Sayısı',
+      amount: userReports?.totalResults || 0,
       icon: <MdReport {...iconProps} />,
-      path: routes.reports.path,
+      path: `${routes.moderation.path}?filter=reports`,
     },
     {
       title: 'Şikayet Edilen Mesajlar',
