@@ -85,10 +85,17 @@ const MessageCard = ({
   const [banDuration, setBanDuration] = useState('24h');
   const [customHours, setCustomHours] = useState('6');
   const [blacklistWord, setBlacklistWord] = useState('');
+  const [targetUserForBan, setTargetUserForBan] = useState(null);
 
   const handleBan = () => {
-    onBanUser(message.user?.id || message.user?._id, banDuration, customHours);
+    const userId = targetUserForBan?.id || targetUserForBan?._id || message.user?.id || message.user?._id;
+    onBanUser(userId, banDuration, customHours);
     banModal.onClose();
+  };
+
+  const openBanModalFor = (user) => {
+    setTargetUserForBan(user);
+    banModal.onOpen();
   };
 
   const handleBlacklist = () => {
@@ -134,26 +141,75 @@ const MessageCard = ({
         <CardBody>
           <VStack align="stretch" spacing={3}>
             {/* Header */}
-            <HStack justify="space-between">
-              <HStack>
-                <Avatar
-                  size="sm"
-                  src={getCombinedLogoUrl(message.user?.thumbnail)}
-                  name={message.user?.fullname}
-                />
-                <VStack align="start" spacing={0}>
-                  <Text fontWeight="bold" fontSize="sm">
-                    {message.user?.fullname || 'Bilinmeyen Kullanıcı'}
-                  </Text>
-                  <Text fontSize="xs" color="gray.500">
-                    {message.createdAt &&
-                      format(new Date(message.createdAt), 'dd MMM yyyy HH:mm', {
-                        locale: tr,
-                      })}
-                  </Text>
-                </VStack>
-              </HStack>
-              <HStack flexWrap="wrap">
+            <HStack justify="space-between" align="start">
+              <Box flex="1">
+                {message.isReport ? (
+                  <VStack align="stretch" spacing={3} bg="gray.50" p={2} borderRadius="md" mb={2}>
+                    <HStack>
+                      <Badge colorScheme="blue" minW="100px" textAlign="center">Şikayet Eden</Badge>
+                      <Avatar
+                        size="xs"
+                        src={getCombinedLogoUrl(message.user?.thumbnail)}
+                        name={message.user?.fullname}
+                      />
+                      <Text fontWeight="bold" fontSize="sm">
+                        {message.user?.fullname || 'Bilinmeyen Kullanıcı'}
+                      </Text>
+                      <Text fontSize="xs" color="gray.500">
+                         • {message.createdAt &&
+                          format(new Date(message.createdAt), 'dd MMM yyyy HH:mm', {
+                            locale: tr,
+                          })}
+                      </Text>
+                    </HStack>
+                    
+                    {message.reportType === 'user' && message.sub && (
+                       <HStack justify="space-between">
+                         <HStack>
+                            <Badge colorScheme="red" minW="100px" textAlign="center">Şikayet Edilen</Badge>
+                            <Avatar
+                              size="xs"
+                              src={getCombinedLogoUrl(message.sub?.thumbnail)}
+                              name={message.sub?.fullname}
+                            />
+                            <Text fontWeight="bold" fontSize="sm">
+                              {message.sub?.fullname || 'Bilinmeyen Kullanıcı'}
+                            </Text>
+                         </HStack>
+                         <Button
+                            size="xs"
+                            colorScheme="red"
+                            variant="outline"
+                            leftIcon={<FiUserX />}
+                            onClick={() => openBanModalFor(message.sub)}
+                            isLoading={isBanning}>
+                            Banla
+                          </Button>
+                       </HStack>
+                    )}
+                  </VStack>
+                ) : (
+                  <HStack>
+                    <Avatar
+                      size="sm"
+                      src={getCombinedLogoUrl(message.user?.thumbnail)}
+                      name={message.user?.fullname}
+                    />
+                    <VStack align="start" spacing={0}>
+                      <Text fontWeight="bold" fontSize="sm">
+                        {message.user?.fullname || 'Bilinmeyen Kullanıcı'}
+                      </Text>
+                      <Text fontSize="xs" color="gray.500">
+                        {message.createdAt &&
+                          format(new Date(message.createdAt), 'dd MMM yyyy HH:mm', {
+                            locale: tr,
+                          })}
+                      </Text>
+                    </VStack>
+                  </HStack>
+                )}
+              </Box>
+              <HStack flexWrap="wrap" ml={2}>
                 {message.isReport && (
                   <Badge colorScheme="purple">
                     {message.reportType === 'user'
@@ -385,8 +441,10 @@ const MessageCard = ({
           <ModalCloseButton />
           <ModalBody>
             <Text mb={4}>
-              <strong>{message.user?.fullname}</strong> adlı kullanıcıyı
-              banlamak üzeresiniz.
+              <strong>
+                {targetUserForBan?.fullname || message.user?.fullname}
+              </strong>{' '}
+              adlı kullanıcıyı banlamak üzeresiniz.
             </Text>
             <FormControl>
               <FormLabel>Ban Süresi</FormLabel>
