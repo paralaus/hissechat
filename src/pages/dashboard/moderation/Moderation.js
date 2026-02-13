@@ -154,6 +154,17 @@ const MessageCard = ({
                 </VStack>
               </HStack>
               <HStack flexWrap="wrap">
+                {message.isReport && (
+                  <Badge colorScheme="purple">
+                    {message.reportType === 'user'
+                      ? 'Kullanıcı Şikayeti'
+                      : message.reportType === 'work'
+                        ? 'İş Şikayeti'
+                        : message.reportType === 'channel'
+                          ? 'Kanal Şikayeti'
+                          : 'Genel Şikayet'}
+                  </Badge>
+                )}
                 {message.isBlocked && <Badge colorScheme="red">Bloklu</Badge>}
                 {message.isFlagged && !message.isBlocked && (
                   <Badge colorScheme="orange">Şikayet Edildi</Badge>
@@ -269,24 +280,28 @@ const MessageCard = ({
                 Kullanıcıyı Banla
               </Button>
 
-              {message.isBlocked ? (
-                <Button
-                  size="sm"
-                  colorScheme="green"
-                  leftIcon={<FiCheck />}
-                  onClick={() => onUnblock(message.id || message._id)}
-                  isLoading={isBlocking}>
-                  Engeli Kaldır
-                </Button>
-              ) : (
-                <Button
-                  size="sm"
-                  colorScheme="red"
-                  leftIcon={<FiX />}
-                  onClick={onOpen}
-                  isLoading={isBlocking}>
-                  Engelle
-                </Button>
+              {!message.isReport && (
+                <>
+                  {message.isBlocked ? (
+                    <Button
+                      size="sm"
+                      colorScheme="green"
+                      leftIcon={<FiCheck />}
+                      onClick={() => onUnblock(message.id || message._id)}
+                      isLoading={isBlocking}>
+                      Engeli Kaldır
+                    </Button>
+                  ) : (
+                    <Button
+                      size="sm"
+                      colorScheme="red"
+                      leftIcon={<FiX />}
+                      onClick={onOpen}
+                      isLoading={isBlocking}>
+                      Engelle
+                    </Button>
+                  )}
+                </>
               )}
             </HStack>
           </VStack>
@@ -589,7 +604,7 @@ const Moderation = () => {
   const [filterType, setFilterType] = useState(() => {
     const params = new URLSearchParams(location.search);
     const initial = params.get('filter');
-    const allowed = ['all', 'flagged', 'blocked', 'profanity'];
+    const allowed = ['all', 'flagged', 'blocked', 'profanity', 'reports', 'channel_reports'];
     return allowed.includes(initial) ? initial : 'profanity';
   }); // 'all', 'flagged', 'blocked', 'profanity'
   const [searchTerm, setSearchTerm] = useState('');
@@ -749,6 +764,28 @@ const Moderation = () => {
         page: pageParam,
       };
 
+      if (filterType === 'reports' || filterType === 'channel_reports') {
+        const reportParams = {
+          ...params,
+          sortBy: 'createdAt:desc',
+        };
+
+        if (filterType === 'channel_reports') {
+          reportParams.type = 'channel';
+        }
+
+        const res = await api.getReports(reportParams);
+        const results = res.data.results || [];
+        const mapped = results.map(r => ({
+          ...r,
+          text: r.message,
+          isReport: true,
+          reportType: r.type,
+          id: r.id || r._id,
+        }));
+        return {...res.data, results: mapped};
+      }
+
       if (selectedChannel) {
         params.channelId = selectedChannel;
       }
@@ -854,7 +891,7 @@ const Moderation = () => {
 
     const params = new URLSearchParams(location.search);
     const qFilter = params.get('filter');
-    const allowed = ['all', 'flagged', 'blocked', 'profanity'];
+    const allowed = ['all', 'flagged', 'blocked', 'profanity', 'reports', 'channel_reports'];
     if (allowed.includes(qFilter) && qFilter !== filterType) {
       setFilterType(qFilter);
     }
@@ -932,21 +969,23 @@ const Moderation = () => {
 
   // Filter by search term
   const filteredMessages = messages.filter(msg => {
-    if (filterType === 'blocked' && !msg.isBlocked) {
-      return false;
-    }
-    if (
-      filterType === 'flagged' &&
-      !msg.isFlagged &&
-      !(msg.reportCount > 0)
-    ) {
-      return false;
-    }
-    if (
-      filterType === 'profanity' &&
-      !(msg.profanityWords && msg.profanityWords.length > 0)
-    ) {
-      return false;
+    if (filterType !== 'reports' && filterType !== 'channel_reports') {
+      if (filterType === 'blocked' && !msg.isBlocked) {
+        return false;
+      }
+      if (
+        filterType === 'flagged' &&
+        !msg.isFlagged &&
+        !(msg.reportCount > 0)
+      ) {
+        return false;
+      }
+      if (
+        filterType === 'profanity' &&
+        !(msg.profanityWords && msg.profanityWords.length > 0)
+      ) {
+        return false;
+      }
     }
 
     if (!searchTerm) return true;
@@ -1228,6 +1267,8 @@ const Moderation = () => {
                 <option value="profanity">🚫 Uygunsuz Kelime İçerenler</option>
                 <option value="flagged">⚠️ Şikayet Edilenler</option>
                 <option value="blocked">🛡️ Engellenenler</option>
+                <option value="reports">📢 Kullanıcı Şikayetleri</option>
+                <option value="channel_reports">📢 Kanal Şikayetleri</option>
                 <option value="all">📋 Tümü</option>
               </Select>
 
@@ -1445,9 +1486,13 @@ const Moderation = () => {
                 ? 'Uygunsuz kelime içeren mesaj bulunamadı.'
                 : filterType === 'flagged'
                   ? 'Şikayet edilen mesaj bulunamadı.'
-                  : filterType === 'blocked'
-                    ? 'Engellenen mesaj bulunamadı.'
-                    : 'Mesaj bulunamadı.'}
+                  : filterType === 'reports'
+                    ? 'Kullanıcı şikayeti bulunamadı.'
+                    : filterType === 'channel_reports'
+                      ? 'Kanal şikayeti bulunamadı.'
+                      : filterType === 'blocked'
+                      ? 'Engellenen mesaj bulunamadı.'
+                      : 'Mesaj bulunamadı.'}
             </Text>
           </Alert>
         ) : (
