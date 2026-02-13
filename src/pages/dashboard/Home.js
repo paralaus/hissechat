@@ -119,7 +119,10 @@ const Home = () => {
     queryKey: ['reports', 'user', 'count'],
     queryFn: () =>
       api
-        .getReports({type: 'user', limit: 1})
+        .getReports({
+          type: ['user', 'general', 'complaint', 'spam'],
+          limit: 1,
+        })
         .then(res => res.data),
   });
 
