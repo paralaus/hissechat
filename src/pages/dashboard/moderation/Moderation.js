@@ -259,6 +259,19 @@ const MessageCard = ({
               bg={message.isBlocked ? 'red.100' : 'gray.50'}
               borderRadius="md"
               position="relative">
+              
+              {message.isReport && (
+                 <Text fontSize="xs" fontWeight="bold" color="gray.500" mb={1}>
+                    Şikayet Detayı:
+                 </Text>
+              )}
+
+              {message.subject && (
+                <Text fontSize="sm" fontWeight="bold" mb={1}>
+                  Konu: {message.subject}
+                </Text>
+              )}
+              
               {message.text && (
                 <Text fontSize="sm" whiteSpace="pre-wrap">
                   {message.text}
