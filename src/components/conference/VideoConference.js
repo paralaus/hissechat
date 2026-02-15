@@ -63,13 +63,30 @@ const getSocketUrl = () => {
 const SERVER_URL = getSocketUrl();
 const SOCKET_URL = SERVER_URL;
 
-// ICE Servers for WebRTC
+// ICE Servers for WebRTC (STUN + TURN)
+// TURN servers are CRITICAL for users behind symmetric NAT (most mobile networks)
 const DEFAULT_ICE_SERVERS = [
+  // Google STUN servers (free, reliable)
   {urls: 'stun:stun.l.google.com:19302'},
   {urls: 'stun:stun1.l.google.com:19302'},
   {urls: 'stun:stun2.l.google.com:19302'},
-  {urls: 'stun:stun3.l.google.com:19302'},
-  {urls: 'stun:stun4.l.google.com:19302'},
+  // TURN servers (relay for NAT traversal)
+  // Using metered.ca free tier for testing - replace with your own coturn for production
+  {
+    urls: 'turn:a.relay.metered.ca:80',
+    username: 'e8dd65c92f9c9c4e4c2df66f',
+    credential: 'uWdWNmkhvyqTH3/c'
+  },
+  {
+    urls: 'turn:a.relay.metered.ca:443',
+    username: 'e8dd65c92f9c9c4e4c2df66f',
+    credential: 'uWdWNmkhvyqTH3/c'
+  },
+  {
+    urls: 'turn:a.relay.metered.ca:443?transport=tcp',
+    username: 'e8dd65c92f9c9c4e4c2df66f',
+    credential: 'uWdWNmkhvyqTH3/c'
+  }
 ];
 
 // Adaptive bitrate configuration
