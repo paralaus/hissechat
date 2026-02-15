@@ -69,23 +69,21 @@ const DEFAULT_ICE_SERVERS = [
   // Google STUN servers (free, reliable)
   {urls: 'stun:stun.l.google.com:19302'},
   {urls: 'stun:stun1.l.google.com:19302'},
-  {urls: 'stun:stun2.l.google.com:19302'},
-  // TURN servers (relay for NAT traversal)
-  // Using metered.ca free tier for testing - replace with your own coturn for production
+  // Own coturn server (production)
   {
-    urls: 'turn:a.relay.metered.ca:80',
-    username: 'e8dd65c92f9c9c4e4c2df66f',
-    credential: 'uWdWNmkhvyqTH3/c'
+    urls: 'turn:api.appandcapital.com.tr:3478',
+    username: 'paralaus',
+    credential: 'Pi3AlFa1970!'
   },
   {
-    urls: 'turn:a.relay.metered.ca:443',
-    username: 'e8dd65c92f9c9c4e4c2df66f',
-    credential: 'uWdWNmkhvyqTH3/c'
+    urls: 'turn:api.appandcapital.com.tr:3478?transport=tcp',
+    username: 'paralaus',
+    credential: 'Pi3AlFa1970!'
   },
   {
-    urls: 'turn:a.relay.metered.ca:443?transport=tcp',
-    username: 'e8dd65c92f9c9c4e4c2df66f',
-    credential: 'uWdWNmkhvyqTH3/c'
+    urls: 'turns:api.appandcapital.com.tr:5349',
+    username: 'paralaus',
+    credential: 'Pi3AlFa1970!'
   }
 ];
 
