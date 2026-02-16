@@ -1260,6 +1260,18 @@ const VideoConference = ({roomId, channelId, title, onClose}) => {
           iceParameters: sendTransportParams.iceParameters,
           iceCandidates: sendTransportParams.iceCandidates,
           dtlsParameters: sendTransportParams.dtlsParameters,
+          iceServers: iceServersRef.current.length > 0 ? iceServersRef.current : DEFAULT_ICE_SERVERS,
+        });
+
+        // Add connection state logging for debugging
+        sendTransport.on('connectionstatechange', (state) => {
+          console.log(`[SFU] Send transport connection state: ${state}`);
+          if (state === 'failed') {
+            console.error('[SFU] Send transport connection FAILED - check firewall/TURN');
+          }
+        });
+        sendTransport.on('icegatheringstatechange', (state) => {
+          console.log(`[SFU] Send transport ICE gathering state: ${state}`);
         });
 
         sendTransport.on(
@@ -1322,6 +1334,18 @@ const VideoConference = ({roomId, channelId, title, onClose}) => {
           iceParameters: recvTransportParams.iceParameters,
           iceCandidates: recvTransportParams.iceCandidates,
           dtlsParameters: recvTransportParams.dtlsParameters,
+          iceServers: iceServersRef.current.length > 0 ? iceServersRef.current : DEFAULT_ICE_SERVERS,
+        });
+
+        // Add connection state logging for debugging
+        recvTransport.on('connectionstatechange', (state) => {
+          console.log(`[SFU] Recv transport connection state: ${state}`);
+          if (state === 'failed') {
+            console.error('[SFU] Recv transport connection FAILED - check firewall/TURN');
+          }
+        });
+        recvTransport.on('icegatheringstatechange', (state) => {
+          console.log(`[SFU] Recv transport ICE gathering state: ${state}`);
         });
 
         recvTransport.on(
