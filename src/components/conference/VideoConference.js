@@ -51,17 +51,17 @@ import {Device} from 'mediasoup-client';
 import resumableUploader from '../../utils/resumableUpload';
 import {processVideoForUpload} from '../../utils/videoOptimizer';
 
-// Server URL
-const getSocketUrl = () => {
+const getConferenceSocketUrl = () => {
+  if (process.env.REACT_APP_CONFERENCE_URL) {
+    return process.env.REACT_APP_CONFERENCE_URL.replace(/\/v1\/?$/, '');
+  }
   if (process.env.REACT_APP_API_URL) {
     return process.env.REACT_APP_API_URL.replace(/\/v1\/?$/, '');
   }
-  // Fallback to localhost:3000 if not set (matching backend default port)
   return 'http://localhost:3000';
 };
 
-const SERVER_URL = getSocketUrl();
-const SOCKET_URL = SERVER_URL;
+const SOCKET_URL = getConferenceSocketUrl();
 
 // ICE Servers for WebRTC (STUN + TURN)
 // TURN servers are CRITICAL for users behind symmetric NAT (most mobile networks)
