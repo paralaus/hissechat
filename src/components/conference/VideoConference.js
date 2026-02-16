@@ -1235,8 +1235,8 @@ const VideoConference = ({roomId, channelId, title, onClose}) => {
 
         // Get RTP capabilities from server
         const rtpCapabilities = await new Promise((resolve, reject) => {
-          socketRef.current.emit('sfu:get-rtp-capabilities', {}, response => {
-            if (response.error) reject(new Error(response.error));
+          socketRef.current.emit('sfu:get-rtp-capabilities', response => {
+            if (!response || response.error) reject(new Error(response?.error || 'No response from server'));
             else resolve(response.rtpCapabilities);
           });
         });
