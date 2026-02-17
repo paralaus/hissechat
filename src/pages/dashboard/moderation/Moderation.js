@@ -958,6 +958,30 @@ const Moderation = () => {
     staleTime: 30000,
   });
 
+  const {data: userReportsStatsData} = useQuery({
+    queryKey: ['moderation-stats', 'user-reports'],
+    queryFn: () =>
+      api
+        .getReports({
+          type: ['user', 'general', 'complaint', 'spam'],
+          limit: 1,
+        })
+        .then(res => res.data),
+    staleTime: 30000,
+  });
+
+  const {data: channelReportsStatsData} = useQuery({
+    queryKey: ['moderation-stats', 'channel-reports'],
+    queryFn: () =>
+      api
+        .getReports({
+          type: 'channel',
+          limit: 1,
+        })
+        .then(res => res.data),
+    staleTime: 30000,
+  });
+
   // Sync filterType with query string changes - only on initial load
   useEffect(() => {
     if (initialLoadDone) return; // Skip after initial load
@@ -1278,11 +1302,13 @@ const Moderation = () => {
   const profanityTotal = profanityStatsData?.totalResults || 0;
   const flaggedTotal = flaggedStatsData?.totalResults || 0;
   const blockedTotal = blockedStatsData?.totalResults || 0;
+  const userReportsTotal = userReportsStatsData?.totalResults || 0;
+  const channelReportsTotal = channelReportsStatsData?.totalResults || 0;
 
   return (
     <Page title="İçerik Moderasyonu">
       <VStack spacing={6} align="stretch">
-        <SimpleGrid columns={{base: 1, md: 3}} spacing={4}>
+        <SimpleGrid columns={{base: 1, md: 3, lg: 5}} spacing={4}>
           <Card>
             <CardBody>
               <Stat>
@@ -1310,6 +1336,28 @@ const Moderation = () => {
                   <StatLabel>Engellenen Mesajlar</StatLabel>
                 </HStack>
                 <StatNumber color="red.500">{blockedTotal}</StatNumber>
+              </Stat>
+            </CardBody>
+          </Card>
+          <Card>
+            <CardBody>
+              <Stat>
+                <HStack mb={2}>
+                  <FiUserX color="purple" />
+                  <StatLabel>Kullanıcı Şikayetleri</StatLabel>
+                </HStack>
+                <StatNumber color="purple.500">{userReportsTotal}</StatNumber>
+              </Stat>
+            </CardBody>
+          </Card>
+          <Card>
+            <CardBody>
+              <Stat>
+                <HStack mb={2}>
+                  <FiSlash color="blue" />
+                  <StatLabel>Kanal Şikayetleri</StatLabel>
+                </HStack>
+                <StatNumber color="blue.500">{channelReportsTotal}</StatNumber>
               </Stat>
             </CardBody>
           </Card>
