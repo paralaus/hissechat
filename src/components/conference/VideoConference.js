@@ -1743,7 +1743,7 @@ const VideoConference = ({roomId, channelId, title, onClose}) => {
         const socketUrl = `${SOCKET_URL}/conference`;
 
         socketRef.current = io(socketUrl, {
-          path: '/socket.io', // Default path
+          path: '/conference-socket.io/', // Updated path
           auth: {token},
           query: {
             name: userName,
