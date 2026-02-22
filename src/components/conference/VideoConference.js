@@ -1309,7 +1309,7 @@ const VideoConference = ({roomId, channelId, title, onClose}) => {
                 },
                 res => {
                   if (res.error) errback(new Error(res.error));
-                  else callback({id: res.producerId});
+                  else callback({id: res.id || res.producerId});
                 },
               );
             } catch (err) {
