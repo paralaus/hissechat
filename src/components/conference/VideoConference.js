@@ -1501,7 +1501,7 @@ const VideoConference = ({roomId, channelId, title, onClose}) => {
         );
       }
     });
-  }, [consumeProducer]);
+  }, [consumeProducer, currentUser?.id]);
 
   // Update video priorities based on visibility and active speaker
   const updateVideoPriorities = useCallback((visibleParticipantIds, currentActiveSpeakerId) => {
