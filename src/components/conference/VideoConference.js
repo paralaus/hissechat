@@ -1420,6 +1420,21 @@ const VideoConference = ({roomId, channelId, title, onClose}) => {
         const tracks = localStreamRef.current.getTracks();
         for (const track of tracks) {
           try {
+            // Force VP8 codec for mobile compatibility
+            let codecOptions = {
+                videoGoogleStartBitrate: 1000,
+            };
+
+            let codecToUse = undefined;
+            if (track.kind === 'video') {
+                const codecs = device.rtpCapabilities.codecs;
+                const vp8Codec = codecs.find(c => c.mimeType.toLowerCase() === 'video/vp8');
+                if (vp8Codec) {
+                    codecToUse = vp8Codec;
+                    console.log('Forcing VP8 codec for video producer');
+                }
+            }
+
             const producer = await sendTransport.produce({
               track,
               encodings:
@@ -1430,9 +1445,8 @@ const VideoConference = ({roomId, channelId, title, onClose}) => {
                       {maxBitrate: 900000, scaleResolutionDownBy: 1},
                     ]
                   : undefined,
-              codecOptions: {
-                videoGoogleStartBitrate: 1000,
-              },
+              codecOptions,
+              codec: codecToUse, // Force specific codec
               appData: { 
                 mediaType: track.kind,
                 producerOdaId: currentUser?.id, // CRITICAL: Send User ID in appData for receiver mapping
