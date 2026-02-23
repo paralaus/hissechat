@@ -71,19 +71,19 @@ const DEFAULT_ICE_SERVERS = [
   {urls: 'stun:stun1.l.google.com:19302'},
   // Own coturn server (production)
   {
-    urls: 'turn:api.appandcapital.com.tr:3478',
+    urls: 'turn:104.248.212.6:3478',
     username: 'paralaus',
-    credential: 'Pi3AlFa1970!'
+    credential: 'TestPass123'
   },
   {
-    urls: 'turn:api.appandcapital.com.tr:3478?transport=tcp',
+    urls: 'turn:104.248.212.6:3478?transport=tcp',
     username: 'paralaus',
-    credential: 'Pi3AlFa1970!'
+    credential: 'TestPass123'
   },
   {
-    urls: 'turns:api.appandcapital.com.tr:5349',
+    urls: 'turns:104.248.212.6:5349',
     username: 'paralaus',
-    credential: 'Pi3AlFa1970!'
+    credential: 'TestPass123'
   }
 ];
 
