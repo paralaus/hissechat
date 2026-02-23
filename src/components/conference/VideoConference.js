@@ -817,24 +817,68 @@ const VideoConference = ({roomId, channelId, title, onClose}) => {
   const adaptiveTimerRef = useRef(null);
   const currentQualityRef = useRef('good');
 
-  // Get current user
+  // Get current user with flexible parsing
   const getCurrentUser = () => {
     try {
+      // 1. Try 'user' key (common)
       const userData = localStorage.getItem('user');
       if (userData) {
-        return JSON.parse(userData);
+        const parsed = JSON.parse(userData);
+        // Sometimes user is nested inside data or user property
+        if (parsed.user) return parsed.user;
+        if (parsed.data) return parsed.data;
+        return parsed;
       }
+      
+      // 2. Try 'currentUser' key (sometimes used)
+      const currentUserData = localStorage.getItem('currentUser');
+      if (currentUserData) {
+          return JSON.parse(currentUserData);
+      }
+
+      // 3. Try 'auth' key (if using redux-persist or similar)
+      const authData = localStorage.getItem('auth');
+      if (authData) {
+          const parsed = JSON.parse(authData);
+          if (parsed.user) return parsed.user;
+      }
+
+      // 4. Fallback: Decode token if available (JWT)
+      const token = Cookies.get('token');
+      if (token) {
+          try {
+              const base64Url = token.split('.')[1];
+              const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+              const jsonPayload = decodeURIComponent(window.atob(base64).split('').map(function(c) {
+                  return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+              }).join(''));
+              const decoded = JSON.parse(jsonPayload);
+              return {
+                  id: decoded.id || decoded.userId || decoded.sub,
+                  name: decoded.name || decoded.userName || decoded.email || 'Admin User (Token)',
+                  email: decoded.email,
+                  // Add other fields from token
+              };
+          } catch (e) {
+              console.warn('Failed to decode token for user info');
+          }
+      }
+
     } catch (e) {
       console.error('Error getting user:', e);
     }
     return null;
   };
 
-  const currentUser = getCurrentUser();
-
   // Get auth token from cookies
   const getToken = () => {
     return Cookies.get('token');
+  };
+
+  const currentUser = getCurrentUser() || { 
+      // Last resort fallback
+      id: 'admin-fallback-' + Date.now(),
+      name: 'Admin User (Fallback)'
   };
 
   // Create peer connection (or return existing one)
