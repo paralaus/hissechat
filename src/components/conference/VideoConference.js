@@ -959,7 +959,7 @@ const VideoConference = ({roomId, channelId, title, onClose}) => {
       peersRef.current.set(socketId, pc);
       return pc;
     },
-    [],
+    [currentUser?.id],
   );
 
   // Calculate quality level from network stats
