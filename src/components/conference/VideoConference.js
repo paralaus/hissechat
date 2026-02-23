@@ -1219,7 +1219,7 @@ const VideoConference = ({roomId, channelId, title, onClose}) => {
         console.error(`Failed to consume ${kind} from ${producerOdaId}:`, err);
       }
     },
-    [],
+    [currentUser?.id],
   );
 
   // Initialize SFU mode (Mediasoup)
@@ -1411,7 +1411,7 @@ const VideoConference = ({roomId, channelId, title, onClose}) => {
         setConferenceMode('mesh');
       }
     },
-    [],
+    [consumeProducer],
   );
 
   // Setup SFU event listeners
