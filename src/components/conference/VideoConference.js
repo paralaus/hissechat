@@ -1450,6 +1450,12 @@ const VideoConference = ({roomId, channelId, title, onClose}) => {
          if (p) producerOdaId = p.odaId;
       }
 
+      // Kendimiz ise işlemi durdur
+      if (currentUser?.id && producerOdaId === currentUser.id) {
+          console.log('Skipping consumption of own producer:', producerId);
+          return;
+      }
+
       await consumeProducer(
           producerId,
           producerOdaId || producerSocketId, // Fallback
@@ -1475,6 +1481,12 @@ const VideoConference = ({roomId, channelId, title, onClose}) => {
       for (const p of producers) {
         const { producer_id, producer_socket_id, kind, appData } = p;
         let producerOdaId = appData?.producerOdaId;
+
+        // Kendimiz ise atla
+        if (currentUser?.id && producerOdaId === currentUser.id) {
+            console.log('Skipping consumption of own producer (existing):', producer_id);
+            continue;
+        }
 
         if (!producerOdaId) {
              // Check if we can find it in participants state (closure)
@@ -1849,6 +1861,13 @@ const VideoConference = ({roomId, channelId, title, onClose}) => {
               const newParticipants = data.participants
                 .filter(p => {
                     const pId = p.userId || p.id;
+                    
+                    // Filter out current user to avoid duplication
+                    if (currentUser?.id && pId === currentUser.id) {
+                        console.log('Skipping current user from participants list');
+                        return false;
+                    }
+
                     const exists = prev.some(existing => existing.odaId === pId);
                     if (exists) console.log(`Participant ${p.userName} (${pId}) already exists, skipping`);
                     return !exists;
@@ -1959,8 +1978,14 @@ const VideoConference = ({roomId, channelId, title, onClose}) => {
           const participantList = Array.isArray(data) ? data : data.participants || [];
           
           setParticipants(prev => {
+            // Filter out current user from the incoming list
+            const filteredList = participantList.filter(p => {
+                const pId = p.userId || p.odaId || p.id;
+                return !currentUser?.id || pId !== currentUser.id;
+            });
+
             // Merge existing stream/track data with new participant info
-            return participantList.map(newP => {
+            return filteredList.map(newP => {
               const targetId = newP.userId || newP.odaId || newP.id;
               const existing = prev.find(p => p.odaId === targetId);
               return {
@@ -1998,6 +2023,12 @@ const VideoConference = ({roomId, channelId, title, onClose}) => {
 
           setParticipants(prev => {
             const targetId = data.userId || data.id;
+            
+            // Filter out current user
+            if (currentUser?.id && targetId === currentUser.id) {
+                return prev;
+            }
+
             console.log('Processing user-joined. Target ID:', targetId, 'Current count:', prev.length);
             
             // Check if user already exists (by odaId OR by SFU temporary ID)
