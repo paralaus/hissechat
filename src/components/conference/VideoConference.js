@@ -1710,7 +1710,10 @@ const VideoConference = ({roomId, channelId, title, onClose}) => {
           const producer = await sfuSendTransportRef.current.produce({
             track: videoTrack,
             encodings: [{maxBitrate: 1500000, scaleResolutionDownBy: 1}],
-            appData: {source: 'screen'},
+            appData: {
+                source: 'screen',
+                producerOdaId: currentUser?.id, // CRITICAL: Add User ID for mobile compatibility
+            },
           });
           sfuProducersRef.current.set('screen', producer);
           
