@@ -1389,7 +1389,10 @@ const VideoConference = ({roomId, channelId, title, onClose}) => {
               codecOptions: {
                 videoGoogleStartBitrate: 1000,
               },
-              appData: { mediaType: track.kind },
+              appData: { 
+                mediaType: track.kind,
+                producerOdaId: currentUser?.id, // CRITICAL: Send User ID in appData for receiver mapping
+              },
             });
             sfuProducersRef.current.set(producer.id, producer);
             console.log(`SFU Produced ${track.kind} track: ${producer.id}`);
