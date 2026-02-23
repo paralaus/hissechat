@@ -1411,7 +1411,7 @@ const VideoConference = ({roomId, channelId, title, onClose}) => {
         setConferenceMode('mesh');
       }
     },
-    [consumeProducer],
+    [consumeProducer, currentUser?.id],
   );
 
   // Setup SFU event listeners
