@@ -1997,9 +1997,26 @@ const VideoConference = ({roomId, channelId, title, onClose}) => {
             const targetId = data.userId || data.id;
             console.log('Processing user-joined. Target ID:', targetId, 'Current count:', prev.length);
             
-            if (prev.some(p => p.odaId === targetId)) {
-              console.log('User already in participants list (by odaId):', data.userName);
-              return prev;
+            // Check if user already exists (by odaId OR by SFU temporary ID)
+            const existingIndex = prev.findIndex(p => 
+                p.odaId === targetId || 
+                p.id === `sfu-${targetId}`
+            );
+
+            if (existingIndex !== -1) {
+              const existing = prev[existingIndex];
+              console.log('User already in participants list, updating:', existing.userName);
+              
+              // Update existing participant (merge new info with existing stream/state)
+              const newParticipants = [...prev];
+              newParticipants[existingIndex] = {
+                  ...existing,
+                  id: data.socketId, // Update with real socket ID
+                  odaId: targetId,
+                  userName: data.userName,
+                  userAvatar: data.userAvatar,
+              };
+              return newParticipants;
             }
             
             // Check if we have this user by socketId but missing odaId (edge case)
