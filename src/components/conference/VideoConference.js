@@ -2628,7 +2628,16 @@ const VideoConference = ({roomId, channelId, title, onClose}) => {
     handRaised,
   };
 
-  const allParticipants = [localParticipant, ...participants];
+  // Filter out any participants that match the local user's ID to prevent duplicates
+  const filteredParticipants = participants.filter(p => {
+      // Check odaId
+      if (p.odaId === currentUser?.id) return false;
+      // Check if id is `sfu-${currentUser.id}`
+      if (p.id === `sfu-${currentUser?.id}`) return false;
+      return true;
+  });
+
+  const allParticipants = [localParticipant, ...filteredParticipants];
 
   if (isConnecting) {
     return (
