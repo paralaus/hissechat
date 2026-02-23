@@ -1744,7 +1744,7 @@ const VideoConference = ({roomId, channelId, title, onClose}) => {
         isClosable: true,
       });
     }
-  }, [conferenceMode, toast, stopScreenShare]);
+  }, [conferenceMode, toast, stopScreenShare, currentUser?.id]);
 
   // Recording
   const toggleRecording = useCallback(() => {
