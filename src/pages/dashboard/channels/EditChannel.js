@@ -233,6 +233,13 @@ const EditChannel = ({id}) => {
     },
   });
 
+  // Watch for changes in isRestricted if needed, but also sync with URL param on mount
+  React.useEffect(() => {
+    if (isNew && isRestrictedParam) {
+      setValue('isRestricted', true);
+    }
+  }, [isNew, isRestrictedParam, setValue]);
+
   const isRestricted = watch('isRestricted');
 
   const {mutateAsync, isPending} = useMutation({
