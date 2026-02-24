@@ -52,9 +52,33 @@ import {playNotificationSound} from '../../utils/sound';
 const SIDEBAR_WIDTH = '260px';
 
 const getIsActive = (link, location) => {
-  return link.exact
-    ? trim(location.pathname, '/') === trim(link.path, '/')
-    : location.pathname.includes(link.path);
+  const [linkPath, linkSearch] = link.path.split('?');
+
+  const isPathMatch = link.exact
+    ? trim(location.pathname, '/') === trim(linkPath, '/')
+    : location.pathname.includes(linkPath);
+
+  if (!isPathMatch) return false;
+
+  const locationParams = new URLSearchParams(location.search);
+
+  // If link has specific query params, they must match
+  if (linkSearch) {
+    const linkParams = new URLSearchParams(linkSearch);
+    for (const [key, value] of linkParams.entries()) {
+      if (locationParams.get(key) !== value) {
+        return false;
+      }
+    }
+  } else {
+    // If link has no query params, but location has 'restricted=true',
+    // we should treat it as mismatch for the "Normal" link which shares the same base path
+    if (locationParams.get('restricted') === 'true') {
+      return false;
+    }
+  }
+
+  return true;
 };
 
 export default function SidebarWithHeader({children}) {
