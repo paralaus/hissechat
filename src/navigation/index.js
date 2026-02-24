@@ -152,6 +152,20 @@ const router = createBrowserRouter(
             }}
           />
           <Route
+            path="normal"
+            element={<AllChannels type="normal" />}
+            handle={{
+              crumb: () => <Text>Normal Kanallar</Text>,
+            }}
+          />
+          <Route
+            path="restricted"
+            element={<AllChannels isRestricted={true} />}
+            handle={{
+              crumb: () => <Text>Kısıtlı Kanallar</Text>,
+            }}
+          />
+          <Route
             path="vip"
             handle={{
               crumb: () => <NavLink to="/dashboard/channels/vip">Vip</NavLink>,

@@ -1,7 +1,7 @@
 import React, {useRef} from 'react';
-import {useNavigate, useParams} from 'react-router-dom';
+import {Avatar, Box} from '@chakra-ui/react';
+import {useNavigate, useParams, useLocation} from 'react-router-dom';
 import {
-  Box,
   Button,
   Flex,
   FormControl,
@@ -27,7 +27,7 @@ import {
 import {FiImage, FiUpload} from 'react-icons/fi';
 import {useForm} from 'react-hook-form';
 import {yupResolver} from '@hookform/resolvers/yup';
-import {useMutation, useQuery} from '@tanstack/react-query';
+import {useMutation, useQuery, useQueryClient} from '@tanstack/react-query';
 import * as yup from 'yup';
 import {getErrorMessage} from '../../../utils/string';
 import {formatDate} from '../../../utils/date';
@@ -39,6 +39,137 @@ import {getCombinedLogoUrl} from '../../../utils/image';
 import {pick} from '../../../utils/object';
 import useFileInput from '../../../hooks/useFileInput';
 import {AsyncSelect} from 'chakra-react-select';
+
+const AccessManagement = ({channelId}) => {
+  const toast = useToast();
+  const queryClient = useQueryClient();
+
+  const {data: pendingUsers} = useQuery({
+    queryKey: ['pendingUsers', channelId],
+    queryFn: () => api.getPendingUsers(channelId).then(res => res.data),
+  });
+
+  const {data: allowedUsers} = useQuery({
+    queryKey: ['allowedUsers', channelId],
+    queryFn: () => api.getAllowedUsers(channelId).then(res => res.data),
+  });
+
+  const approveMutation = useMutation({
+    mutationFn: userId => api.approveUser(channelId, userId),
+    onSuccess: () => {
+      queryClient.invalidateQueries(['pendingUsers', channelId]);
+      queryClient.invalidateQueries(['allowedUsers', channelId]);
+      toast({title: 'Kullanıcı onaylandı', status: 'success'});
+    },
+  });
+
+  const revokeMutation = useMutation({
+    mutationFn: userId => api.revokeUser(channelId, userId),
+    onSuccess: () => {
+      queryClient.invalidateQueries(['pendingUsers', channelId]);
+      queryClient.invalidateQueries(['allowedUsers', channelId]);
+      toast({title: 'İzin kaldırıldı', status: 'success'});
+    },
+  });
+
+  return (
+    <Box mt={8} bg="gray.50" p={4} borderRadius="md">
+      <Text fontSize="lg" fontWeight="bold" mb={4}>
+        Erişim Yönetimi
+      </Text>
+      <Flex gap={8} direction={{base: 'column', md: 'row'}}>
+        <Box flex={1} bg="white" p={4} borderRadius="md" boxShadow="sm">
+          <Text fontWeight="bold" mb={4} color="orange.500">
+            Bekleyen İstekler ({pendingUsers?.length || 0})
+          </Text>
+          <VStack align="stretch" spacing={2} maxH="400px" overflowY="auto">
+            {pendingUsers?.length === 0 && (
+              <Text fontSize="sm" color="gray.500">
+                Bekleyen istek yok.
+              </Text>
+            )}
+            {pendingUsers?.map(user => (
+              <Flex
+                key={user.id}
+                align="center"
+                justify="space-between"
+                p={2}
+                borderBottom="1px solid #eee">
+                <Flex align="center">
+                  <Avatar
+                    src={getCombinedLogoUrl(user.thumbnail)}
+                    name={user.fullname}
+                    size="sm"
+                    mr={2}
+                  />
+                  <Box>
+                    <Text fontSize="sm" fontWeight="medium">
+                      {user.fullname}
+                    </Text>
+                    <Text fontSize="xs" color="gray.500">
+                      {user.email}
+                    </Text>
+                  </Box>
+                </Flex>
+                <Button
+                  size="xs"
+                  colorScheme="green"
+                  onClick={() => approveMutation.mutate(user.id)}
+                  isLoading={approveMutation.isPending}>
+                  İzin Ver
+                </Button>
+              </Flex>
+            ))}
+          </VStack>
+        </Box>
+        <Box flex={1} bg="white" p={4} borderRadius="md" boxShadow="sm">
+          <Text fontWeight="bold" mb={4} color="green.500">
+            İzinli Kullanıcılar ({allowedUsers?.length || 0})
+          </Text>
+          <VStack align="stretch" spacing={2} maxH="400px" overflowY="auto">
+            {allowedUsers?.length === 0 && (
+              <Text fontSize="sm" color="gray.500">
+                İzinli kullanıcı yok.
+              </Text>
+            )}
+            {allowedUsers?.map(user => (
+              <Flex
+                key={user.id}
+                align="center"
+                justify="space-between"
+                p={2}
+                borderBottom="1px solid #eee">
+                <Flex align="center">
+                  <Avatar
+                    src={getCombinedLogoUrl(user.thumbnail)}
+                    name={user.fullname}
+                    size="sm"
+                    mr={2}
+                  />
+                  <Box>
+                    <Text fontSize="sm" fontWeight="medium">
+                      {user.fullname}
+                    </Text>
+                    <Text fontSize="xs" color="gray.500">
+                      {user.email}
+                    </Text>
+                  </Box>
+                </Flex>
+                <Button
+                  size="xs"
+                  colorScheme="red"
+                  onClick={() => revokeMutation.mutate(user.id)}
+                  isLoading={revokeMutation.isPending}>
+                  Kaldır
+                </Button>
+              </Flex>
+            ))}
+          </VStack>
+        </Box>
+      </Flex>
+    </Box>
+  );
+};
 
 const channelCategories = [
   {value: 'borsa', label: 'Borsa'},
@@ -62,12 +193,17 @@ const object = {
   rank: yup.number('Bu alana bir sayı girin.').notRequired(),
   onlyAdminCanPost: yup.boolean().notRequired(),
   subscribeText: yup.string().notRequired(),
+  isRestricted: yup.boolean().notRequired(),
 };
 
 const schema = yup.object().shape(object);
 
 const EditChannel = ({id}) => {
   const isNew = !id || id === 'new';
+  const location = useLocation();
+  const searchParams = new URLSearchParams(location.search);
+  const isRestrictedParam = searchParams.get('restricted') === 'true';
+
   const toast = useToast();
   const deleteModal = useDisclosure();
   const cancelRef = useRef();
@@ -87,13 +223,17 @@ const EditChannel = ({id}) => {
     formState: {errors},
     reset,
     setValue,
+    watch,
     trigger,
   } = useForm({
     resolver: yupResolver(schema),
     defaultValues: {
       type: 'normal',
-    }
+      isRestricted: isRestrictedParam,
+    },
   });
+
+  const isRestricted = watch('isRestricted');
 
   const {mutateAsync, isPending} = useMutation({
     mutationFn: values =>
@@ -519,6 +659,10 @@ const EditChannel = ({id}) => {
           </Flex>
         </form>
       </Box>
+
+      {/* Access Management Section */}
+      {!isNew && isRestricted && <AccessManagement channelId={id} />}
+
       <Box display={'flex'} justifyContent={'end'}>
         <Button
           isLoading={isDeleting}

@@ -83,6 +83,12 @@ export const routes = {
   allChannels: {
     path: `/dashboard/channels/all`,
   },
+  normalChannels: {
+    path: `/dashboard/channels/normal`,
+  },
+  restrictedChannels: {
+    path: `/dashboard/channels/restricted`,
+  },
   stockChannels: {
     path: `/dashboard/channels/stock`,
   },

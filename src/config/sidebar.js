@@ -113,6 +113,18 @@ export const sidebarRoutes = [
         exact: true,
       },
       {
+        name: 'Normal Kanallar',
+        path: routes.normalChannels.path,
+        icon: GoListUnordered,
+        exact: true,
+      },
+      {
+        name: 'Kısıtlı Kanallar',
+        path: routes.restrictedChannels.path,
+        icon: GoListUnordered,
+        exact: true,
+      },
+      {
         name: 'Vip Kanallar',
         path: routes.vipChannels.path,
         icon: RiVipLine,
@@ -157,6 +169,12 @@ export const sidebarRoutes = [
       {
         name: 'Normal Kanal Ekle',
         path: routes.editChannel.getPath('new'),
+        icon: IoMdAdd,
+        exact: true,
+      },
+      {
+        name: 'Kısıtlı Kanal Ekle',
+        path: routes.editChannel.getPath('new') + '?restricted=true',
         icon: IoMdAdd,
         exact: true,
       },

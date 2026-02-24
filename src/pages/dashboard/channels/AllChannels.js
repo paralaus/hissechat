@@ -7,7 +7,7 @@ import {api} from '../../../api';
 import {ChannelType} from '../../../config';
 import React, {useCallback} from 'react';
 
-const AllChannels = ({category}) => {
+const AllChannels = ({category, isRestricted, type}) => {
   const navigate = useNavigate();
 
   const fetchData = useCallback(
@@ -108,10 +108,16 @@ const AllChannels = ({category}) => {
       if (category) {
         params.category = category;
       }
+      if (isRestricted) {
+        params.isRestricted = true;
+      }
+      if (type) {
+        params.type = type;
+      }
       const response = await api.getAllChannels(params);
       return response.data;
     },
-    [category],
+    [category, isRestricted, type],
   );
 
   const onRow = async item => {
