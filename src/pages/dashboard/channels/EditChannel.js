@@ -645,6 +645,56 @@ const EditChannel = ({id}) => {
                 {errors.onlyAdminCanPost?.message}
               </FormErrorMessage>
             </FormControl>
+            <FormControl
+              display="flex"
+              alignItems="start"
+              flexDirection={'column'}
+              isInvalid={!!errors.isRestricted}
+              mb="4">
+              <Box display={'flex'} alignItems={'center'}>
+                <FormLabel htmlFor="isRestricted" mb={0}>
+                  Kısıtlı Erişim (Onaylı Üyeler)
+                </FormLabel>
+                <Switch
+                  key={data?.isRestricted}
+                  id="isRestricted"
+                  defaultChecked={data?.isRestricted || isRestrictedParam}
+                  {...register('isRestricted')}
+                />
+              </Box>
+              <FormHelperText>
+                Bu özellik açıldığında sadece izin verilen üyeler kanala
+                girebilir.
+              </FormHelperText>
+              <FormErrorMessage>{errors.isRestricted?.message}</FormErrorMessage>
+            </FormControl>
+
+            <Condition condition={isRestricted}>
+              <FormControl isInvalid={!!errors.accessCode} mb="4">
+                <FormLabel
+                  display="flex"
+                  ms="4px"
+                  fontSize="sm"
+                  fontWeight="500"
+                  mb="8px">
+                  Erişim Kodu (Opsiyonel)
+                </FormLabel>
+                <Input
+                  fontSize="sm"
+                  type="text"
+                  fontWeight="500"
+                  size="md"
+                  defaultValue={data?.accessCode}
+                  placeholder="Örn: 7476"
+                  {...register('accessCode')}
+                />
+                <FormHelperText>
+                  Kullanıcılar bu kodu girerek kanala otomatik katılabilir.
+                </FormHelperText>
+                <FormErrorMessage>{errors.accessCode?.message}</FormErrorMessage>
+              </FormControl>
+            </Condition>
+
             <Condition condition={!isNew}>
               <ReadOnlyInfo
                 label={'Kayıt Tarihi'}
