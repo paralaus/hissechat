@@ -133,7 +133,7 @@ const AllChannels = ({category, isRestricted, type}) => {
   return (
     <Page>
       <DataTable
-        key={category}
+        key={`${category}-${isRestricted}-${type}`}
         queryEnabled
         deleteVisible={false}
         onRow={onRow}
@@ -169,7 +169,7 @@ const AllChannels = ({category, isRestricted, type}) => {
           },
         ]}
         fetchData={fetchData}
-        filters={{category}}
+        filters={{category, isRestricted, type}}
       />
     </Page>
   );
