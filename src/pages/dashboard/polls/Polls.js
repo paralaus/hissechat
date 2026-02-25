@@ -4,7 +4,6 @@ import {
   Badge,
   Text,
   IconButton,
-  Tooltip,
   useToast,
   HStack,
   Menu,
@@ -16,7 +15,6 @@ import {
   FiTrash2,
   FiXCircle,
   FiMoreVertical,
-  FiCheckCircle,
 } from 'react-icons/fi';
 import {useMutation, useQueryClient} from '@tanstack/react-query';
 import {api} from '../../../api';
@@ -173,7 +171,7 @@ const Polls = () => {
   ];
 
   const fetchData = async ({pageParam = 1, queryKey}) => {
-    const [_, filters] = queryKey;
+    const [, filters] = queryKey;
     const params = {
       page: pageParam,
       limit: 20,
