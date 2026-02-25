@@ -387,6 +387,20 @@ const router = createBrowserRouter(
           }}
         />
         <Route
+          path="messaging/channels/normal"
+          element={<Channels type="normal" />}
+          handle={{
+            crumb: () => <Text>Normal Kanallar</Text>,
+          }}
+        />
+        <Route
+          path="messaging/channels/restricted"
+          element={<Channels isRestricted={true} />}
+          handle={{
+            crumb: () => <Text>Kısıtlı Kanallar</Text>,
+          }}
+        />
+        <Route
           path="messaging/channels/:channelId"
           element={<ChannelChat />}
           handle={{

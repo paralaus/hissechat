@@ -298,8 +298,18 @@ export const sidebarRoutes = [
     group: 'Sistem',
     children: [
       {
-        name: 'Kanallar',
+        name: 'Tüm Kanallar',
         path: routes.messagingChannels.path,
+        icon: FiMessageCircle,
+      },
+      {
+        name: 'Normal Kanallar',
+        path: routes.messagingChannelsNormal.path,
+        icon: FiMessageCircle,
+      },
+      {
+        name: 'Kısıtlı Kanallar',
+        path: routes.messagingChannelsRestricted.path,
         icon: FiMessageCircle,
       },
       {

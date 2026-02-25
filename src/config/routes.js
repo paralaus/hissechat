@@ -110,6 +110,12 @@ export const routes = {
   messagingChannels: {
     path: '/dashboard/messaging/channels',
   },
+  messagingChannelsNormal: {
+    path: '/dashboard/messaging/channels/normal',
+  },
+  messagingChannelsRestricted: {
+    path: '/dashboard/messaging/channels/restricted',
+  },
   channelChat: {
     getPath: id => `/dashboard/messaging/channels/${id}`,
   },

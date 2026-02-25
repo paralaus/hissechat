@@ -258,7 +258,7 @@ const SORT_OPTIONS = {
 
 const PAGE_SIZE = 50;
 
-const Channels = () => {
+const Channels = ({type, isRestricted}) => {
   const navigate = useNavigate();
   const location = useLocation();
   const [searchQuery, setSearchQuery] = useState('');
@@ -332,9 +332,12 @@ const Channels = () => {
     hasNextPage: hasNextAllChannels,
     isFetchingNextPage: isFetchingNextAllChannels,
   } = useInfiniteQuery({
-    queryKey: ['all-channels-messaging'],
+    queryKey: ['all-channels-messaging', type, isRestricted],
     queryFn: async ({pageParam = 1}) => {
-      const res = await api.getAllChannels({limit: PAGE_SIZE, page: pageParam});
+      const params = {limit: PAGE_SIZE, page: pageParam};
+      if (type) params.type = type;
+      if (isRestricted) params.isRestricted = true;
+      const res = await api.getAllChannels(params);
       return res.data;
     },
     getNextPageParam: lastPage => {
@@ -991,227 +994,247 @@ const Channels = () => {
       </HStack>
 
       {/* Tabs */}
-      <Box bg="white" borderRadius="xl" boxShadow="md" p="4">
-        <Tabs
-          variant="soft-rounded"
-          colorScheme="blue"
-          index={tabIndex}
-          onChange={setTabIndex}>
-          <TabList mb="4" flexWrap="wrap" gap="2">
-            <Tab>
-              <HStack spacing="2">
-                <Icon as={FiMessageCircle} />
-                <Text>Tümü ({totalAllCombinedCount || 0})</Text>
-              </HStack>
-            </Tab>
-            <Tab>
-              <HStack spacing="2">
-                <Icon as={FiTrendingUp} />
-                <Text>
-                  Borsa ({totalStockResults || stockChannels?.length || 0})
-                </Text>
-              </HStack>
-            </Tab>
-            <Tab>
-              <HStack spacing="2">
-                <Icon as={FiCpu} />
-                <Text>
-                  Kripto ({totalCryptoResults || cryptoChannels?.length || 0})
-                </Text>
-              </HStack>
-            </Tab>
-            <Tab>
-              <HStack spacing="2">
-                <Icon as={FiActivity} />
-                <Text>
-                  VİOP ({totalViopResults || viopChannels?.length || 0})
-                </Text>
-              </HStack>
-            </Tab>
-            <Tab>
-              <HStack spacing="2">
-                <Icon as={FiLayers} />
-                <Text>
-                  Emtia (
-                  {totalCommodityResults ||
-                    mergedCommodityChannels?.length ||
-                    0}
-                  )
-                </Text>
-              </HStack>
-            </Tab>
-            <Tab>
-              <HStack spacing="2">
-                <Icon as={FiPieChart} />
-                <Text>
-                  Fonlar ({totalFundResults || fundChannels?.length || 0})
-                </Text>
-              </HStack>
-            </Tab>
-            <Tab>
-              <HStack spacing="2">
-                <Icon as={FiStar} />
-                <Text>
-                  VIP ({totalVipChannels || vipChannels?.length || 0})
-                </Text>
-              </HStack>
-            </Tab>
-            <Tab>
-              <HStack spacing="2">
-                <Icon as={FiUser} />
-                <Text>
-                  Kişisel ({totalPrivateResults || privateChannels?.length || 0}
-                  )
-                </Text>
-              </HStack>
-            </Tab>
-            <Tab>
-              <HStack spacing="2">
-                <Icon as={FiUsers} />
-                <Text>Arkadaşlar</Text>
-              </HStack>
-            </Tab>
-          </TabList>
+      {!type && !isRestricted && (
+        <Box bg="white" borderRadius="xl" boxShadow="md" p="4">
+          <Tabs
+            variant="soft-rounded"
+            colorScheme="blue"
+            index={tabIndex}
+            onChange={setTabIndex}>
+            <TabList mb="4" flexWrap="wrap" gap="2">
+              <Tab>
+                <HStack spacing="2">
+                  <Icon as={FiMessageCircle} />
+                  <Text>Tümü ({totalAllCombinedCount || 0})</Text>
+                </HStack>
+              </Tab>
+              <Tab>
+                <HStack spacing="2">
+                  <Icon as={FiTrendingUp} />
+                  <Text>
+                    Borsa ({totalStockResults || stockChannels?.length || 0})
+                  </Text>
+                </HStack>
+              </Tab>
+              <Tab>
+                <HStack spacing="2">
+                  <Icon as={FiCpu} />
+                  <Text>
+                    Kripto ({totalCryptoResults || cryptoChannels?.length || 0})
+                  </Text>
+                </HStack>
+              </Tab>
+              <Tab>
+                <HStack spacing="2">
+                  <Icon as={FiActivity} />
+                  <Text>
+                    VİOP ({totalViopResults || viopChannels?.length || 0})
+                  </Text>
+                </HStack>
+              </Tab>
+              <Tab>
+                <HStack spacing="2">
+                  <Icon as={FiLayers} />
+                  <Text>
+                    Emtia (
+                    {totalCommodityResults ||
+                      mergedCommodityChannels?.length ||
+                      0}
+                    )
+                  </Text>
+                </HStack>
+              </Tab>
+              <Tab>
+                <HStack spacing="2">
+                  <Icon as={FiPieChart} />
+                  <Text>
+                    Fonlar ({totalFundResults || fundChannels?.length || 0})
+                  </Text>
+                </HStack>
+              </Tab>
+              <Tab>
+                <HStack spacing="2">
+                  <Icon as={FiStar} />
+                  <Text>
+                    VIP ({totalVipChannels || vipChannels?.length || 0})
+                  </Text>
+                </HStack>
+              </Tab>
+              <Tab>
+                <HStack spacing="2">
+                  <Icon as={FiUser} />
+                  <Text>
+                    Kişisel ({totalPrivateResults || privateChannels?.length || 0}
+                    )
+                  </Text>
+                </HStack>
+              </Tab>
+              <Tab>
+                <HStack spacing="2">
+                  <Icon as={FiUsers} />
+                  <Text>Arkadaşlar</Text>
+                </HStack>
+              </Tab>
+            </TabList>
 
-          <TabPanels>
-            {/* All Channels */}
-            <TabPanel p="0">
-              <ChannelList
-                channels={allFiltered}
-                isLoading={isLoadingAllCombined}
-                onChannelClick={handleChannelClick}
-                emptyMessage="Kanal bulunamadı"
-                hasNextPage={hasNextAllCombined}
-                isFetchingNextPage={isFetchingNextAllCombined}
-                onLoadMore={fetchNextAllCombined}
-                totalCount={totalAllCombinedCount}
-                currentUserId={currentUserId}
-                priceMap={priceMap}
-              />
-            </TabPanel>
+            <TabPanels>
+              {/* All Channels */}
+              <TabPanel p="0">
+                <ChannelList
+                  channels={allFiltered}
+                  isLoading={isLoadingAllCombined}
+                  onChannelClick={handleChannelClick}
+                  emptyMessage="Kanal bulunamadı"
+                  hasNextPage={hasNextAllCombined}
+                  isFetchingNextPage={isFetchingNextAllCombined}
+                  onLoadMore={fetchNextAllCombined}
+                  totalCount={totalAllCombinedCount}
+                  currentUserId={currentUserId}
+                  priceMap={priceMap}
+                />
+              </TabPanel>
 
-            {/* Stock Channels */}
-            <TabPanel p="0">
-              <ChannelList
-                channels={stockChannels}
-                isLoading={isLoadingStock}
-                onChannelClick={handleChannelClick}
-                emptyMessage="Borsa kanalı bulunamadı"
-                hasNextPage={hasNextStock}
-                isFetchingNextPage={isFetchingNextStock}
-                onLoadMore={fetchNextStock}
-                totalCount={totalStockResults}
-                currentUserId={currentUserId}
-                priceMap={priceMap}
-              />
-            </TabPanel>
+              {/* Stock Channels */}
+              <TabPanel p="0">
+                <ChannelList
+                  channels={stockChannels}
+                  isLoading={isLoadingStock}
+                  onChannelClick={handleChannelClick}
+                  emptyMessage="Borsa kanalı bulunamadı"
+                  hasNextPage={hasNextStock}
+                  isFetchingNextPage={isFetchingNextStock}
+                  onLoadMore={fetchNextStock}
+                  totalCount={totalStockResults}
+                  currentUserId={currentUserId}
+                  priceMap={priceMap}
+                />
+              </TabPanel>
 
-            {/* Crypto Channels */}
-            <TabPanel p="0">
-              <ChannelList
-                channels={cryptoChannels}
-                isLoading={isLoadingCrypto}
-                onChannelClick={handleChannelClick}
-                emptyMessage="Kripto kanalı bulunamadı"
-                hasNextPage={hasNextCrypto}
-                isFetchingNextPage={isFetchingNextCrypto}
-                onLoadMore={fetchNextCrypto}
-                totalCount={totalCryptoResults}
-                currentUserId={currentUserId}
-                priceMap={priceMap}
-              />
-            </TabPanel>
+              {/* Crypto Channels */}
+              <TabPanel p="0">
+                <ChannelList
+                  channels={cryptoChannels}
+                  isLoading={isLoadingCrypto}
+                  onChannelClick={handleChannelClick}
+                  emptyMessage="Kripto kanalı bulunamadı"
+                  hasNextPage={hasNextCrypto}
+                  isFetchingNextPage={isFetchingNextCrypto}
+                  onLoadMore={fetchNextCrypto}
+                  totalCount={totalCryptoResults}
+                  currentUserId={currentUserId}
+                  priceMap={priceMap}
+                />
+              </TabPanel>
 
-            {/* VİOP Channels */}
-            <TabPanel p="0">
-              <ChannelList
-                channels={viopChannels}
-                isLoading={isLoadingViop}
-                onChannelClick={handleChannelClick}
-                emptyMessage="VİOP kanalı bulunamadı"
-                hasNextPage={hasNextViop}
-                isFetchingNextPage={isFetchingNextViop}
-                onLoadMore={fetchNextViop}
-                totalCount={totalViopResults}
-                currentUserId={currentUserId}
-                priceMap={priceMap}
-              />
-            </TabPanel>
+              {/* VİOP Channels */}
+              <TabPanel p="0">
+                <ChannelList
+                  channels={viopChannels}
+                  isLoading={isLoadingViop}
+                  onChannelClick={handleChannelClick}
+                  emptyMessage="VİOP kanalı bulunamadı"
+                  hasNextPage={hasNextViop}
+                  isFetchingNextPage={isFetchingNextViop}
+                  onLoadMore={fetchNextViop}
+                  totalCount={totalViopResults}
+                  currentUserId={currentUserId}
+                  priceMap={priceMap}
+                />
+              </TabPanel>
 
-            {/* Commodity Channels */}
-            <TabPanel p="0">
-              <ChannelList
-                channels={commodityChannels}
-                isLoading={isLoadingCommodity}
-                onChannelClick={handleChannelClick}
-                emptyMessage="Emtia kanalı bulunamadı"
-                hasNextPage={hasNextCommodity}
-                isFetchingNextPage={isFetchingNextCommodity}
-                onLoadMore={fetchNextCommodity}
-                totalCount={totalCommodityResults}
-                currentUserId={currentUserId}
-                priceMap={priceMap}
-              />
-            </TabPanel>
+              {/* Commodity Channels */}
+              <TabPanel p="0">
+                <ChannelList
+                  channels={commodityChannels}
+                  isLoading={isLoadingCommodity}
+                  onChannelClick={handleChannelClick}
+                  emptyMessage="Emtia kanalı bulunamadı"
+                  hasNextPage={hasNextCommodity}
+                  isFetchingNextPage={isFetchingNextCommodity}
+                  onLoadMore={fetchNextCommodity}
+                  totalCount={totalCommodityResults}
+                  currentUserId={currentUserId}
+                  priceMap={priceMap}
+                />
+              </TabPanel>
 
-            {/* Fund Channels */}
-            <TabPanel p="0">
-              <ChannelList
-                channels={fundChannels}
-                isLoading={isLoadingFunds}
-                onChannelClick={handleChannelClick}
-                emptyMessage="Fon kanalı bulunamadı"
-                hasNextPage={hasNextFunds}
-                isFetchingNextPage={isFetchingNextFunds}
-                onLoadMore={fetchNextFunds}
-                totalCount={totalFundResults}
-                currentUserId={currentUserId}
-                priceMap={priceMap}
-              />
-            </TabPanel>
+              {/* Fund Channels */}
+              <TabPanel p="0">
+                <ChannelList
+                  channels={fundChannels}
+                  isLoading={isLoadingFunds}
+                  onChannelClick={handleChannelClick}
+                  emptyMessage="Fon kanalı bulunamadı"
+                  hasNextPage={hasNextFunds}
+                  isFetchingNextPage={isFetchingNextFunds}
+                  onLoadMore={fetchNextFunds}
+                  totalCount={totalFundResults}
+                  currentUserId={currentUserId}
+                  priceMap={priceMap}
+                />
+              </TabPanel>
 
-            {/* VIP Channels */}
-            <TabPanel p="0">
-              <ChannelList
-                channels={vipChannels}
-                isLoading={isLoadingVip}
-                onChannelClick={handleChannelClick}
-                emptyMessage="VIP kanal bulunamadı"
-                hasNextPage={hasNextVipChannels}
-                isFetchingNextPage={isFetchingNextVipChannels}
-                onLoadMore={fetchNextVipChannels}
-                totalCount={totalVipChannels}
-                currentUserId={currentUserId}
-                priceMap={priceMap}
-              />
-            </TabPanel>
+              {/* VIP Channels */}
+              <TabPanel p="0">
+                <ChannelList
+                  channels={vipChannels}
+                  isLoading={isLoadingVip}
+                  onChannelClick={handleChannelClick}
+                  emptyMessage="VIP kanal bulunamadı"
+                  hasNextPage={hasNextVipChannels}
+                  isFetchingNextPage={isFetchingNextVipChannels}
+                  onLoadMore={fetchNextVipChannels}
+                  totalCount={totalVipChannels}
+                  currentUserId={currentUserId}
+                  priceMap={priceMap}
+                />
+              </TabPanel>
 
-            {/* Private Channels */}
-            <TabPanel p="0">
-              <ChannelList
-                channels={privateChannels}
-                isLoading={isLoadingPrivate}
-                onChannelClick={handleChannelClick}
-                emptyMessage="Kişisel mesaj bulunamadı"
-                hasNextPage={hasNextPrivate}
-                isFetchingNextPage={isFetchingNextPrivate}
-                onLoadMore={fetchNextPrivate}
-                totalCount={privateChannels?.length}
-                currentUserId={currentUserId}
-                priceMap={priceMap}
-              />
-            </TabPanel>
+              {/* Private Channels */}
+              <TabPanel p="0">
+                <ChannelList
+                  channels={privateChannels}
+                  isLoading={isLoadingPrivate}
+                  onChannelClick={handleChannelClick}
+                  emptyMessage="Kişisel mesaj bulunamadı"
+                  hasNextPage={hasNextPrivate}
+                  isFetchingNextPage={isFetchingNextPrivate}
+                  onLoadMore={fetchNextPrivate}
+                  totalCount={privateChannels?.length}
+                  currentUserId={currentUserId}
+                  priceMap={priceMap}
+                />
+              </TabPanel>
 
-            {/* Friend Manager */}
-            <TabPanel p="0">
-              <FriendManager
-                currentUserId={currentUserId}
-                navigate={navigate}
-              />
-            </TabPanel>
-          </TabPanels>
-        </Tabs>
-      </Box>
+              {/* Friend Manager */}
+              <TabPanel p="0">
+                <FriendManager
+                  currentUserId={currentUserId}
+                  navigate={navigate}
+                />
+              </TabPanel>
+            </TabPanels>
+          </Tabs>
+        </Box>
+      )}
+
+      {/* Single List for specific types */}
+      {(type || isRestricted) && (
+        <Box bg="white" borderRadius="xl" boxShadow="md" p="4">
+          <ChannelList
+            channels={allFiltered}
+            isLoading={isLoadingAllCombined}
+            onChannelClick={handleChannelClick}
+            emptyMessage="Kanal bulunamadı"
+            hasNextPage={hasNextAllCombined}
+            isFetchingNextPage={isFetchingNextAllCombined}
+            onLoadMore={fetchNextAllCombined}
+            totalCount={totalAllCombinedCount}
+            currentUserId={currentUserId}
+            priceMap={priceMap}
+          />
+        </Box>
+      )}
     </Page>
   );
 };
