@@ -53,6 +53,7 @@ import ArchivedMessages from '../pages/dashboard/messaging/ArchivedMessages';
 import Conferences from '../pages/dashboard/conferences/Conferences';
 import DbStats from '../pages/dashboard/database/DbStats';
 import Subscriptions from '../pages/dashboard/subscriptions/Subscriptions';
+import Polls from '../pages/dashboard/polls/Polls';
 
 const rootLoader = async ({request}) => {
   const {pathname} = new URL(request.url);
@@ -116,6 +117,13 @@ const router = createBrowserRouter(
           element={<DbStats />}
           handle={{
             crumb: () => <Text>DB İstatistikleri</Text>,
+          }}
+        />
+        <Route
+          path="polls"
+          element={<Polls />}
+          handle={{
+            crumb: () => <Text>Anketler</Text>,
           }}
         />
         <Route

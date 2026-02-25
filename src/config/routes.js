@@ -137,4 +137,7 @@ export const routes = {
   databaseStats: {
     path: '/dashboard/database-stats',
   },
+  polls: {
+    path: '/dashboard/polls',
+  },
 };

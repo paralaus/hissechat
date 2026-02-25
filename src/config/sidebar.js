@@ -181,6 +181,12 @@ export const sidebarRoutes = [
     ],
   },
   {
+    name: 'Anketler',
+    icon: RiChatPollLine,
+    path: routes.polls.path,
+    group: 'İçerik Yönetimi',
+  },
+  {
     name: 'Öneriler',
     icon: MdLightbulbOutline,
     group: 'İçerik Yönetimi',

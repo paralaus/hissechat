@@ -599,3 +599,16 @@ export const approveUser = async (channelId, userId) => {
 export const revokeUser = async (channelId, userId) => {
   return apiClient.post(`/channels/${channelId}/revoke/${userId}`);
 };
+
+// Poll Management
+export const getPollsAdmin = async params => {
+  return apiClient.get('/polls', {params});
+};
+
+export const closePollAdmin = async pollId => {
+  return apiClient.post(`/polls/${pollId}/close-admin`);
+};
+
+export const deletePollAdmin = async pollId => {
+  return apiClient.delete(`/polls/${pollId}/admin`);
+};
