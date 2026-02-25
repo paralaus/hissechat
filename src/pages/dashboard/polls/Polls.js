@@ -19,10 +19,10 @@ import {
   FiCheckCircle,
 } from 'react-icons/fi';
 import {useMutation, useQueryClient} from '@tanstack/react-query';
-import {api} from '../../api';
-import DataTable from '../../components/common/DataTable';
-import Page from '../../components/common/Page';
-import {formatDate} from '../../utils/functions';
+import {api} from '../../../api';
+import DataTable from '../../../components/common/DataTable';
+import Page from '../../../components/common/Page';
+import {formatDate} from '../../../utils/functions';
 
 const Polls = () => {
   const toast = useToast();
