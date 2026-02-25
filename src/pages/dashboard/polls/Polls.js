@@ -22,7 +22,7 @@ import {useMutation, useQueryClient} from '@tanstack/react-query';
 import {api} from '../../../api';
 import DataTable from '../../../components/common/DataTable';
 import Page from '../../../components/common/Page';
-import {formatDate} from '../../../utils/functions';
+import {formatDate} from '../../../utils/date';
 
 const Polls = () => {
   const toast = useToast();
