@@ -60,6 +60,15 @@ const getIsActive = (link, location) => {
 
   if (!isPathMatch) return false;
 
+  // Special handling for messaging channels which share the same base path
+  if (linkPath.includes('/dashboard/messaging/channels')) {
+    // If it's the exact match "Tüm Kanallar" (/dashboard/messaging/channels)
+    // It should NOT match if there are sub-paths like /normal or /restricted
+    if (link.path === '/dashboard/messaging/channels') {
+      return location.pathname === '/dashboard/messaging/channels';
+    }
+  }
+
   const locationParams = new URLSearchParams(location.search);
 
   // If link has specific query params, they must match
