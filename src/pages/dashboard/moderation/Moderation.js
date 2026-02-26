@@ -77,6 +77,7 @@ const MessageCard = ({
   isBlocking,
   isBanning,
   isUnbanning,
+  activeBannedUsers,
 }) => {
   const {isOpen, onOpen, onClose} = useDisclosure();
   const banModal = useDisclosure();
@@ -86,6 +87,12 @@ const MessageCard = ({
   const [customHours, setCustomHours] = useState('6');
   const [blacklistWord, setBlacklistWord] = useState('');
   const [targetUserForBan, setTargetUserForBan] = useState(null);
+
+  const isBanned = React.useMemo(() => {
+    if (!message.sub?.id && !message.sub?._id) return false;
+    const userId = message.sub.id || message.sub._id;
+    return activeBannedUsers?.some(entry => entry.value === userId);
+  }, [message.sub, activeBannedUsers]);
 
   const handleBan = () => {
     const userId = targetUserForBan?.id || targetUserForBan?._id || message.user?.id || message.user?._id;
@@ -176,15 +183,29 @@ const MessageCard = ({
                               {message.sub?.fullname || 'Bilinmeyen Kullanıcı'}
                             </Text>
                          </HStack>
-                         <Button
-                            size="xs"
-                            colorScheme="red"
-                            variant="outline"
-                            leftIcon={<FiUserX />}
-                            onClick={() => openBanModalFor(message.sub)}
-                            isLoading={isBanning}>
-                            Banla
-                          </Button>
+                         {isBanned ? (
+                           <Button
+                             size="xs"
+                             colorScheme="green"
+                             variant="outline"
+                             leftIcon={<FiCheck />}
+                             onClick={() =>
+                               onUnbanUser(message.sub.id || message.sub._id)
+                             }
+                             isLoading={isUnbanning}>
+                             Engeli Kaldır
+                           </Button>
+                         ) : (
+                           <Button
+                             size="xs"
+                             colorScheme="red"
+                             variant="outline"
+                             leftIcon={<FiUserX />}
+                             onClick={() => openBanModalFor(message.sub)}
+                             isLoading={isBanning}>
+                             Banla
+                           </Button>
+                         )}
                        </HStack>
                     )}
                   </VStack>
@@ -1661,6 +1682,7 @@ const Moderation = () => {
                 isBlocking={blockingMessageId === (message.id || message._id)}
                 isBanning={banUserMutation.isPending}
                 isUnbanning={unbanUserMutation.isPending}
+                activeBannedUsers={activeBannedUsers}
               />
             ))}
           </SimpleGrid>
