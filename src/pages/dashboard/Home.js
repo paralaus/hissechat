@@ -21,6 +21,7 @@ import {NavLink} from 'react-router-dom';
 import {routes} from '../../config/routes';
 import {api} from '../../api';
 import React from 'react';
+import Cookies from 'js-cookie';
 
 const iconProps = {
   color: 'white',
@@ -115,13 +116,27 @@ const Home = () => {
         .then(res => res.data),
   });
 
-  // Total polls count
+  // Total polls count (safe fetch without axios interceptors to avoid global logout on 403)
   const {data: pollsAdmin} = useQuery({
     queryKey: ['polls', 'count', 'dashboard'],
-    queryFn: () =>
-      api
-        .getPollsAdmin({limit: 1, page: 1})
-        .then(res => res.data),
+    queryFn: async () => {
+      const base =
+        process.env.REACT_APP_API_URL || 'http://localhost:3000/v1';
+      const token = Cookies.get('token');
+      const url = `${base}/polls?limit=1&page=1`;
+      const res = await fetch(url, {
+        headers: {
+          'Accept': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+      });
+      if (!res.ok) {
+        // Swallow 403/401 gracefully; return empty structure
+        return { totalResults: 0 };
+      }
+      return res.json();
+    },
+    staleTime: 30000,
   });
 
   const {data: userReports} = useQuery({
