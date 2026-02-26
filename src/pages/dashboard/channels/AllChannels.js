@@ -115,6 +115,11 @@ const AllChannels = ({category, isRestricted, type}) => {
         params.type = type;
       }
       const response = await api.getAllChannels(params);
+      if (response.data && response.data.results) {
+        response.data.results = response.data.results.filter(
+          c => !!(c.name || c.label),
+        );
+      }
       return response.data;
     },
     [category, isRestricted, type],
