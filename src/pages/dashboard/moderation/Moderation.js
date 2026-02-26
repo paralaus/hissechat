@@ -463,7 +463,13 @@ const MessageCard = ({
               <FormLabel>Ban Süresi</FormLabel>
               <Select
                 value={banDuration}
-                onChange={e => setBanDuration(e.target.value)}>
+                onChange={e => setBanDuration(e.target.value)}
+                sx={{
+                  '> option': {
+                    color: 'gray.800',
+                    bg: 'white',
+                  },
+                }}>
                 <option value="1h">1 Saat</option>
                 <option value="6h">6 Saat</option>
                 <option value="12h">12 Saat</option>
@@ -1371,7 +1377,13 @@ const Moderation = () => {
                 placeholder="Tüm Kanallar"
                 value={selectedChannel}
                 onChange={e => setSelectedChannel(e.target.value)}
-                maxW="300px">
+                maxW="300px"
+                sx={{
+                  '> option': {
+                    color: 'gray.800',
+                    bg: 'white',
+                  },
+                }}>
                 {allChannels.map(channel => (
                   <option
                     key={channel.id || channel._id}
@@ -1384,7 +1396,13 @@ const Moderation = () => {
               <Select
                 value={filterType}
                 onChange={e => handleFilterTypeChange(e.target.value)}
-                maxW="200px">
+                maxW="200px"
+                sx={{
+                  '> option': {
+                    color: 'gray.800',
+                    bg: 'white',
+                  },
+                }}>
                 <option value="profanity">🚫 Uygunsuz Kelime İçerenler</option>
                 <option value="blocked">🛡️ Engellenenler</option>
                 <option value="reports">📢 Kullanıcı Şikayetleri</option>
@@ -1477,6 +1495,12 @@ const Moderation = () => {
                       const value = parseInt(e.target.value, 10);
                       setBannedTextPage(1);
                       setBannedTextLimit(Number.isNaN(value) ? 50 : value);
+                    }}
+                    sx={{
+                      '> option': {
+                        color: 'gray.800',
+                        bg: 'white',
+                      },
                     }}>
                     <option value="20">20</option>
                     <option value="50">50</option>
