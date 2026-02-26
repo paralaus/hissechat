@@ -94,6 +94,12 @@ const MessageCard = ({
     return activeBannedUsers?.some(entry => entry.value === userId);
   }, [message.sub, activeBannedUsers]);
 
+  const isUserBanned = React.useMemo(() => {
+    if (!message.user?.id && !message.user?._id) return false;
+    const userId = message.user.id || message.user._id;
+    return activeBannedUsers?.some(entry => entry.value === userId);
+  }, [message.user, activeBannedUsers]);
+
   const handleBan = () => {
     const userId = targetUserForBan?.id || targetUserForBan?._id || message.user?.id || message.user?._id;
     onBanUser(userId, banDuration, customHours);
@@ -362,15 +368,29 @@ const MessageCard = ({
                     onClick={blacklistModal.onOpen}>
                     Kelime Yasakla
                   </Button>
-                  <Button
-                    size="sm"
-                    colorScheme="purple"
-                    variant="outline"
-                    leftIcon={<FiUserX />}
-                    onClick={banModal.onOpen}
-                    isLoading={isBanning}>
-                    Kullanıcıyı Banla
-                  </Button>
+                  {isUserBanned ? (
+                    <Button
+                      size="sm"
+                      colorScheme="green"
+                      variant="outline"
+                      leftIcon={<FiCheck />}
+                      onClick={() =>
+                        onUnbanUser(message.user.id || message.user._id)
+                      }
+                      isLoading={isUnbanning}>
+                      Engeli Kaldır
+                    </Button>
+                  ) : (
+                    <Button
+                      size="sm"
+                      colorScheme="purple"
+                      variant="outline"
+                      leftIcon={<FiUserX />}
+                      onClick={banModal.onOpen}
+                      isLoading={isBanning}>
+                      Kullanıcıyı Banla
+                    </Button>
+                  )}
 
                   {message.isBlocked ? (
                     <Button
