@@ -1378,6 +1378,9 @@ const Moderation = () => {
                 value={selectedChannel}
                 onChange={e => setSelectedChannel(e.target.value)}
                 maxW="300px"
+                bg="white"
+                color="gray.800"
+                _placeholder={{ color: 'gray.500' }}
                 sx={{
                   '> option': {
                     color: 'gray.800',
@@ -1387,7 +1390,8 @@ const Moderation = () => {
                 {allChannels.map(channel => (
                   <option
                     key={channel.id || channel._id}
-                    value={channel.id || channel._id}>
+                    value={channel.id || channel._id}
+                    style={{ color: '#1A202C', backgroundColor: 'white' }}>
                     {channel.name}
                   </option>
                 ))}
@@ -1397,17 +1401,19 @@ const Moderation = () => {
                 value={filterType}
                 onChange={e => handleFilterTypeChange(e.target.value)}
                 maxW="200px"
+                bg="white"
+                color="gray.800"
                 sx={{
                   '> option': {
                     color: 'gray.800',
                     bg: 'white',
                   },
                 }}>
-                <option value="profanity">🚫 Uygunsuz Kelime İçerenler</option>
-                <option value="blocked">🛡️ Engellenenler</option>
-                <option value="reports">📢 Kullanıcı Şikayetleri</option>
-                <option value="channel_reports">📢 Kanal Şikayetleri</option>
-                <option value="all">📋 Tümü</option>
+                <option value="profanity" style={{ color: '#1A202C', backgroundColor: 'white' }}>🚫 Uygunsuz Kelime İçerenler</option>
+                <option value="blocked" style={{ color: '#1A202C', backgroundColor: 'white' }}>🛡️ Engellenenler</option>
+                <option value="reports" style={{ color: '#1A202C', backgroundColor: 'white' }}>📢 Kullanıcı Şikayetleri</option>
+                <option value="channel_reports" style={{ color: '#1A202C', backgroundColor: 'white' }}>📢 Kanal Şikayetleri</option>
+                <option value="all" style={{ color: '#1A202C', backgroundColor: 'white' }}>📋 Tümü</option>
               </Select>
 
               <InputGroup maxW="300px">
