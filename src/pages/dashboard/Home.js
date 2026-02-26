@@ -4,7 +4,7 @@ import {SimpleGrid, Box, Heading, Divider} from '@chakra-ui/react';
 import {FaUserClock, FaUsers, FaChartLine, FaApple, FaGooglePlay} from 'react-icons/fa';
 import {RiVipFill, RiMoneyDollarCircleFill} from 'react-icons/ri';
 import {BiSolidMessageDetail} from 'react-icons/bi';
-import {MdInsertChart, MdReport, MdShoppingCart} from 'react-icons/md';
+import {MdInsertChart, MdReport, MdShoppingCart, MdPoll} from 'react-icons/md';
 import {
   FiVideo,
   FiAlertTriangle,
@@ -112,6 +112,15 @@ const Home = () => {
     queryFn: () =>
       api
         .getBlacklists({type: 'user-id', isActive: true, limit: 1})
+        .then(res => res.data),
+  });
+
+  // Total polls count
+  const {data: pollsAdmin} = useQuery({
+    queryKey: ['polls', 'count', 'dashboard'],
+    queryFn: () =>
+      api
+        .getPollsAdmin({limit: 1, page: 1})
         .then(res => res.data),
   });
 
@@ -290,6 +299,12 @@ const Home = () => {
       amount: activeConferencesCount,
       icon: <FiVideo {...iconProps} />,
       path: '/dashboard/conferences',
+    },
+    {
+      title: 'Toplam Anket',
+      amount: pollsAdmin?.totalResults || 0,
+      icon: <MdPoll {...iconProps} />,
+      path: routes.polls?.path || '/dashboard/polls',
     },
     {
       title: 'Ürünler',
