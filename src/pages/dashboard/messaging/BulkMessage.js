@@ -467,20 +467,22 @@ const BulkMessage = () => {
     fileInput.objectUrl;
 
   // Group channels by type for display
-  const stockChannels = mergedStockChannels;
-  const cryptoChannels = mergedCryptoChannels;
-  const vipChannels = vipChannelsData || [];
-  const fundChannels = mergedFundChannels;
-  const viopChannels = mergedViopChannels;
+  const stockChannels = mergedStockChannels.filter(c => !!(c.name || c.label));
+  const cryptoChannels = mergedCryptoChannels.filter(c => !!(c.name || c.label));
+  const vipChannels = (vipChannelsData || []).filter(c => !!(c.name || c.label));
+  const fundChannels = mergedFundChannels.filter(c => !!(c.name || c.label));
+  const viopChannels = mergedViopChannels.filter(c => !!(c.name || c.label));
 
   // Combine for selection list
   // Note: We might want to separate them in the UI later, but for now we group them as "Market" excluding VIOP if that was the pattern,
   // or just put Stock and Crypto in Market.
-  const marketChannels = [...mergedStockChannels, ...mergedCryptoChannels];
+  const marketChannels = [...stockChannels, ...cryptoChannels];
   const otherChannels =
-    channelsData?.filter(
-      c => c.type !== 'market' && c.type !== 'vip' && c.type !== 'fund',
-    ) || [];
+    (
+      channelsData?.filter(
+        c => c.type !== 'market' && c.type !== 'vip' && c.type !== 'fund',
+      ) || []
+    ).filter(c => !!(c.name || c.label)) || [];
 
   return (
     <Page>
