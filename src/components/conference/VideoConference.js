@@ -2565,7 +2565,39 @@ const VideoConference = ({roomId, channelId, title, onClose}) => {
   };
 
   const votePoll = (pollId, optionIndex) => {
+    // Optimistic update
+    setPolls(prev =>
+      prev.map(poll => {
+        if (poll.id !== pollId) return poll;
+
+        const hasVoted = poll.votes?.some(v => v.odaId === currentUser?.id);
+        if (hasVoted && !poll.allowMultiple) return poll;
+
+        const newVotes = [
+          ...(poll.votes || []),
+          {odaId: currentUser?.id, optionIndex},
+        ];
+        const newOptions = poll.options.map((opt, idx) =>
+          idx === optionIndex
+            ? {...opt, voteCount: (opt.voteCount || 0) + 1}
+            : opt,
+        );
+        return {
+          ...poll,
+          votes: newVotes,
+          options: newOptions,
+          totalVotes: newVotes.length,
+        };
+      }),
+    );
+
     socketRef.current?.emit('poll-vote', {pollId, optionIndex});
+    
+    toast({
+      title: 'Oyunuz kaydedildi',
+      status: 'success',
+      duration: 2000,
+    });
   };
 
   const closePoll = pollId => {
