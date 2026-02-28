@@ -1,4 +1,4 @@
-import React, {useState} from 'react';
+import React, {useEffect, useState} from 'react';
 import {
   Modal,
   ModalOverlay,
@@ -35,24 +35,45 @@ const DURATION_OPTIONS = [
   {value: 120, label: '2 saat'},
 ];
 
-const CreateConferenceModal = ({isOpen, onClose, onCreate, isLoading}) => {
+const CreateConferenceModal = ({
+  isOpen,
+  onClose,
+  onCreate,
+  isLoading,
+  lockedChannelId,
+  lockedChannelName,
+}) => {
   const [mode, setMode] = useState('select'); // 'select', 'schedule'
   const [title, setTitle] = useState('');
-  const [selectedChannel, setSelectedChannel] = useState('');
+  const [selectedChannel, setSelectedChannel] = useState(lockedChannelId || '');
   const [date, setDate] = useState('');
   const [time, setTime] = useState('');
   const [duration, setDuration] = useState(60); // Default 60 minutes
   const [maxParticipants, setMaxParticipants] = useState(50);
   const [waitingRoom, setWaitingRoom] = useState(false);
+  const isChannelLocked = !!lockedChannelId;
 
   // Fetch channels for selection
   const {data: channelsData} = useQuery({
     queryKey: ['channels', 'all'],
     queryFn: () => api.getAllChannels({limit: 100}).then(res => res.data),
-    enabled: isOpen,
+    enabled: isOpen && !isChannelLocked,
   });
 
-  const channels = channelsData?.results || [];
+  const channels = isChannelLocked
+    ? [
+        {
+          id: lockedChannelId,
+          name: lockedChannelName || 'Kanal',
+        },
+      ]
+    : channelsData?.results || [];
+
+  useEffect(() => {
+    if (isOpen && isChannelLocked) {
+      setSelectedChannel(lockedChannelId);
+    }
+  }, [isOpen, isChannelLocked, lockedChannelId]);
 
   const handleInstantStart = () => {
     if (!selectedChannel) return;
@@ -93,7 +114,7 @@ const CreateConferenceModal = ({isOpen, onClose, onCreate, isLoading}) => {
   const handleClose = () => {
     setMode('select');
     setTitle('');
-    setSelectedChannel('');
+    setSelectedChannel(lockedChannelId || '');
     setDate('');
     setTime('');
     setDuration(60);
@@ -122,7 +143,8 @@ const CreateConferenceModal = ({isOpen, onClose, onCreate, isLoading}) => {
               <Select
                 placeholder="Kanal seçin..."
                 value={selectedChannel}
-                onChange={e => setSelectedChannel(e.target.value)}>
+                onChange={e => setSelectedChannel(e.target.value)}
+                isDisabled={isChannelLocked}>
                 {channels.map(channel => (
                   <option key={channel.id} value={channel.id}>
                     {channel.name}
