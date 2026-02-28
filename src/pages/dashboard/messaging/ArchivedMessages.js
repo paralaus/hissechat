@@ -13,7 +13,7 @@ import {
   Select,
   useToast,
 } from '@chakra-ui/react';
-import {useInfiniteQuery, useMutation} from '@tanstack/react-query';
+import {useInfiniteQuery, useMutation, useQueryClient} from '@tanstack/react-query';
 import {api} from '../../../api';
 import {Page} from '../../../components';
 import {
@@ -31,6 +31,7 @@ const useQueryParam = key => {
 };
 
 const ArchivedMessages = () => {
+  const queryClient = useQueryClient();
   const toast = useToast();
   const navigate = useNavigate();
   const initialChannelId = useQueryParam('channelId') || '';
@@ -56,6 +57,7 @@ const ArchivedMessages = () => {
   const deleteMutation = useMutation({
     mutationFn: archiveId => api.deleteArchivedMessage(archiveId),
     onSuccess: () => {
+      queryClient.invalidateQueries({queryKey: ['admin-archives']});
       toast({
         title: 'Arşiv silindi',
         status: 'success',
