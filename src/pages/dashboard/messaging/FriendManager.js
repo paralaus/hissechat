@@ -29,6 +29,7 @@ import {
 } from 'react-icons/fi';
 import {useQuery, useMutation, useQueryClient} from '@tanstack/react-query';
 import {api} from '../../../api';
+import useDebouncedValue from '../../../hooks/useDebouncedValue';
 
 const FriendItem = ({
   friend,
@@ -192,9 +193,8 @@ const UserSearchItem = ({user, onAdd, isAdding, friendshipStatus}) => {
 const FriendManager = ({currentUserId, navigate}) => {
   const toast = useToast();
   const queryClient = useQueryClient();
-  const [searchQuery, setSearchQuery] = useState('');
+  const {value: searchQuery, setValue: setSearchQuery, debouncedValue} = useDebouncedValue('');
   const [searchResults, setSearchResults] = useState([]);
-  const [isSearching, setIsSearching] = useState(false);
 
   // Fetch Friends (Accepted)
   const {data: friendsData, isLoading: isLoadingFriends} = useQuery({
@@ -209,24 +209,24 @@ const FriendManager = ({currentUserId, navigate}) => {
     queryFn: () => api.fetchFriends(currentUserId, {status: false, limit: 100}),
     select: res => res.data.results,
   });
-
+  
   // Search Users
-  const handleSearch = async () => {
-    if (!searchQuery.trim()) return;
-    setIsSearching(true);
-    try {
-      const res = await api.getUsers({query: searchQuery, limit: 10});
-      setSearchResults(res.data.results);
-    } catch (error) {
-      toast({
-        title: 'Arama hatası',
-        status: 'error',
-        duration: 3000,
-      });
-    } finally {
-      setIsSearching(false);
+  const {data: searchResultsData, isLoading: isSearching} = useQuery({
+    queryKey: ['users-search', debouncedValue],
+    queryFn: async () => {
+      if (!debouncedValue?.trim()) return {data: {results: []}};
+      return api.getUsers({query: debouncedValue, limit: 10});
+    },
+    enabled: !!debouncedValue,
+  });
+
+  React.useEffect(() => {
+    if (searchResultsData?.data?.results) {
+      setSearchResults(searchResultsData.data.results);
+    } else if (!debouncedValue) {
+      setSearchResults([]);
     }
-  };
+  }, [searchResultsData, debouncedValue]);
 
   // Mutations
   const addFriendMutation = useMutation({
@@ -235,7 +235,7 @@ const FriendManager = ({currentUserId, navigate}) => {
       toast({title: 'İstek gönderildi', status: 'success'});
       queryClient.invalidateQueries(['friends']);
       // Update local search results state if needed
-      handleSearch(); // Refresh search to show status update
+      queryClient.invalidateQueries(['users-search']);
     },
     onError: () => toast({title: 'İşlem başarısız', status: 'error'}),
   });
@@ -346,7 +346,6 @@ const FriendManager = ({currentUserId, navigate}) => {
                     placeholder="Kullanıcı adı veya e-posta ara..."
                     value={searchQuery}
                     onChange={e => setSearchQuery(e.target.value)}
-                    onKeyPress={e => e.key === 'Enter' && handleSearch()}
                   />
                   <InputRightElement>
                     <IconButton
@@ -354,7 +353,6 @@ const FriendManager = ({currentUserId, navigate}) => {
                       icon={<FiSearch />}
                       size="sm"
                       variant="ghost"
-                      onClick={handleSearch}
                       isLoading={isSearching}
                     />
                   </InputRightElement>
