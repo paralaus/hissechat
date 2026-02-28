@@ -5433,7 +5433,7 @@ const ChannelChat = () => {
         onClose={() => setCreateConferenceModalOpen(false)}
         onCreate={handleCreateConference}
         lockedChannelId={channelId}
-        lockedChannelName={channel?.name}
+        lockedChannelName={displayName}
         isLoading={isSending}
       />
 
