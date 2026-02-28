@@ -2532,15 +2532,25 @@ const VideoConference = ({roomId, channelId, title, onClose}) => {
       return;
     }
 
+    const pollId = Date.now().toString();
     const poll = {
-      // Don't set ID client-side - let the backend handle it
+      id: pollId,
       question: newPollQuestion.trim(),
       options: validOptions.map(text => ({text: text.trim(), voteCount: 0})),
       isActive: true,
       isAnonymous: false,
       allowMultiple: false,
       showResults: true,
+      createdBy: {
+        odaId: currentUser?.id,
+        name: currentUser?.name,
+      },
+      votes: [],
+      totalVotes: 0,
     };
+
+    // Optimistic update - Add to local list immediately
+    setPolls(prev => [...prev, poll]);
 
     socketRef.current?.emit('poll-created', {poll});
     setNewPollQuestion('');
