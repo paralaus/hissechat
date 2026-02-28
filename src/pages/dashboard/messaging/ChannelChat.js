@@ -4334,9 +4334,9 @@ const ChannelChat = () => {
         bg="gray.50"
         borderRadius="xl"
         p="4"
-        height="calc(100vh - 430px)" // Adjusted height to accommodate pinned banner
+        height="calc(100vh - 380px)"
         overflowY="auto"
-        mb="4"
+        mb="2"
         onScroll={handleScroll}>
         {isLoadingMessages ? (
           <Box textAlign="center" py="10">
