@@ -239,7 +239,7 @@ const MediaPreviewModal = ({
 };
 
 // Helper function to highlight search text and linkify URLs
-const HighlightText = ({text, searchQuery}) => {
+const HighlightText = ({text, searchQuery, linkColor}) => {
   if (!text) return null;
 
   const urlRegex = /(https?:\/\/[^\s]+|www\.[^\s]+)/g;
@@ -256,7 +256,7 @@ const HighlightText = ({text, searchQuery}) => {
               href={href}
               target="_blank"
               rel="noopener noreferrer"
-              style={{color: '#3182ce', textDecoration: 'underline'}}
+              style={{color: linkColor || '#3182ce', textDecoration: 'underline'}}
               onClick={e => e.stopPropagation()}>
               {searchQuery
                 ? part
@@ -1182,7 +1182,11 @@ const MessageBubble = ({
           {/* Text Content */}
           {message.text && (
             <Text fontSize="sm" whiteSpace="pre-wrap">
-              <HighlightText text={message.text} searchQuery={searchQuery} />
+              <HighlightText
+                text={message.text}
+                searchQuery={searchQuery}
+                linkColor={isOwn ? 'white' : '#3182ce'}
+              />
             </Text>
           )}
 
