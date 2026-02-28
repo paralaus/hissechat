@@ -4336,7 +4336,7 @@ const ChannelChat = () => {
         p="4"
         height="calc(100vh - 380px)"
         overflowY="auto"
-        mb="2"
+        mb="1"
         onScroll={handleScroll}>
         {isLoadingMessages ? (
           <Box textAlign="center" py="10">
