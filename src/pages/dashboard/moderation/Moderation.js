@@ -67,6 +67,16 @@ import {format} from 'date-fns';
 import {tr} from 'date-fns/locale';
 import {useLocation, useNavigate} from 'react-router-dom';
 
+const isValidMongoId = value =>
+  typeof value === 'string' && /^[0-9a-fA-F]{24}$/.test(value);
+
+const getMongoId = entity => {
+  if (!entity) return null;
+  if (isValidMongoId(entity._id)) return entity._id;
+  if (isValidMongoId(entity.id)) return entity.id;
+  return null;
+};
+
 const MessageCard = ({
   message,
   onBlock,
@@ -90,18 +100,18 @@ const MessageCard = ({
 
   const isBanned = React.useMemo(() => {
     if (!message.sub?.id && !message.sub?._id) return false;
-    const userId = message.sub.id || message.sub._id;
+    const userId = getMongoId(message.sub);
     return activeBannedUsers?.some(entry => entry.value === userId);
   }, [message.sub, activeBannedUsers]);
 
   const isUserBanned = React.useMemo(() => {
     if (!message.user?.id && !message.user?._id) return false;
-    const userId = message.user.id || message.user._id;
+    const userId = getMongoId(message.user);
     return activeBannedUsers?.some(entry => entry.value === userId);
   }, [message.user, activeBannedUsers]);
 
   const handleBan = () => {
-    const userId = targetUserForBan?.id || targetUserForBan?._id || message.user?.id || message.user?._id;
+    const userId = getMongoId(targetUserForBan) || getMongoId(message.user);
     onBanUser(userId, banDuration, customHours);
     banModal.onClose();
   };
@@ -196,7 +206,7 @@ const MessageCard = ({
                              variant="outline"
                              leftIcon={<FiCheck />}
                              onClick={() =>
-                               onUnbanUser(message.sub.id || message.sub._id)
+                               onUnbanUser(getMongoId(message.sub))
                              }
                              isLoading={isUnbanning}>
                              Engeli Kaldır
@@ -375,7 +385,7 @@ const MessageCard = ({
                       variant="outline"
                       leftIcon={<FiCheck />}
                       onClick={() =>
-                        onUnbanUser(message.user.id || message.user._id)
+                        onUnbanUser(getMongoId(message.user))
                       }
                       isLoading={isUnbanning}>
                       Engeli Kaldır
@@ -702,7 +712,7 @@ const BannedUserCard = ({blacklistEntry, onUnban, isUnbanning}) => {
             size="sm"
             colorScheme="green"
             leftIcon={<FiCheck />}
-            onClick={() => onUnban(user.id || user._id)}
+            onClick={() => onUnban(getMongoId(user))}
             isLoading={isUnbanning}
             width="full">
             Banı Kaldır
@@ -1224,6 +1234,15 @@ const Moderation = () => {
   });
 
   const handleBanUser = (userId, duration, customHours) => {
+    if (!isValidMongoId(userId)) {
+      toast({
+        title: 'Hata',
+        description: 'Banlanacak kullanıcı için geçerli Mongo ID bulunamadı.',
+        status: 'error',
+        duration: 3000,
+      });
+      return;
+    }
     let hours = null;
     switch (duration) {
       case '1h':
@@ -1284,6 +1303,15 @@ const Moderation = () => {
   });
 
   const handleUnbanUser = userId => {
+    if (!isValidMongoId(userId)) {
+      toast({
+        title: 'Hata',
+        description: 'Engeli kaldırılacak kullanıcı için geçerli Mongo ID bulunamadı.',
+        status: 'error',
+        duration: 3000,
+      });
+      return;
+    }
     unbanUserMutation.mutate(userId);
   };
 
