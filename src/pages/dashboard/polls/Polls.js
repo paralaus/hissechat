@@ -37,7 +37,7 @@ const Polls = () => {
         duration: 3000,
         isClosable: true,
       });
-      queryClient.invalidateQueries(['polls-admin']);
+      queryClient.invalidateQueries({queryKey: ['data']});
     },
     onError: error => {
       toast({
@@ -60,7 +60,7 @@ const Polls = () => {
         duration: 3000,
         isClosable: true,
       });
-      queryClient.invalidateQueries(['polls-admin']);
+      queryClient.invalidateQueries({queryKey: ['data']});
     },
     onError: error => {
       toast({
@@ -221,7 +221,7 @@ const Polls = () => {
       <DataTable
         columns={columns}
         fetchData={fetchData}
-        queryKey={['polls-admin', {isActive}]}
+        filters={{isActive}}
         searchPlaceholder="Anket sorusu ara..."
         queryEnabled
       />
