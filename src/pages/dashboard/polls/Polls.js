@@ -159,7 +159,9 @@ const Polls = () => {
                 if (
                   window.confirm('Bu anketi silmek istediğinize emin misiniz?')
                 ) {
-                  deletePollMutation.mutate(row.original.id);
+                  deletePollMutation.mutate(
+                    row.original.id || row.original._id,
+                  );
                 }
               }}>
               Sil
@@ -170,17 +172,18 @@ const Polls = () => {
     },
   ];
 
-  const fetchData = async ({pageParam = 1, queryKey}) => {
-    const [, filters] = queryKey;
+  // DataTable çağrısı: { page, limit, sortBy, query, ...filters }
+  const fetchData = async ({page, limit, sortBy, query, isActive}) => {
     const params = {
-      page: pageParam,
-      limit: 20,
-      sortBy: 'createdAt:desc',
-      question: filters.query,
+      page,
+      limit,
+      sortBy: sortBy || 'createdAt:desc',
     };
-
-    if (filters.isActive !== undefined) {
-      params.isActive = filters.isActive;
+    if (query) {
+      params.question = query;
+    }
+    if (isActive !== undefined) {
+      params.isActive = isActive;
     }
 
     const res = await api.getPollsAdmin(params);
