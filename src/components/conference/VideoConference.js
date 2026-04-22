@@ -1,4 +1,4 @@
-import React, {useState, useEffect, useRef, useCallback} from 'react';
+import React, {useState, useEffect, useRef, useCallback, useMemo} from 'react';
 import {
   Box,
   VStack,
@@ -62,6 +62,27 @@ const getConferenceSocketUrl = () => {
 };
 
 const SOCKET_URL = getConferenceSocketUrl();
+
+const looksLikeIdentifier = value => {
+  const text = String(value || '').trim();
+  if (!text) return false;
+  if (text.startsWith('sfu-')) return true;
+  return /^[A-Za-z0-9_-]{12,}$/.test(text);
+};
+
+const isGenericParticipantName = value => {
+  const text = String(value || '').trim().toLowerCase();
+  return text === 'kullanıcı' || text === 'mobile user' || text === 'user' || text === 'participant';
+};
+
+const buildIncomingMessageId = data => {
+  const existing = String(data?.id || '').trim();
+  if (existing) return existing;
+  const owner = String(data?.userId || data?.odaId || data?.socketId || 'anon');
+  const ts = String(data?.timestamp || '0');
+  const body = String(data?.content || data?.file?.name || data?.fileName || '').slice(0, 48);
+  return `${owner}-${ts}-${body}`;
+};
 
 // ICE Servers for WebRTC (STUN + TURN)
 // TURN servers are CRITICAL for users behind symmetric NAT (most mobile networks)
@@ -1811,7 +1832,7 @@ const VideoConference = ({roomId, channelId, title, onClose}) => {
 
         console.log('Connecting to:', SOCKET_URL);
         console.log('CurrentUser:', currentUser);
-        const userName = currentUser?.name || currentUser?.userName || currentUser?.email || 'Admin User';
+        const userName = currentUser?.fullname || currentUser?.name || currentUser?.userName || currentUser?.email || 'Admin User';
         console.log('Using UserName:', userName);
         console.log('Token:', token ? token.substring(0, 20) + '...' : 'null');
 
@@ -2385,7 +2406,11 @@ const VideoConference = ({roomId, channelId, title, onClose}) => {
 
         // Chat messages
         socketRef.current.on('chat-message', data => {
-          setMessages(prev => [...prev, {...data, id: data.id || Date.now()}]);
+          const incomingId = buildIncomingMessageId(data);
+          setMessages(prev => {
+            if (prev.some(msg => msg.id === incomingId)) return prev;
+            return [...prev, {...data, id: incomingId}];
+          });
         });
 
         // Typing indicators
@@ -2404,12 +2429,13 @@ const VideoConference = ({roomId, channelId, title, onClose}) => {
 
         // Message reactions
         socketRef.current.on('message-reaction', data => {
+          const reactionUserId = String(data.userId || data.odaId || data.socketId || '');
           setMessages(prev =>
             prev.map(msg => {
               if (msg.id === data.messageId) {
-                const reactions = msg.reactions || {};
+                const reactions = {...(msg.reactions || {})};
                 const emoji = data.emoji;
-                const userId = data.userId;
+                const userId = reactionUserId;
                 if (!reactions[emoji]) reactions[emoji] = [];
                 if (!reactions[emoji].includes(userId)) {
                   reactions[emoji].push(userId);
@@ -2606,7 +2632,8 @@ const VideoConference = ({roomId, channelId, title, onClose}) => {
 
   // Send chat message
   const sendMessage = (content, replyTo = null) => {
-    const messageData = {content, type: 'text'};
+    const messageId = `msg-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+    const messageData = {id: messageId, content, type: 'text'};
     if (replyTo) {
       messageData.replyTo = {
         id: replyTo.id,
@@ -2645,6 +2672,7 @@ const VideoConference = ({roomId, channelId, title, onClose}) => {
         onComplete: url => {
           // Send file message via socket
           socketRef.current?.emit('chat-message', {
+            id: `msg-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
             type: 'file',
             file: {
               name: file.name,
@@ -2720,10 +2748,64 @@ const VideoConference = ({roomId, channelId, title, onClose}) => {
     onClose?.();
   };
 
+  const localDisplayName = currentUser?.fullname || currentUser?.name || currentUser?.userName || currentUser?.email || 'Ben';
+
+  const normalizedRemoteParticipants = useMemo(() => {
+    const merged = [];
+
+    for (const participant of participants) {
+      const pid = String(participant?.id || '');
+      const poda = String(participant?.odaId || '');
+
+      if (
+        (currentUser?.id && (poda === currentUser.id || pid === currentUser.id || pid === `sfu-${currentUser.id}`))
+      ) {
+        continue;
+      }
+
+      const existingIndex = merged.findIndex(existing => {
+        const eid = String(existing?.id || '');
+        const eoda = String(existing?.odaId || '');
+        return (
+          (pid && (pid === eid || pid === eoda)) ||
+          (poda && (poda === eid || poda === eoda))
+        );
+      });
+
+      if (existingIndex === -1) {
+        merged.push(participant);
+        continue;
+      }
+
+      const existing = merged[existingIndex];
+      const a = String(existing?.userName || '');
+      const b = String(participant?.userName || '');
+      const aWeak = !a || isGenericParticipantName(a) || looksLikeIdentifier(a);
+      const bWeak = !b || isGenericParticipantName(b) || looksLikeIdentifier(b);
+      const preferredName = aWeak && !bWeak ? b : bWeak && !aWeak ? a : (a.length >= b.length ? a : b);
+
+      merged[existingIndex] = {
+        ...existing,
+        ...participant,
+        id: existing.id || participant.id,
+        odaId: existing.odaId || participant.odaId,
+        userName: preferredName || existing.userName || participant.userName || 'Katılımcı',
+        userAvatar: existing.userAvatar || participant.userAvatar,
+        stream: existing.stream || participant.stream,
+        audioEnabled: Boolean(existing.audioEnabled || participant.audioEnabled),
+        videoEnabled: Boolean(existing.videoEnabled || participant.videoEnabled),
+        handRaised: Boolean(existing.handRaised || participant.handRaised),
+        isScreenSharing: Boolean(existing.isScreenSharing || participant.isScreenSharing),
+      };
+    }
+
+    return merged;
+  }, [participants, currentUser?.id]);
+
   // Local participant for display
   const localParticipant = {
     odaId: currentUser?.id,
-    userName: currentUser?.name || 'Ben',
+    userName: localDisplayName,
     userAvatar: currentUser?.thumbnail,
     stream: localStream,
     audioEnabled,
@@ -2732,7 +2814,7 @@ const VideoConference = ({roomId, channelId, title, onClose}) => {
   };
 
   // Filter out any participants that match the local user's ID to prevent duplicates
-  const filteredParticipants = participants.filter(p => {
+  const filteredParticipants = normalizedRemoteParticipants.filter(p => {
       // Check odaId
       if (p.odaId === currentUser?.id) return false;
       // Check if id is `sfu-${currentUser.id}`
