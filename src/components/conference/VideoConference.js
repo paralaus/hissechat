@@ -329,17 +329,13 @@ const ChatPanel = ({
   onCancelReply,
   onStartTyping,
   onStopTyping,
-  onAddReaction,
   isUploading = false,
   uploadProgress = 0,
 }) => {
   const [message, setMessage] = useState('');
-  const [showEmojiPicker, setShowEmojiPicker] = useState(null);
   const messagesEndRef = useRef(null);
   const typingTimeoutRef = useRef(null);
   const fileInputRef = useRef(null);
-
-  const EMOJIS = ['👍', '❤️', '😂', '😮', '😢', '👏'];
 
   // Handle file selection
   const handleFileSelect = e => {
@@ -577,24 +573,6 @@ const ChatPanel = ({
                     : ''}
                 </Text>
 
-                {/* Reactions */}
-                {msg.reactions && Object.keys(msg.reactions).length > 0 && (
-                  <HStack spacing="1" mt="1" flexWrap="wrap">
-                    {Object.entries(msg.reactions).map(([emoji, users]) => (
-                      <Badge
-                        key={emoji}
-                        bg="gray.600"
-                        color="white"
-                        borderRadius="full"
-                        px="2"
-                        py="1"
-                        fontSize="xs">
-                        {emoji} {users.length}
-                      </Badge>
-                    ))}
-                  </HStack>
-                )}
-
                 {/* Action buttons (visible on hover) */}
                 <HStack
                   position="absolute"
@@ -618,48 +596,7 @@ const ChatPanel = ({
                       aria-label="Cevapla"
                     />
                   </Tooltip>
-                  <Tooltip label="Tepki Ekle">
-                    <IconButton
-                      icon={<span>😀</span>}
-                      size="xs"
-                      variant="ghost"
-                      colorScheme="whiteAlpha"
-                      onClick={() =>
-                        setShowEmojiPicker(
-                          showEmojiPicker === msg.id ? null : msg.id,
-                        )
-                      }
-                      aria-label="Tepki"
-                    />
-                  </Tooltip>
                 </HStack>
-
-                {/* Emoji picker */}
-                {showEmojiPicker === msg.id && (
-                  <HStack
-                    position="absolute"
-                    bottom="-10"
-                    left="0"
-                    bg="gray.700"
-                    p="2"
-                    borderRadius="full"
-                    boxShadow="lg"
-                    zIndex="10">
-                    {EMOJIS.map(emoji => (
-                      <Box
-                        key={emoji}
-                        cursor="pointer"
-                        onClick={() => {
-                          onAddReaction?.(msg.id, emoji);
-                          setShowEmojiPicker(null);
-                        }}
-                        _hover={{transform: 'scale(1.3)'}}
-                        transition="transform 0.1s">
-                        {emoji}
-                      </Box>
-                    ))}
-                  </HStack>
-                )}
               </Box>
             </Box>
           );
@@ -2931,27 +2868,6 @@ const VideoConference = ({roomId, channelId, title, onClose}) => {
               aria-label="Sohbet"
             />
           </Tooltip>
-          <Tooltip label="Anketler">
-            <IconButton
-              icon={<span style={{fontSize: '18px'}}>📊</span>}
-              variant={showPollPanel ? 'solid' : 'ghost'}
-              colorScheme={showPollPanel ? 'purple' : 'whiteAlpha'}
-              onClick={() => setShowPollPanel(!showPollPanel)}
-              aria-label="Anketler"
-              position="relative">
-              {polls.filter(p => p.isActive).length > 0 && (
-                <Badge
-                  position="absolute"
-                  top="-1"
-                  right="-1"
-                  colorScheme="red"
-                  borderRadius="full"
-                  fontSize="xs">
-                  {polls.filter(p => p.isActive).length}
-                </Badge>
-              )}
-            </IconButton>
-          </Tooltip>
         </HStack>
       </HStack>
 
@@ -3086,7 +3002,6 @@ const VideoConference = ({roomId, channelId, title, onClose}) => {
                 onCancelReply={() => setReplyingTo(null)}
                 onStartTyping={startTyping}
                 onStopTyping={stopTyping}
-                onAddReaction={addReaction}
                 isUploading={isUploading}
                 uploadProgress={uploadProgress}
               />
@@ -3109,7 +3024,7 @@ const VideoConference = ({roomId, channelId, title, onClose}) => {
                 ))}
               </VStack>
             )}
-            {showPollPanel && (
+            {false && showPollPanel && (
               <VStack
                 p="4"
                 align="stretch"
