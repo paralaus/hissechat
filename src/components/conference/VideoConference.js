@@ -752,7 +752,6 @@ const VideoConference = ({roomId, channelId, title, onClose}) => {
   const [uploadProgress, setUploadProgress] = useState(0);
   // const {upload, validateFile, isUploading, uploadProgress} = useFileInput();
   const [polls, setPolls] = useState([]);
-  const [showPollPanel, setShowPollPanel] = useState(false);
   const [showCreatePoll, setShowCreatePoll] = useState(false);
   const [newPollQuestion, setNewPollQuestion] = useState('');
   const [newPollOptions, setNewPollOptions] = useState(['', '']);
@@ -3102,7 +3101,7 @@ const VideoConference = ({roomId, channelId, title, onClose}) => {
                 uploadProgress={uploadProgress}
               />
             )}
-            {showParticipants && !showChat && !showPollPanel && (
+            {showParticipants && !showChat && (
               <VStack p="4" align="stretch" spacing="2">
                 <Text color="white" fontWeight="bold" mb="2">
                   Katılımcılar
@@ -3120,7 +3119,7 @@ const VideoConference = ({roomId, channelId, title, onClose}) => {
                 ))}
               </VStack>
             )}
-            {false && showPollPanel && (
+            {false && (
               <VStack
                 p="4"
                 align="stretch"
