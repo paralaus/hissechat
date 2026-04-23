@@ -75,6 +75,20 @@ const isGenericParticipantName = value => {
   return text === 'kullanıcı' || text === 'mobile user' || text === 'user' || text === 'participant';
 };
 
+const normalizeAlias = value => {
+  const raw = String(value || '').trim();
+  if (!raw) return '';
+  return raw.startsWith('sfu-') ? raw.slice(4) : raw;
+};
+
+const isMeaningfulDisplayName = value => {
+  const text = String(value || '').trim();
+  if (!text) return false;
+  if (isGenericParticipantName(text)) return false;
+  if (looksLikeIdentifier(text)) return false;
+  return true;
+};
+
 const buildIncomingMessageId = data => {
   const existing = String(data?.id || '').trim();
   if (existing) return existing;
@@ -1172,7 +1186,7 @@ const VideoConference = ({roomId, channelId, title, onClose}) => {
                 {
                   id: `sfu-${producerOdaId}`,
                   odaId: producerOdaId,
-                  userName: producerOdaId, // Will be updated from user-joined event or if available
+                  userName: 'Kullanıcı', // Will be updated from user-joined/chat events
                   stream,
                   audioEnabled: kind === 'audio' || true, // Default to true, updated by producer events
                   videoEnabled: kind === 'video' || true,
@@ -1897,7 +1911,7 @@ const VideoConference = ({roomId, channelId, title, onClose}) => {
                   return {
                     id: p.socketId,
                     odaId: pId,
-                    userName: p.userName,
+                    userName: isMeaningfulDisplayName(String(p.userName || '')) ? p.userName : 'Kullanıcı',
                     userAvatar: p.userAvatar,
                     audioEnabled: true,
                     videoEnabled: true,
@@ -2066,7 +2080,7 @@ const VideoConference = ({roomId, channelId, title, onClose}) => {
                   ...existing,
                   id: data.socketId, // Update with real socket ID
                   odaId: targetId,
-                  userName: data.userName,
+                  userName: isMeaningfulDisplayName(String(data.userName || '')) ? data.userName : (existing.userName || 'Kullanıcı'),
                   userAvatar: data.userAvatar,
               };
               return newParticipants;
@@ -2076,13 +2090,21 @@ const VideoConference = ({roomId, channelId, title, onClose}) => {
             const existingBySocket = prev.find(p => p.id === data.socketId);
             if (existingBySocket) {
                console.log('User found by socketId but missing odaId, updating:', existingBySocket);
-               return prev.map(p => p.id === data.socketId ? {...p, odaId: targetId, userName: data.userName} : p);
+               return prev.map(p =>
+                 p.id === data.socketId
+                   ? {
+                       ...p,
+                       odaId: targetId,
+                       userName: isMeaningfulDisplayName(String(data.userName || '')) ? data.userName : (p.userName || 'Kullanıcı'),
+                     }
+                   : p,
+               );
             }
 
             const newP = {
               id: data.socketId,
               odaId: targetId,
-              userName: data.userName,
+              userName: isMeaningfulDisplayName(String(data.userName || '')) ? data.userName : 'Kullanıcı',
               userAvatar: data.userAvatar,
               audioEnabled: true,
               videoEnabled: true,
@@ -2217,7 +2239,17 @@ const VideoConference = ({roomId, channelId, title, onClose}) => {
           console.log('User left:', data);
           peersRef.current.get(data.socketId)?.close();
           peersRef.current.delete(data.socketId);
-          setParticipants(prev => prev.filter(p => p.id !== data.socketId));
+          const leftSocketId = normalizeAlias(data.socketId);
+          const leftUserId = normalizeAlias(data.userId || data.odaId || data.id);
+          setParticipants(prev =>
+            prev.filter(p => {
+              const pid = normalizeAlias(p.id);
+              const poda = normalizeAlias(p.odaId);
+              if (leftSocketId && (pid === leftSocketId || poda === leftSocketId)) return false;
+              if (leftUserId && (pid === leftUserId || poda === leftUserId)) return false;
+              return true;
+            }),
+          );
 
           toast({
             title: `${data.userName || 'Kullanıcı'} ayrıldı`,
@@ -2276,13 +2308,22 @@ const VideoConference = ({roomId, channelId, title, onClose}) => {
 
         // User reactions (floating emojis)
         socketRef.current.on('user-reaction', data => {
+          const reactionAlias = normalizeAlias(data.userId || data.odaId || data.socketId);
+          const participantName = participantsRef.current.find(p => {
+            const pid = normalizeAlias(p.id);
+            const poda = normalizeAlias(p.odaId);
+            return reactionAlias && (pid === reactionAlias || poda === reactionAlias);
+          })?.userName;
+          const resolvedReactionName = isMeaningfulDisplayName(String(data.userName || ''))
+            ? String(data.userName)
+            : (isMeaningfulDisplayName(String(participantName || '')) ? String(participantName) : 'Kullanıcı');
           const reactionId = Date.now() + Math.random();
           setFloatingReactions(prev => [
             ...prev,
             {
               id: reactionId,
               emoji: data.emoji,
-              userName: data.userName,
+              userName: resolvedReactionName,
             },
           ]);
           // Remove after animation
@@ -2719,7 +2760,7 @@ const VideoConference = ({roomId, channelId, title, onClose}) => {
       const b = String(participant?.userName || '');
       const aWeak = !a || isGenericParticipantName(a) || looksLikeIdentifier(a);
       const bWeak = !b || isGenericParticipantName(b) || looksLikeIdentifier(b);
-      const preferredName = aWeak && !bWeak ? b : bWeak && !aWeak ? a : (a.length >= b.length ? a : b);
+      const preferredName = aWeak && !bWeak ? b : bWeak && !aWeak ? a : (aWeak && bWeak ? 'Kullanıcı' : (a.length >= b.length ? a : b));
 
       merged[existingIndex] = {
         ...existing,
@@ -2736,7 +2777,12 @@ const VideoConference = ({roomId, channelId, title, onClose}) => {
       };
     }
 
-    return merged;
+    return merged.map(item => ({
+      ...item,
+      userName: isMeaningfulDisplayName(String(item?.userName || ''))
+        ? String(item.userName)
+        : 'Kullanıcı',
+    }));
   }, [participants, currentUser?.id]);
 
   // Local participant for display
