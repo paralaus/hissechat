@@ -1162,14 +1162,26 @@ const VideoConference = ({roomId, channelId, title, onClose}) => {
         
         setParticipants(prev => {
           const existing = prev.find(p => p.odaId === producerOdaId);
+          const mediaKind = consumerData.kind || kind;
           
           if (existing && existing.stream) {
              console.log(`[SFU] Merging tracks for ${producerOdaId}. Existing tracks: ${existing.stream.getTracks().length}`);
-             existing.stream.addTrack(consumer.track);
-             stream = existing.stream;
+             const existingTracks = existing.stream.getTracks();
+             const mergedTracks = [
+               ...existingTracks.filter(t => t.kind !== mediaKind),
+               consumer.track,
+             ];
+             stream = new MediaStream(mergedTracks);
              
              return prev.map(p =>
-               p.odaId === producerOdaId ? {...p, stream} : p,
+               p.odaId === producerOdaId
+                 ? {
+                     ...p,
+                     stream,
+                     audioEnabled: mediaKind === 'audio' ? true : p.audioEnabled,
+                     videoEnabled: mediaKind === 'video' ? true : p.videoEnabled,
+                   }
+                 : p,
              );
           } else {
              stream = new MediaStream([consumer.track]);
@@ -1177,7 +1189,14 @@ const VideoConference = ({roomId, channelId, title, onClose}) => {
              
              if (existing) {
                return prev.map(p =>
-                 p.odaId === producerOdaId ? {...p, stream} : p,
+                 p.odaId === producerOdaId
+                   ? {
+                       ...p,
+                       stream,
+                       audioEnabled: mediaKind === 'audio' ? true : p.audioEnabled,
+                       videoEnabled: mediaKind === 'video' ? true : p.videoEnabled,
+                     }
+                   : p,
                );
              }
              
@@ -1188,8 +1207,8 @@ const VideoConference = ({roomId, channelId, title, onClose}) => {
                   odaId: producerOdaId,
                   userName: 'Kullanıcı', // Will be updated from user-joined/chat events
                   stream,
-                  audioEnabled: kind === 'audio' || true, // Default to true, updated by producer events
-                  videoEnabled: kind === 'video' || true,
+                  audioEnabled: mediaKind === 'audio',
+                  videoEnabled: mediaKind === 'video',
                   handRaised: false,
                 },
               ];
@@ -1447,6 +1466,10 @@ const VideoConference = ({roomId, channelId, title, onClose}) => {
   // Setup SFU event listeners
   const setupSfuEventListeners = useCallback(() => {
     if (!socketRef.current) return;
+    socketRef.current.off('sfu:new-producer');
+    socketRef.current.off('newProducers');
+    socketRef.current.off('sfu:consumer-closed');
+    socketRef.current.off('consumerClosed');
 
     socketRef.current.on('sfu:new-producer', async (data) => {
       console.log('SFU New producer received:', data);
@@ -1493,16 +1516,41 @@ const VideoConference = ({roomId, channelId, title, onClose}) => {
       );
     });
 
-    socketRef.current.on('sfu:consumer-closed', data => {
+    const handleConsumerClosed = data => {
       console.log('SFU Consumer closed:', data);
-      const consumerId = data.consumerId || data.consumer_id;
-      
-      if (sfuConsumersRef.current.has(consumerId)) {
-          const consumer = sfuConsumersRef.current.get(consumerId);
-          consumer.close();
-          sfuConsumersRef.current.delete(consumerId);
+      const consumerId = data?.consumerId || data?.consumer_id;
+      if (!consumerId || !sfuConsumersRef.current.has(consumerId)) return;
+      const consumer = sfuConsumersRef.current.get(consumerId);
+      const producerOdaId = consumer?.appData?.producerOdaId || consumer?.producerOdaId;
+      const closedKind = data?.consumer_kind || data?.kind || consumer?.kind;
+      try {
+        consumer.close();
+      } catch (_e) {
+        // ignore
       }
-    });
+      sfuConsumersRef.current.delete(consumerId);
+
+      if (!producerOdaId || !closedKind) return;
+      setParticipants(prev =>
+        prev.map(p => {
+          const matches =
+            p.odaId === producerOdaId ||
+            p.id === producerOdaId ||
+            p.id === `sfu-${producerOdaId}`;
+          if (!matches || !p.stream) return p;
+          const nextTracks = p.stream.getTracks().filter(t => t.kind !== closedKind);
+          const nextStream = nextTracks.length > 0 ? new MediaStream(nextTracks) : undefined;
+          return {
+            ...p,
+            stream: nextStream,
+            audioEnabled: closedKind === 'audio' ? false : p.audioEnabled,
+            videoEnabled: closedKind === 'video' ? false : p.videoEnabled,
+          };
+        }),
+      );
+    };
+    socketRef.current.on('sfu:consumer-closed', handleConsumerClosed);
+    socketRef.current.on('consumerClosed', handleConsumerClosed);
 
     // Handle existing producers (array)
     socketRef.current.on('newProducers', async (producers) => {
@@ -1650,6 +1698,7 @@ const VideoConference = ({roomId, channelId, title, onClose}) => {
       screenStreamRef.current.getTracks().forEach(track => track.stop());
       screenStreamRef.current = null;
       setIsScreenSharing(false);
+      socketRef.current?.emit('screen-share-stop');
 
       if (conferenceMode === 'sfu') {
           const producer = sfuProducersRef.current.get('screen');
@@ -1670,6 +1719,7 @@ const VideoConference = ({roomId, channelId, title, onClose}) => {
 
       screenStreamRef.current = stream;
       setIsScreenSharing(true);
+      socketRef.current?.emit('screen-share-start');
 
       const videoTrack = stream.getVideoTracks()[0];
 
