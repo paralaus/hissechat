@@ -3080,7 +3080,7 @@ const VideoConference = ({roomId, channelId, title, onClose}) => {
         </Box>
 
         {/* Side panels */}
-        {(showChat || showParticipants || showPollPanel) && (
+        {(showChat || showParticipants) && (
           <Box
             w="350px"
             bg="gray.800"
