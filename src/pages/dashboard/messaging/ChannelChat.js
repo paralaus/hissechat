@@ -4130,15 +4130,6 @@ const ChannelChat = () => {
                     aria-label="Mesaj Sil"
                   />
                 </Tooltip>
-                <Tooltip label="Anket Oluştur">
-                  <IconButton
-                    icon={<FiBarChart2 />}
-                    variant="ghost"
-                    colorScheme="purple"
-                    onClick={() => setPollModalOpen(true)}
-                    aria-label="Anket Oluştur"
-                  />
-                </Tooltip>
                 <Tooltip label="Video Görüşme Başlat ve Kanala Gönder">
                   <IconButton
                     icon={<FiVideo />}
