@@ -2743,11 +2743,6 @@ const VideoConference = ({roomId, channelId, title, onClose}) => {
     socketRef.current?.emit('typing-stop');
   };
 
-  // Add reaction to message
-  const addReaction = (messageId, emoji) => {
-    socketRef.current?.emit('message-reaction', {messageId, emoji});
-  };
-
   // Send floating reaction (visible to all participants)
   const sendReaction = emoji => {
     socketRef.current?.emit('reaction', {emoji});
