@@ -373,6 +373,26 @@ export const sendPushNotification = async body => {
   return apiClient.post(`/notifications/push`, body);
 };
 
+export const getAnnouncements = async params => {
+  return apiClient.get('/announcements', {params});
+};
+
+export const getAnnouncement = async id => {
+  return apiClient.get(`/announcements/${id}`);
+};
+
+export const createAnnouncement = async body => {
+  return apiClient.post('/announcements', body);
+};
+
+export const updateAnnouncement = async (id, body) => {
+  return apiClient.patch(`/announcements/${id}`, body);
+};
+
+export const deleteAnnouncement = async id => {
+  return apiClient.delete(`/announcements/${id}`);
+};
+
 export const getStatistics = async () => {
   return apiClient.get(`/admin/statistics`);
 };

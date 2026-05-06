@@ -299,6 +299,12 @@ export const sidebarRoutes = [
     group: 'Sistem',
   },
   {
+    name: 'Duyurular',
+    icon: FiBell,
+    path: routes.announcements.path,
+    group: 'Sistem',
+  },
+  {
     name: 'Mesajlaşma',
     icon: FiSend,
     group: 'Sistem',

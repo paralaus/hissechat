@@ -37,6 +37,15 @@ const schema = yup
     isImportant: yup.boolean(),
     receiverType: yup.string().required('Bu alan zorunludur.'),
     channel: yup.string(),
+    category: yup.string(),
+    imageUrl: yup
+      .string()
+      .url('Geçerli bir URL girin (https://...)')
+      .nullable()
+      .transform(v => (v === '' ? null : v)),
+    groupKey: yup.string(),
+    approveUrl: yup.string(),
+    rejectUrl: yup.string(),
   })
   .required();
 
@@ -276,6 +285,118 @@ const SendPushNotification = () => {
               </FormHelperText>
               <FormErrorMessage>{errors.isImportant?.message}</FormErrorMessage>
             </FormControl>
+            <FormControl isInvalid={!!errors.category} mb="4">
+              <FormLabel
+                display="flex"
+                ms="4px"
+                fontSize="sm"
+                fontWeight="500"
+                mb="8px">
+                Bildirim Tipi
+              </FormLabel>
+              <Select
+                fontSize="sm"
+                placeholder="Standart"
+                fontWeight="500"
+                size="md"
+                {...register('category')}>
+                <option value="important">Önemli (yüksek öncelik)</option>
+                <option value="approval">Onay İste (Onayla / Reddet butonları)</option>
+              </Select>
+              <FormHelperText>
+                Onay İste seçilirse mobilde Onayla / Reddet butonları gösterilir.
+              </FormHelperText>
+              <FormErrorMessage>{errors.category?.message}</FormErrorMessage>
+            </FormControl>
+            <FormControl isInvalid={!!errors.imageUrl} mb="4">
+              <FormLabel
+                display="flex"
+                ms="4px"
+                fontSize="sm"
+                fontWeight="500"
+                mb="8px">
+                Görsel URL (Opsiyonel)
+              </FormLabel>
+              <Input
+                fontSize="sm"
+                type="url"
+                placeholder="https://..."
+                fontWeight="500"
+                size="md"
+                {...register('imageUrl')}
+              />
+              <FormHelperText>
+                Bildirim üzerinde büyük görsel olarak gösterilir (Android BigPicture, iOS attachment).
+              </FormHelperText>
+              <FormErrorMessage>{errors.imageUrl?.message}</FormErrorMessage>
+            </FormControl>
+            <FormControl isInvalid={!!errors.groupKey} mb="4">
+              <FormLabel
+                display="flex"
+                ms="4px"
+                fontSize="sm"
+                fontWeight="500"
+                mb="8px">
+                Grup Anahtarı (Opsiyonel)
+              </FormLabel>
+              <Input
+                fontSize="sm"
+                type="text"
+                fontWeight="500"
+                size="md"
+                {...register('groupKey')}
+              />
+              <FormHelperText>
+                Aynı grup anahtarı ile gönderilen bildirimler tek başlık altında gruplanır.
+              </FormHelperText>
+              <FormErrorMessage>{errors.groupKey?.message}</FormErrorMessage>
+            </FormControl>
+            <Condition condition={watch().category === 'approval'}>
+              <FormControl isInvalid={!!errors.approveUrl} mb="4">
+                <FormLabel
+                  display="flex"
+                  ms="4px"
+                  fontSize="sm"
+                  fontWeight="500"
+                  mb="8px">
+                  Onayla URL'si
+                </FormLabel>
+                <Input
+                  fontSize="sm"
+                  type="text"
+                  placeholder="/api/..."
+                  fontWeight="500"
+                  size="md"
+                  {...register('approveUrl')}
+                />
+                <FormHelperText>
+                  Onayla butonuna basıldığında POST atılacak endpoint.
+                </FormHelperText>
+                <FormErrorMessage>{errors.approveUrl?.message}</FormErrorMessage>
+              </FormControl>
+              <FormControl isInvalid={!!errors.rejectUrl} mb="4">
+                <FormLabel
+                  display="flex"
+                  ms="4px"
+                  fontSize="sm"
+                  fontWeight="500"
+                  mb="8px">
+                  Reddet URL'si
+                </FormLabel>
+                <Input
+                  fontSize="sm"
+                  type="text"
+                  placeholder="/api/..."
+                  fontWeight="500"
+                  size="md"
+                  {...register('rejectUrl')}
+                />
+                <FormHelperText>
+                  Reddet butonuna basıldığında POST atılacak endpoint.
+                </FormHelperText>
+                <FormErrorMessage>{errors.rejectUrl?.message}</FormErrorMessage>
+              </FormControl>
+            </Condition>
             <Button
               isLoading={isPending}
               colorScheme={'primary'}

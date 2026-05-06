@@ -36,6 +36,8 @@ import EditSuggestion from '../pages/dashboard/suggestions/EditSuggestion';
 import Suggestions from '../pages/dashboard/suggestions/Suggestions';
 import AppRatings from '../pages/dashboard/app-ratings/AppRatings';
 import SendPushNotification from '../pages/dashboard/push-notification/SendPushNotification';
+import Announcements from '../pages/dashboard/announcements/Announcements';
+import CreateAnnouncement from '../pages/dashboard/announcements/CreateAnnouncement';
 import Reports from '../pages/dashboard/reports/Reports';
 import ReportDetail from '../pages/dashboard/reports/ReportDetail';
 import EditChannel from '../pages/dashboard/channels/EditChannel';
@@ -378,6 +380,27 @@ const router = createBrowserRouter(
           element={<SendPushNotification />}
           handle={{
             crumb: () => <Text>Bildirim Gönder</Text>,
+          }}
+        />
+        <Route
+          path="announcements"
+          element={<Announcements />}
+          handle={{
+            crumb: () => <Text>Duyurular</Text>,
+          }}
+        />
+        <Route
+          path="announcements/new"
+          element={<CreateAnnouncement />}
+          handle={{
+            crumb: () => <Text>Yeni Duyuru</Text>,
+          }}
+        />
+        <Route
+          path="announcements/:id"
+          element={<CreateAnnouncement />}
+          handle={{
+            crumb: () => <Text>Duyuru Düzenle</Text>,
           }}
         />
         <Route

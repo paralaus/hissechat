@@ -74,6 +74,15 @@ export const routes = {
   sendPushNotification: {
     path: '/dashboard/send-push-notification',
   },
+  announcements: {
+    path: '/dashboard/announcements',
+  },
+  createAnnouncement: {
+    path: '/dashboard/announcements/new',
+  },
+  editAnnouncement: {
+    getPath: id => `/dashboard/announcements/${id}`,
+  },
   reports: {
     path: '/dashboard/reports',
   },
