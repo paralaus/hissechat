@@ -401,6 +401,14 @@ export const approveUsers = async (emails, message) => {
   return apiClient.post('/admin/approve-users', {emails, message});
 };
 
+export const getSslPinningStatus = async () => {
+  return apiClient.get('/admin/security/ssl-pinning');
+};
+
+export const setSslPinningStatus = async enabled => {
+  return apiClient.put('/admin/security/ssl-pinning', {enabled});
+};
+
 export const getReports = async params => {
   return apiClient.get('/reports', {params});
 };

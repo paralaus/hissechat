@@ -478,6 +478,9 @@ const appVersionSchema = yup
 const AppVersionSettings = () => {
   const toast = useToast();
   const [isLoading, setIsLoading] = useState(true);
+  const [sslPinningEnabled, setSslPinningEnabled] = useState(true);
+  const [isSslLoading, setIsSslLoading] = useState(true);
+  const [isSslSaving, setIsSslSaving] = useState(false);
   const {
     register,
     handleSubmit,
@@ -527,6 +530,33 @@ const AppVersionSettings = () => {
     };
   }, [reset]);
 
+  useEffect(() => {
+    let isMounted = true;
+    const loadSslPinningFlag = async () => {
+      try {
+        const response = await api.getSslPinningStatus();
+        const value = response?.data?.enabled;
+        if (!isMounted) return;
+        setSslPinningEnabled(Boolean(value));
+      } catch (error) {
+        if (!isMounted) return;
+        toast({
+          title: 'SSL pinning ayarı okunamadı',
+          description: getErrorMessage(error),
+          status: 'warning',
+          position: 'top',
+        });
+      } finally {
+        if (isMounted) setIsSslLoading(false);
+      }
+    };
+
+    loadSslPinningFlag();
+    return () => {
+      isMounted = false;
+    };
+  }, [toast]);
+
   const onSubmit = async values => {
     try {
       const payload = {
@@ -555,6 +585,27 @@ const AppVersionSettings = () => {
         status: 'error',
         position: 'top',
       });
+    }
+  };
+
+  const onSaveSslPinning = async () => {
+    setIsSslSaving(true);
+    try {
+      await api.setSslPinningStatus(sslPinningEnabled);
+      toast({
+        title: `SSL pinning ${sslPinningEnabled ? 'aktif' : 'pasif'} olarak kaydedildi.`,
+        status: 'success',
+        position: 'top',
+      });
+    } catch (error) {
+      toast({
+        title: 'SSL pinning ayarı kaydedilemedi',
+        description: getErrorMessage(error),
+        status: 'error',
+        position: 'top',
+      });
+    } finally {
+      setIsSslSaving(false);
     }
   };
 
@@ -611,6 +662,35 @@ const AppVersionSettings = () => {
               {errors.iosCriticalVersion?.message}
             </FormErrorMessage>
           </FormControl>
+        </VStack>
+
+        <Divider />
+
+        <VStack spacing={4} align="stretch">
+          <Text fontSize="md" fontWeight="semibold">
+            SSL Pinning (Remote Kill Switch)
+          </Text>
+          <HStack spacing={4} justify="space-between">
+            <VStack align="start" spacing={0}>
+              <Text fontWeight="medium">Mobil SSL Pinning</Text>
+              <Text fontSize="sm" color="gray.500">
+                Kapatıldığında client tarafında sertifika pin doğrulaması devre dışı kalır.
+              </Text>
+            </VStack>
+            <Switch
+              isChecked={sslPinningEnabled}
+              onChange={e => setSslPinningEnabled(e.target.checked)}
+              isDisabled={isSslLoading || isSslSaving}
+            />
+          </HStack>
+          <Button
+            onClick={onSaveSslPinning}
+            isLoading={isSslSaving}
+            isDisabled={isSslLoading || isSslSaving}
+            size="sm"
+            alignSelf="flex-start">
+            SSL Pinning Ayarını Kaydet
+          </Button>
         </VStack>
 
         <Button type="submit" colorScheme="primary" isLoading={isLoading}>
