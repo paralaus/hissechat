@@ -80,6 +80,10 @@ const SendPushNotification = () => {
   const onSubmit = async values => {
     try {
       const payload = pruneOptionalFields(values);
+      payload.imageUrl =
+        typeof values.imageUrl === 'string' && values.imageUrl.trim()
+          ? values.imageUrl.trim()
+          : '';
       const {data} = await mutateAsync(payload);
       if (data) {
         toast({
