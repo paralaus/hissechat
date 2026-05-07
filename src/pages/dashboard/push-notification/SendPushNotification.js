@@ -42,7 +42,7 @@ const schema = yup
       .string()
       .url('Geçerli bir URL girin (https://...)')
       .nullable()
-      .transform(v => (v === '' ? null : v)),
+      .transform(v => (v === '' ? undefined : v)),
     groupKey: yup.string(),
     approveUrl: yup.string(),
     rejectUrl: yup.string(),
@@ -67,9 +67,20 @@ const SendPushNotification = () => {
     mutationFn: values => api.sendPushNotification(values),
   });
 
+  const pruneOptionalFields = payload => {
+    return Object.fromEntries(
+      Object.entries(payload).filter(([, value]) => {
+        if (value === undefined || value === null) return false;
+        if (typeof value === 'string' && value.trim() === '') return false;
+        return true;
+      }),
+    );
+  };
+
   const onSubmit = async values => {
     try {
-      const {data} = await mutateAsync(values);
+      const payload = pruneOptionalFields(values);
+      const {data} = await mutateAsync(payload);
       if (data) {
         toast({
           title: 'Bildirim gönderildi.',
