@@ -88,6 +88,7 @@ import {
   FiFilter,
   FiMessageSquare,
   FiArrowDown,
+  FiRadio,
 } from 'react-icons/fi';
 import EmojiPicker from 'emoji-picker-react';
 import {getCombinedLogoUrl} from '../../../utils/image';
@@ -383,6 +384,7 @@ const MessageBubble = ({
   messageRef,
   onMediaClick,
   onJoinConference,
+  onJoinBroadcast,
   onVotePoll,
   onClosePoll,
   currentUserId,
@@ -405,6 +407,7 @@ const MessageBubble = ({
     message.audio ||
     message.file ||
     message.conference ||
+    message.broadcast ||
     message.poll;
 
   // Handle click in select mode
@@ -685,8 +688,10 @@ const MessageBubble = ({
             </Text>
           )}
 
-          {/* Reply Preview - Don't show for conference messages */}
-          {repliedMessage && !message.conference?.roomId && (
+          {/* Reply Preview - Don't show for conference/broadcast cards */}
+          {repliedMessage &&
+            !message.conference?.roomId &&
+            !message.broadcast?.roomId && (
             <Box
               bg={isOwn ? 'blue.400' : 'whiteAlpha.600'}
               p="2"
@@ -974,6 +979,77 @@ const MessageBubble = ({
                       fontWeight="600"
                       color={textColors[confStatus]}>
                       {statusTexts[confStatus]}
+                    </Text>
+                  </Box>
+                </Box>
+              );
+            })()}
+
+          {message.broadcast?.roomId &&
+            (() => {
+              const now = new Date();
+              let streamStatus = 'active';
+
+              if (message.broadcast.startTime) {
+                const startDate = new Date(message.broadcast.startTime);
+                if (startDate > now) streamStatus = 'upcoming';
+              }
+              if (message.broadcast.scheduledEndTime) {
+                const endDate = new Date(message.broadcast.scheduledEndTime);
+                if (endDate < now) streamStatus = 'ended';
+              }
+              if (
+                message.broadcast.isActive === false &&
+                message.broadcast.startTime
+              ) {
+                const startDate = new Date(message.broadcast.startTime);
+                if (startDate < now) streamStatus = 'ended';
+              }
+
+              const canOpen = streamStatus === 'active';
+              const title = message.broadcast.title || 'Canlı Yayın';
+
+              return (
+                <Box
+                  bg={isOwn ? 'red.500' : 'red.50'}
+                  p="4"
+                  borderRadius="lg"
+                  mb={message.text ? '2' : '0'}
+                  cursor={canOpen ? 'pointer' : 'not-allowed'}
+                  onClick={() => canOpen && onJoinBroadcast?.(message.broadcast)}
+                  _hover={canOpen ? {opacity: 0.92, transform: 'scale(1.02)'} : {}}
+                  transition="all 0.2s"
+                  border="2px solid"
+                  borderColor={isOwn ? 'red.300' : 'red.200'}
+                  opacity={streamStatus === 'ended' ? 0.7 : 1}>
+                  <HStack spacing="3" mb="2">
+                    <Box bg={isOwn ? 'red.400' : 'red.100'} p="2" borderRadius="full">
+                      <Icon as={FiRadio} color={isOwn ? 'white' : 'red.600'} boxSize="5" />
+                    </Box>
+                    <VStack align="start" spacing="0">
+                      <Text fontWeight="bold" fontSize="sm" color={isOwn ? 'white' : 'red.700'}>
+                        📡 Canlı Yayın
+                      </Text>
+                      <Text fontSize="xs" color={isOwn ? 'red.100' : 'red.600'}>
+                        {title}
+                      </Text>
+                    </VStack>
+                  </HStack>
+                  <Box
+                    bg={isOwn ? 'red.400' : 'red.100'}
+                    px="3"
+                    py="2"
+                    borderRadius="md"
+                    textAlign="center">
+                    <Text
+                      fontSize="sm"
+                      fontWeight="600"
+                      color={isOwn ? 'white' : 'red.700'}>
+                      {streamStatus === 'upcoming'
+                        ? '⏳ Henüz Başlamadı'
+                        : streamStatus === 'ended'
+                          ? '✖️ Sona Erdi'
+                          : '▶️ Yayını İzle'}
                     </Text>
                   </Box>
                 </Box>
@@ -1512,7 +1588,7 @@ const ChannelChat = () => {
       // If it has content, keep it
       if (m.text && m.text.trim().length > 0) return true;
       if (m.image || m.video || m.audio || m.file) return true;
-      if (m.conference || m.poll) return true;
+      if (m.conference || m.broadcast || m.poll) return true;
       if (m.isBlocked) return true; // Keep blocked messages visible
 
       // Otherwise it's empty/deleted
@@ -2142,7 +2218,8 @@ const ChannelChat = () => {
 
       // Generate unique room ID
       const roomId = `hissechat-${channelId}-${Date.now()}`;
-      const conferenceTitle = `${channel?.name || 'Kanal'} Video Görüşmesi`;
+      const conferenceTitle =
+        options.title || `${channel?.name || 'Kanal'} Video Görüşmesi`;
 
       // Get duration from options (default 60 minutes)
       const durationMinutes = options.duration || 60;
@@ -2160,31 +2237,56 @@ const ChannelChat = () => {
         ).toISOString();
       }
 
-      // Create conference in backend with proper start/end times
-      await api.createConference({
-        roomId,
-        title: conferenceTitle,
-        channelId,
-        startTime,
-        scheduledEndTime,
-        isScheduled: options.type === 'scheduled',
-      });
-
-      // Send conference message to channel (no text, just conference card)
-      const conferenceBody = {
-        conference: {
+      if (options.type === 'broadcast') {
+        await api.createLiveBroadcast({
           roomId,
           title: conferenceTitle,
+          channelId,
           startTime,
           scheduledEndTime,
-          isActive: options.type !== 'scheduled', // Scheduled ise false, instant ise true
-        },
-      };
+          maxViewers: options.maxParticipants || 500,
+          settings: {
+            allowChat: options.settings?.allowChat ?? true,
+            waitingRoom: false,
+            muteOnJoin: true,
+          },
+        });
 
-      await sendMessageMutation.mutateAsync(conferenceBody);
+        await sendMessageMutation.mutateAsync({
+          broadcast: {
+            roomId,
+            title: conferenceTitle,
+            startTime,
+            scheduledEndTime,
+            isActive: options.type !== 'scheduled',
+          },
+        });
+      } else {
+        // Create conference in backend with proper start/end times
+        await api.createConference({
+          roomId,
+          title: conferenceTitle,
+          channelId,
+          startTime,
+          scheduledEndTime,
+          isScheduled: options.type === 'scheduled',
+        });
+
+        // Send conference message to channel (no text, just conference card)
+        const conferenceBody = {
+          conference: {
+            roomId,
+            title: conferenceTitle,
+            startTime,
+            scheduledEndTime,
+            isActive: options.type !== 'scheduled', // Scheduled ise false, instant ise true
+          },
+        };
+        await sendMessageMutation.mutateAsync(conferenceBody);
+      }
 
       // Only open video call immediately if it's an instant meeting
-      if (options.type !== 'scheduled') {
+      if (options.type !== 'scheduled' && options.type !== 'broadcast') {
         // Set conference data and open modal
         setCurrentConferenceData({
           roomId,
@@ -2195,9 +2297,10 @@ const ChannelChat = () => {
       }
 
       toast({
-        title:
-          options.type === 'scheduled'
-            ? 'Video görüşme planlandı'
+        title: options.type === 'scheduled'
+          ? 'Video görüşme planlandı'
+          : options.type === 'broadcast'
+            ? 'Canlı yayın başlatıldı'
             : 'Video görüşme başlatıldı',
         description: 'Kanal üyelerine bildirim gönderildi',
         status: 'success',
@@ -2461,6 +2564,20 @@ const ChannelChat = () => {
       channelId,
     });
     onVideoCallOpen();
+  };
+
+  const handleJoinBroadcast = broadcastData => {
+    const playbackUrl =
+      broadcastData?.hlsUrl || broadcastData?.playbackUrl || null;
+    if (!playbackUrl) {
+      toast({
+        title: 'Yayın linki henüz hazır değil',
+        status: 'warning',
+        position: 'top',
+      });
+      return;
+    }
+    window.open(getCombinedLogoUrl(playbackUrl), '_blank', 'noopener,noreferrer');
   };
 
   // Poll handlers
@@ -2859,6 +2976,7 @@ const ChannelChat = () => {
                 m.audio ||
                 m.file ||
                 m.conference ||
+                m.broadcast ||
                 m.poll),
           );
 
@@ -2871,6 +2989,8 @@ const ChannelChat = () => {
             else if (validMessage.file) newLastMessageText = '📄 Dosya';
             else if (validMessage.conference)
               newLastMessageText = '🎥 Video Görüşme';
+            else if (validMessage.broadcast)
+              newLastMessageText = '📡 Canlı Yayın';
             else if (validMessage.poll) newLastMessageText = '📊 Anket';
           }
         }
@@ -2984,6 +3104,7 @@ const ChannelChat = () => {
                 m.audio ||
                 m.file ||
                 m.conference ||
+                m.broadcast ||
                 m.poll),
           );
           if (validMessage) {
@@ -2995,6 +3116,8 @@ const ChannelChat = () => {
             else if (validMessage.file) newLastMessageText = '📄 Dosya';
             else if (validMessage.conference)
               newLastMessageText = '🎥 Video Görüşme';
+            else if (validMessage.broadcast)
+              newLastMessageText = '📡 Canlı Yayın';
             else if (validMessage.poll) newLastMessageText = '📊 Anket';
           }
         }
@@ -4444,6 +4567,7 @@ const ChannelChat = () => {
                         }}
                         onMediaClick={handleMediaClick}
                         onJoinConference={handleJoinConference}
+                        onJoinBroadcast={handleJoinBroadcast}
                         onVotePoll={handleVotePoll}
                         onClosePoll={handleClosePoll}
                         currentUserId={currentUserId}

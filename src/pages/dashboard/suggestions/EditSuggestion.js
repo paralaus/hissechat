@@ -16,6 +16,9 @@ import {
   AlertDialogFooter,
   AlertDialog,
   Select,
+  VStack,
+  HStack,
+  Text,
 } from '@chakra-ui/react';
 import {useForm} from 'react-hook-form';
 import {yupResolver} from '@hookform/resolvers/yup';
@@ -47,9 +50,11 @@ const object = {
   title: yup.string(),
   content: yup.string(),
   type: yup.string(),
+  sortOrder: yup.number(),
   imageUrl: yup.string(),
   videoUrl: yup.string(),
   audioUrl: yup.string(),
+  mediaUrls: yup.array().of(yup.string()),
 };
 
 const schema = yup.object().shape({
@@ -64,9 +69,15 @@ const schema = yup.object().shape({
     otherwise: schema => schema.required('Bu alan zorunludur.'),
   }),
   type: yup.string().required('Bu alan zorunludur.'),
+  sortOrder: yup
+    .number()
+    .typeError('Sıra sayısal olmalıdır.')
+    .min(0, 'Sıra 0 veya daha büyük olmalıdır.')
+    .required('Sıra zorunludur.'),
   imageUrl: yup.string().nullable(),
   videoUrl: yup.string().nullable(),
   audioUrl: yup.string().nullable(),
+  mediaUrls: yup.array().of(yup.string().nullable()).default([]),
 });
 
 const EditSuggestion = ({id}) => {
@@ -75,6 +86,8 @@ const EditSuggestion = ({id}) => {
   const deleteModal = useDisclosure();
   const cancelRef = useRef();
   const navigate = useNavigate();
+  const [draggedMediaIndex, setDraggedMediaIndex] = React.useState(null);
+  const [dragOverMediaIndex, setDragOverMediaIndex] = React.useState(null);
   const {
     input: imageInput,
     open: openImage,
@@ -93,6 +106,16 @@ const EditSuggestion = ({id}) => {
     upload: uploadMedia,
     isUploading: isUploadingMedia,
   } = useFileInput({accept: 'video/*,audio/*'});
+  const {
+    input: galleryInput,
+    open: openGalleryMedia,
+    file: galleryMediaFile,
+    objectUrl: galleryMediaObjectUrl,
+    isVideo: isGalleryVideo,
+    upload: uploadGalleryMedia,
+    isUploading: isUploadingGalleryMedia,
+    reset: resetGalleryMedia,
+  } = useFileInput({accept: 'image/*,video/*,audio/*'});
   const {
     register,
     handleSubmit,
@@ -131,14 +154,18 @@ const EditSuggestion = ({id}) => {
   const imageUrlValue = watch('imageUrl');
   const videoUrlValue = watch('videoUrl');
   const audioUrlValue = watch('audioUrl');
+  const mediaUrlsValue = watch('mediaUrls') || [];
   const typeValue = watch('type');
+  const sortOrderValue = watch('sortOrder');
   const isHeadline = typeValue === SuggestionType.Headline;
   const hasMedia =
     !!imageFile ||
     !!mediaFile ||
     !!(imageUrlValue && imageUrlValue.trim()) ||
     !!(videoUrlValue && videoUrlValue.trim()) ||
-    !!(audioUrlValue && audioUrlValue.trim());
+    !!(audioUrlValue && audioUrlValue.trim()) ||
+    (Array.isArray(mediaUrlsValue) &&
+      mediaUrlsValue.some(url => typeof url === 'string' && url.trim()));
 
   React.useEffect(() => {
     if (isHeadline) {
@@ -146,15 +173,80 @@ const EditSuggestion = ({id}) => {
     }
   }, [isHeadline, clearErrors]);
 
+  const sanitizeMediaUrls = React.useCallback(urls => {
+    if (!Array.isArray(urls)) return [];
+    const seen = new Set();
+    return urls
+      .filter(url => typeof url === 'string' && url.trim())
+      .map(url => url.trim())
+      .filter(url => {
+        if (seen.has(url)) return false;
+        seen.add(url);
+        return true;
+      });
+  }, []);
+
+  const handleAddGalleryMedia = async () => {
+    if (!galleryMediaFile) {
+      toast({
+        title: 'Önce bir medya dosyası seçin.',
+        status: 'warning',
+        position: 'top',
+      });
+      return;
+    }
+    const url = await uploadGalleryMedia();
+    if (!url) {
+      toast({
+        title: 'Medya galeriye eklenemedi.',
+        status: 'error',
+        position: 'top',
+      });
+      return;
+    }
+    const next = sanitizeMediaUrls([...(mediaUrlsValue || []), url]);
+    setValue('mediaUrls', next, {shouldDirty: true});
+    resetGalleryMedia();
+    toast({
+      title: 'Medya galeriye eklendi.',
+      status: 'success',
+      position: 'top',
+    });
+  };
+
+  const moveMediaItem = React.useCallback(
+    (fromIndex, toIndex) => {
+      if (
+        !Array.isArray(mediaUrlsValue) ||
+        fromIndex === null ||
+        toIndex === null ||
+        fromIndex === toIndex ||
+        fromIndex < 0 ||
+        toIndex < 0 ||
+        fromIndex >= mediaUrlsValue.length ||
+        toIndex >= mediaUrlsValue.length
+      ) {
+        return;
+      }
+      const next = [...mediaUrlsValue];
+      const [moved] = next.splice(fromIndex, 1);
+      next.splice(toIndex, 0, moved);
+      setValue('mediaUrls', next, {shouldDirty: true});
+    },
+    [mediaUrlsValue, setValue],
+  );
+
   const onSubmit = async values => {
     try {
+      const cleanedMediaUrls = sanitizeMediaUrls(values.mediaUrls);
       if (values.type === SuggestionType.Headline) {
         const submitHasMedia =
           !!imageFile ||
           !!mediaFile ||
           !!(values.imageUrl && values.imageUrl.trim()) ||
           !!(values.videoUrl && values.videoUrl.trim()) ||
-          !!(values.audioUrl && values.audioUrl.trim());
+          !!(values.audioUrl && values.audioUrl.trim()) ||
+          cleanedMediaUrls.length > 0;
         if (!submitHasMedia) {
           toast({
             title: 'Manşet için en az bir medya zorunludur.',
@@ -164,7 +256,10 @@ const EditSuggestion = ({id}) => {
           return;
         }
       }
-      const submissionValues = {...values};
+      const submissionValues = {...values, mediaUrls: cleanedMediaUrls};
+      submissionValues.sortOrder = Number.isFinite(Number(values.sortOrder))
+        ? Number(values.sortOrder)
+        : 1000;
       if (imageFile) {
         const url = await uploadImage();
         if (!url) {
@@ -205,6 +300,12 @@ const EditSuggestion = ({id}) => {
           submissionValues.imageUrl = url;
         }
       }
+      submissionValues.mediaUrls = sanitizeMediaUrls([
+        ...(submissionValues.mediaUrls || []),
+        submissionValues.imageUrl,
+        submissionValues.videoUrl,
+        submissionValues.audioUrl,
+      ]);
       const {data} = await mutateAsync(submissionValues);
       if (data) {
         toast({
@@ -334,6 +435,29 @@ const EditSuggestion = ({id}) => {
               </Select>
               <FormErrorMessage>{errors.type?.message}</FormErrorMessage>
             </FormControl>
+            <FormControl isInvalid={!!errors.sortOrder} mb="4" key={21}>
+              <FormLabel
+                display="flex"
+                ms="4px"
+                fontSize="sm"
+                fontWeight="500"
+                mb="8px">
+                Slider Sırası
+              </FormLabel>
+              <Input
+                fontSize="sm"
+                type="number"
+                min={0}
+                fontWeight="500"
+                size="md"
+                defaultValue={data?.sortOrder ?? 1000}
+                {...register('sortOrder')}
+              />
+              <Text fontSize="xs" color="gray.500" mt="1">
+                Küçük sayı önce görünür. Mevcut: {Number.isFinite(Number(sortOrderValue)) ? Number(sortOrderValue) : 1000}
+              </Text>
+              <FormErrorMessage>{errors.sortOrder?.message}</FormErrorMessage>
+            </FormControl>
             <FormControl mb="4" key={3}>
               <FormLabel
                 display="flex"
@@ -453,6 +577,119 @@ const EditSuggestion = ({id}) => {
                   ? 'Manşet için en az bir medya zorunludur.'
                   : ''}
               </FormErrorMessage>
+            </FormControl>
+            <FormControl mb="4" key={5}>
+              <FormLabel
+                display="flex"
+                ms="4px"
+                fontSize="sm"
+                fontWeight="500"
+                mb="8px">
+                Manşet Medya Galerisi (çoklu)
+              </FormLabel>
+              <Button
+                onClick={openGalleryMedia}
+                variant="outline"
+                mb="2"
+                isLoading={isUploadingGalleryMedia}
+                loadingText="Yükleniyor">
+                Galeri Medyası Seç
+              </Button>
+              {galleryInput}
+              {galleryMediaObjectUrl && (
+                <Box mt="2" mb="2">
+                  {isGalleryVideo ? (
+                    <Box
+                      as="video"
+                      src={galleryMediaObjectUrl}
+                      maxH="180px"
+                      controls
+                      borderRadius="md"
+                      borderWidth="1px"
+                      borderColor="gray.200"
+                    />
+                  ) : (
+                    <Box
+                      as="img"
+                      src={galleryMediaObjectUrl}
+                      maxH="150px"
+                      borderRadius="md"
+                      borderWidth="1px"
+                      borderColor="gray.200"
+                      objectFit="cover"
+                    />
+                  )}
+                  <Button
+                    mt="2"
+                    size="sm"
+                    colorScheme="blue"
+                    onClick={handleAddGalleryMedia}
+                    isLoading={isUploadingGalleryMedia}
+                    loadingText="Ekleniyor">
+                    Galeriye Ekle
+                  </Button>
+                </Box>
+              )}
+
+              <Input type="hidden" {...register('mediaUrls')} />
+              {Array.isArray(mediaUrlsValue) && mediaUrlsValue.length > 0 && (
+                <VStack align="stretch" spacing="2" mt="2">
+                  <Text fontSize="xs" color="gray.500">
+                    Siralamak icin medya satirini surukleyip birakabilirsiniz.
+                  </Text>
+                  {mediaUrlsValue.map((url, idx) => (
+                    <HStack
+                      key={`${url}-${idx}`}
+                      p="2"
+                      borderWidth="1px"
+                      borderColor={dragOverMediaIndex === idx ? 'blue.300' : 'gray.200'}
+                      borderRadius="md"
+                      justify="space-between"
+                      bg={dragOverMediaIndex === idx ? 'blue.50' : 'white'}
+                      draggable
+                      cursor="grab"
+                      onDragStart={() => {
+                        setDraggedMediaIndex(idx);
+                        setDragOverMediaIndex(idx);
+                      }}
+                      onDragOver={event => {
+                        event.preventDefault();
+                        if (dragOverMediaIndex !== idx) {
+                          setDragOverMediaIndex(idx);
+                        }
+                      }}
+                      onDrop={event => {
+                        event.preventDefault();
+                        moveMediaItem(draggedMediaIndex, idx);
+                        setDraggedMediaIndex(null);
+                        setDragOverMediaIndex(null);
+                      }}
+                      onDragEnd={() => {
+                        setDraggedMediaIndex(null);
+                        setDragOverMediaIndex(null);
+                      }}>
+                      <HStack spacing="2" flex="1" minW="0">
+                        <Text fontSize="sm" color="gray.400">
+                          ⋮⋮
+                        </Text>
+                        <Text fontSize="xs" color="gray.600" noOfLines={1} flex="1">
+                          {idx + 1}. {url}
+                        </Text>
+                      </HStack>
+                      <Button
+                        size="xs"
+                        colorScheme="red"
+                        variant="ghost"
+                        onClick={() => {
+                          const next = (mediaUrlsValue || []).filter((_, i) => i !== idx);
+                          setValue('mediaUrls', next, {shouldDirty: true});
+                        }}>
+                        Kaldır
+                      </Button>
+                    </HStack>
+                  ))}
+                </VStack>
+              )}
             </FormControl>
             <Condition condition={!isNew}>
               <ReadOnlyInfo

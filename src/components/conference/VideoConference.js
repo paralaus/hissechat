@@ -121,6 +121,43 @@ const DEFAULT_ICE_SERVERS = [
     credential: 'TestPass123'
   }
 ];
+const getAiAudioConstraints = () => ({
+  echoCancellation: true,
+  noiseSuppression: true,
+  autoGainControl: true,
+  channelCount: 1,
+  sampleRate: 48000,
+  latency: 0.02,
+  googEchoCancellation: true,
+  googEchoCancellation2: true,
+  googAutoGainControl: true,
+  googNoiseSuppression: true,
+  voiceIsolation: true,
+});
+const maybeEnhanceAudioStream = async (stream) => {
+  const enabled = String(process.env.REACT_APP_AI_AUDIO_PROCESSING_ENABLED || 'true').toLowerCase() === 'true';
+  if (!enabled || !stream) return stream;
+
+  const enhancer = window?.__AI_AUDIO_ENHANCER__;
+  if (enhancer?.enhanceStream) {
+    try {
+      const enhanced = await enhancer.enhanceStream(stream);
+      if (enhanced) return enhanced;
+    } catch (_e) {
+      // fallback to built-in constraints
+    }
+  }
+
+  try {
+    const audioTrack = stream.getAudioTracks?.()[0];
+    if (audioTrack?.applyConstraints) {
+      await audioTrack.applyConstraints(getAiAudioConstraints());
+    }
+  } catch (_e) {
+    // keep original stream
+  }
+  return stream;
+};
 
 // Adaptive bitrate configuration
 const ADAPTIVE_BITRATE = {
@@ -949,6 +986,11 @@ const VideoConference = ({roomId, channelId, title, onClose}) => {
                 handRaised: false,
               },
             ];
+const createSimulcastEncodings = () => ([
+  {maxBitrate: 100000, scaleResolutionDownBy: 4},
+  {maxBitrate: 300000, scaleResolutionDownBy: 2},
+  {maxBitrate: 900000, scaleResolutionDownBy: 1},
+]);
           });
         } else {
           console.warn('WARNING: ontrack fired but no stream available');
@@ -1410,31 +1452,30 @@ const VideoConference = ({roomId, channelId, title, onClose}) => {
         const tracks = localStreamRef.current.getTracks();
         for (const track of tracks) {
           try {
-            // Force VP8 codec for mobile compatibility
+            // Prefer VP9 for better compression, fallback to VP8/H264 for compatibility.
             let codecOptions = {
                 videoGoogleStartBitrate: 1000,
+                opusStereo: 1,
+                opusFec: 1,
+                opusDtx: 1,
+                opusMaxPlaybackRate: 48000,
             };
 
             let codecToUse = undefined;
             if (track.kind === 'video') {
                 const codecs = device.rtpCapabilities.codecs;
+                const vp9Codec = codecs.find(c => c.mimeType.toLowerCase() === 'video/vp9');
                 const vp8Codec = codecs.find(c => c.mimeType.toLowerCase() === 'video/vp8');
-                if (vp8Codec) {
-                    codecToUse = vp8Codec;
-                    console.log('Forcing VP8 codec for video producer');
+                const h264Codec = codecs.find(c => c.mimeType.toLowerCase() === 'video/h264');
+                codecToUse = vp9Codec || vp8Codec || h264Codec;
+                if (codecToUse) {
+                    console.log(`Using preferred video codec for producer: ${codecToUse.mimeType}`);
                 }
             }
 
             const producer = await sendTransport.produce({
               track,
-              encodings:
-                track.kind === 'video'
-                  ? [
-                      {maxBitrate: 100000, scaleResolutionDownBy: 4},
-                      {maxBitrate: 300000, scaleResolutionDownBy: 2},
-                      {maxBitrate: 900000, scaleResolutionDownBy: 1},
-                    ]
-                  : undefined,
+              encodings: track.kind === 'video' ? createSimulcastEncodings() : undefined,
               codecOptions,
               codec: codecToUse, // Force specific codec
               appData: { 
@@ -1730,7 +1771,7 @@ const VideoConference = ({roomId, channelId, title, onClose}) => {
         try {
           const producer = await sfuSendTransportRef.current.produce({
             track: videoTrack,
-            encodings: [{maxBitrate: 1500000, scaleResolutionDownBy: 1}],
+            encodings: createSimulcastEncodings(),
             appData: {
                 source: 'screen',
                 producerOdaId: currentUser?.id, // CRITICAL: Add User ID for mobile compatibility
@@ -1801,12 +1842,7 @@ const VideoConference = ({roomId, channelId, title, onClose}) => {
       try {
         // Get local stream with optimized settings
         const stream = await navigator.mediaDevices.getUserMedia({
-          audio: {
-            echoCancellation: true,
-            noiseSuppression: true,
-            autoGainControl: true,
-            sampleRate: 48000,
-          },
+          audio: getAiAudioConstraints(),
           video: {
             width: {ideal: 1280, max: 1920},
             height: {ideal: 720, max: 1080},
@@ -1814,9 +1850,10 @@ const VideoConference = ({roomId, channelId, title, onClose}) => {
             facingMode: 'user',
           },
         });
+        const enhancedStream = await maybeEnhanceAudioStream(stream);
 
-        setLocalStream(stream);
-        localStreamRef.current = stream;
+        setLocalStream(enhancedStream);
+        localStreamRef.current = enhancedStream;
 
         // Connect to socket
         const token = getToken();

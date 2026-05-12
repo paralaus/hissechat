@@ -568,6 +568,10 @@ export const createConference = async body => {
   return apiClient.post('/conferences', body);
 };
 
+export const createLiveBroadcast = async body => {
+  return apiClient.post('/live-broadcast', body);
+};
+
 export const scheduleConference = async body => {
   return apiClient.post('/conferences/schedule', body);
 };

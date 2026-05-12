@@ -111,6 +111,22 @@ const CreateConferenceModal = ({
     handleClose();
   };
 
+  const handleBroadcastStart = () => {
+    if (!selectedChannel) return;
+    const now = new Date();
+    const endTime = new Date(now.getTime() + duration * 60000);
+    onCreate({
+      type: 'broadcast',
+      title: title || 'Canlı Yayın',
+      channelId: selectedChannel,
+      startTime: now.toISOString(),
+      scheduledEndTime: endTime.toISOString(),
+      maxParticipants,
+      settings: {allowChat: true},
+    });
+    handleClose();
+  };
+
   const handleClose = () => {
     setMode('select');
     setTitle('');
@@ -253,6 +269,30 @@ const CreateConferenceModal = ({
                       </Text>
                       <Text fontSize="sm" fontWeight="normal">
                         Gelecek bir zaman için görüşme planlayın
+                      </Text>
+                    </VStack>
+                  </HStack>
+                </Button>
+
+                <Button
+                  height="80px"
+                  colorScheme="red"
+                  variant="outline"
+                  onClick={handleBroadcastStart}
+                  isLoading={isLoading}
+                  isDisabled={!selectedChannel}
+                  justifyContent="flex-start"
+                  px={6}>
+                  <HStack spacing={4}>
+                    <Box p={3} bg="red.100" borderRadius="full">
+                      <Text fontSize="lg">📡</Text>
+                    </Box>
+                    <VStack align="start" spacing={0}>
+                      <Text fontWeight="bold" fontSize="lg">
+                        Canlı Yayın Başlat
+                      </Text>
+                      <Text fontSize="sm" fontWeight="normal">
+                        LL-HLS yayın kartı oluştur ({duration} dk)
                       </Text>
                     </VStack>
                   </HStack>
