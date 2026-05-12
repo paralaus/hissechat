@@ -175,6 +175,12 @@ const ADAPTIVE_BITRATE = {
   },
 };
 
+const createSimulcastEncodings = () => [
+  {maxBitrate: 100000, scaleResolutionDownBy: 4},
+  {maxBitrate: 300000, scaleResolutionDownBy: 2},
+  {maxBitrate: 900000, scaleResolutionDownBy: 1},
+];
+
 const cleanupConferenceResources = ({
   adaptiveTimerRef,
   sfuProducersRef,
@@ -986,11 +992,6 @@ const VideoConference = ({roomId, channelId, title, onClose}) => {
                 handRaised: false,
               },
             ];
-const createSimulcastEncodings = () => ([
-  {maxBitrate: 100000, scaleResolutionDownBy: 4},
-  {maxBitrate: 300000, scaleResolutionDownBy: 2},
-  {maxBitrate: 900000, scaleResolutionDownBy: 1},
-]);
           });
         } else {
           console.warn('WARNING: ontrack fired but no stream available');
