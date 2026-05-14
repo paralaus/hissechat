@@ -154,7 +154,11 @@ const EditSuggestion = ({id}) => {
   const imageUrlValue = watch('imageUrl');
   const videoUrlValue = watch('videoUrl');
   const audioUrlValue = watch('audioUrl');
-  const mediaUrlsValue = watch('mediaUrls') || [];
+  const watchedMediaUrls = watch('mediaUrls');
+  const mediaUrlsValue = React.useMemo(
+    () => watchedMediaUrls || [],
+    [watchedMediaUrls],
+  );
   const typeValue = watch('type');
   const sortOrderValue = watch('sortOrder');
   const isHeadline = typeValue === SuggestionType.Headline;
