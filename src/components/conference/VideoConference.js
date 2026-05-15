@@ -1913,6 +1913,10 @@ const VideoConference = ({roomId, channelId, title, onClose, isBroadcaster = fal
           query: {
             name: userName,
             avatar: currentUser?.avatar || '',
+            // roomId LB consistent-hashing için handshake URL'ine eklenir
+            // (nginx `hash $arg_roomId consistent;`). Aynı oda her zaman
+            // aynı media-server node'una düşer.
+            roomId: roomId || '',
           },
       transports: ['websocket'], // Force websocket for stability
       reconnection: true,
