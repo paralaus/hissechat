@@ -1474,9 +1474,27 @@ const VideoConference = ({roomId, channelId, title, onClose, isBroadcaster = fal
                 }
             }
 
+            // VP9 simulcast is NOT supported by mediasoup-client; VP9 uses SVC
+            // (single encoding with scalabilityMode) instead of multiple
+            // simulcast layers. VP8/H264 use classical simulcast (3 layers).
+            const isVP9 =
+              track.kind === 'video' &&
+              codecToUse?.mimeType?.toLowerCase() === 'video/vp9';
+            let videoEncodings;
+            if (track.kind === 'video') {
+              if (isVP9) {
+                // SVC: 3 spatial × 3 temporal layers, key-frame aligned
+                videoEncodings = [
+                  {scalabilityMode: 'L3T3_KEY', maxBitrate: 1500000},
+                ];
+              } else {
+                videoEncodings = createSimulcastEncodings();
+              }
+            }
+
             const producer = await sendTransport.produce({
               track,
-              encodings: track.kind === 'video' ? createSimulcastEncodings() : undefined,
+              encodings: videoEncodings,
               codecOptions,
               codec: codecToUse, // Force specific codec
               appData: { 
