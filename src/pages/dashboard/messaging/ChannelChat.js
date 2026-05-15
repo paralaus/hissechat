@@ -2290,36 +2290,19 @@ const ChannelChat = () => {
             );
           });
 
-        // Geriye dönük uyumluluk: backend'in eski sürümleri kanal mesajını
-        // otomatik oluşturmuyor olabilir. Bu durumda admin tarafından
-        // gönderilen sendMessage çağrısı yedek olarak çalışır. Backend
-        // yeni sürümde mesajı zaten oluşturmuş olduğundan duplicate'ı
-        // önlemek için createdAt'i broadcast başlangıcına eşitliyoruz —
-        // kanal mesaj servisi messageHash üzerinden tekrarları siler.
-        try {
-          await sendMessageMutation.mutateAsync({
-            broadcast: {
-              roomId,
-              title: conferenceTitle,
-              hlsUrl: derivedPlaybackUrl || undefined,
-              playbackUrl: derivedPlaybackUrl || undefined,
-              startTime,
-              scheduledEndTime,
-              isActive: options.type !== 'scheduled',
-            },
-          });
-        } catch (sendErr) {
-          // Backend muhtemelen mesajı zaten oluşturmuştur; sadece logla.
-          console.warn(
-            '[Broadcast] sendMessage fallback failed (backend may have created the message already):',
-            sendErr?.response?.data || sendErr?.message,
-          );
-        }
-
-        // Backend tarafında setImmediate ile oluşturulan mesaj sonradan
-        // gelebileceği için kısa bir gecikme ile bir kez daha invalidate
-        // ediyoruz; aksi halde admin sadece optimistic plain-text mesajı
-        // görüp broadcast kartını kaçırıyor.
+        // NOT: Backend `createLiveBroadcast` çağrısı, channelId verildiğinde
+        // ChannelMessage'ı (broadcast subdoc dahil) kendisi oluşturuyor.
+        // Burada ayrıca sendMessage çağrısı yapmıyoruz — çift mesaj
+        // (hem atan hem alıcı tarafında duplicate kart) sorununa yol
+        // açıyordu. Mobil client de aynı pattern'i kullanıyor: sadece
+        // createLiveBroadcast, sonra cache invalidation.
+        //
+        // Backend setImmediate ile mesajı asenkron oluşturduğundan kısa
+        // bir gecikme ile cache'i invalidate edip broadcast kartının
+        // listeye girmesini garanti ediyoruz.
+        // derivedPlaybackUrl şu an kullanılmıyor ama ileride snapshot
+        // ihtiyacı doğarsa elimizde kalsın diye ayıklandı.
+        void derivedPlaybackUrl;
         setTimeout(() => {
           queryClient.invalidateQueries(['channel-messages', channelId]);
         }, 1200);
