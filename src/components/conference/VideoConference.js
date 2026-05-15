@@ -766,7 +766,7 @@ const ChatPanel = ({
 };
 
 // Main VideoConference component
-const VideoConference = ({roomId, channelId, title, onClose}) => {
+const VideoConference = ({roomId, channelId, title, onClose, isBroadcaster = false}) => {
   const toast = useToast();
 
   // State
@@ -2939,6 +2939,11 @@ const VideoConference = ({roomId, channelId, title, onClose}) => {
             {title || 'Video Konferans'}
           </Text>
           <Badge colorScheme="blue">{allParticipants.length} katılımcı</Badge>
+          {isBroadcaster && (
+            <Badge colorScheme="red" variant="solid">
+              🔴 CANLI YAYIN
+            </Badge>
+          )}
           <Badge colorScheme={conferenceMode === 'sfu' ? 'purple' : 'gray'}>
             {conferenceMode === 'sfu' ? 'SFU' : 'P2P'}
           </Badge>

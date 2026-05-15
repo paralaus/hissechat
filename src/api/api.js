@@ -572,6 +572,39 @@ export const createLiveBroadcast = async body => {
   return apiClient.post('/live-broadcast', body);
 };
 
+// Media server'a doğrudan canlı yayın session'ı kayıt eder. Bu çağrı,
+// media server'ın `liveBroadcastSessions` map'ini doldurur ve böylece
+// yayıncı üretmeye başladığında FFmpeg/HLS pipeline'ı otomatik başlar.
+// Backend zaten kayıt yapıyor olabilir; bu yedek/idempotent bir çağrı.
+// REACT_APP_MEDIA_SERVER_URL .env'de tanımlı değilse no-op şeklinde
+// reject döner — caller zaten best-effort yapıyor.
+export const registerMediaServerBroadcastSession = async data => {
+  const base = String(
+    process.env.REACT_APP_MEDIA_SERVER_URL || '',
+  )
+    .trim()
+    .replace(/\/$/, '');
+  if (!base) {
+    throw new Error('media_server_url_missing');
+  }
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 8000);
+  try {
+    const res = await fetch(`${base}/live-broadcast/session`, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(data),
+      signal: controller.signal,
+    });
+    if (!res.ok) {
+      throw new Error(`media_server_session_register_failed_${res.status}`);
+    }
+    return await res.json();
+  } finally {
+    clearTimeout(timer);
+  }
+};
+
 export const scheduleConference = async body => {
   return apiClient.post('/conferences/schedule', body);
 };

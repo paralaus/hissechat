@@ -2270,6 +2270,26 @@ const ChannelChat = () => {
           payload?.broadcast?.hlsUrl ||
           null;
 
+        // Media server'a doğrudan session kaydı (yedek/idempotent).
+        // Backend bu kaydı genelde kendisi yapar; ancak `liveBroadcastSessions`
+        // map'i boş kalırsa FFmpeg/HLS pipeline asla başlamıyor ve izleyici
+        // index.m3u8 için 404 alıyor. Bu yüzden mobil client gibi sidecar
+        // çağrı atıyoruz. Hata olursa yayını engellemiyor — best-effort.
+        api
+          .registerMediaServerBroadcastSession({
+            roomId,
+            title: conferenceTitle,
+            channelId,
+            startTime,
+            scheduledEndTime,
+          })
+          .catch(err => {
+            console.warn(
+              '[Broadcast] Media server session register failed (non-fatal):',
+              err?.message,
+            );
+          });
+
         // Geriye dönük uyumluluk: backend'in eski sürümleri kanal mesajını
         // otomatik oluşturmuyor olabilir. Bu durumda admin tarafından
         // gönderilen sendMessage çağrısı yedek olarak çalışır. Backend
@@ -2327,13 +2347,16 @@ const ChannelChat = () => {
         await sendMessageMutation.mutateAsync(conferenceBody);
       }
 
-      // Only open video call immediately if it's an instant meeting
-      if (options.type !== 'scheduled' && options.type !== 'broadcast') {
-        // Set conference data and open modal
+      // Instant conference VEYA broadcast ise video modalını aç. Broadcast
+      // için bu kritik: admin'in mediasoup üzerinden video/ses üretmesi
+      // gerekiyor; aksi halde media server'da FFmpeg pipeline için RTP
+      // kaynağı olmaz ve izleyici index.m3u8 için 404 alır.
+      if (options.type !== 'scheduled') {
         setCurrentConferenceData({
           roomId,
           title: conferenceTitle,
           channelId,
+          isBroadcaster: options.type === 'broadcast',
         });
         onVideoCallOpen();
       }
@@ -5641,6 +5664,7 @@ const ChannelChat = () => {
           roomId={currentConferenceData.roomId}
           channelId={currentConferenceData.channelId}
           title={currentConferenceData.title}
+          isBroadcaster={currentConferenceData.isBroadcaster}
           onClose={() => {
             setCurrentConferenceData(null);
             onVideoCallClose();
