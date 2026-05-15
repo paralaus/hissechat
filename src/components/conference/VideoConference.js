@@ -1788,9 +1788,21 @@ const VideoConference = ({roomId, channelId, title, onClose, isBroadcaster = fal
 
       if (conferenceMode === 'sfu' && sfuSendTransportRef.current) {
         try {
+          // VP9 simulcast desteklenmiyor; VP8/H264'a force ederek klasik
+          // simulcast'in çalışmasını garanti ediyoruz.
+          const screenCodecs = sfuDeviceRef.current?.rtpCapabilities?.codecs || [];
+          const vp8Codec = screenCodecs.find(
+            c => c.mimeType?.toLowerCase() === 'video/vp8',
+          );
+          const h264Codec = screenCodecs.find(
+            c => c.mimeType?.toLowerCase() === 'video/h264',
+          );
+          const screenCodec = vp8Codec || h264Codec;
+
           const producer = await sfuSendTransportRef.current.produce({
             track: videoTrack,
             encodings: createSimulcastEncodings(),
+            codec: screenCodec,
             appData: {
                 source: 'screen',
                 producerOdaId: currentUser?.id, // CRITICAL: Add User ID for mobile compatibility
