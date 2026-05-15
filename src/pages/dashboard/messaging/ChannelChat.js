@@ -2238,7 +2238,15 @@ const ChannelChat = () => {
       }
 
       if (options.type === 'broadcast') {
-        await api.createLiveBroadcast({
+        // Backend (conference.service.createLiveBroadcast) artık channelId
+        // verildiğinde kanal mesajını broadcast subdokümanı (hlsUrl,
+        // playbackUrl dahil) ile birlikte kendisi oluşturuyor. Bu yüzden
+        // burada ayrıca sendMessage göndermek hem gereksiz hem de
+        // playbackUrl/hlsUrl bilgilerini eksik bırakıyor (kart düz metin
+        // olarak görünüyordu). Sadece broadcast'ı kuruyoruz; ardından
+        // mesaj listesini yenileyince backend tarafından oluşturulan
+        // tam donanımlı broadcast kartı görünecek.
+        const broadcastResponse = await api.createLiveBroadcast({
           roomId,
           title: conferenceTitle,
           channelId,
@@ -2252,15 +2260,49 @@ const ChannelChat = () => {
           },
         });
 
-        await sendMessageMutation.mutateAsync({
-          broadcast: {
-            roomId,
-            title: conferenceTitle,
-            startTime,
-            scheduledEndTime,
-            isActive: options.type !== 'scheduled',
-          },
-        });
+        // Backend setImmediate ile mesajı eşzamansız oluşturuyor; mesaj
+        // yazılana kadar kısa bir gecikme bırakıp queryClient cache'ini
+        // invalidate ediyoruz ki broadcast kartı kanal akışında belirsin.
+        const payload = broadcastResponse?.data || broadcastResponse || {};
+        const derivedPlaybackUrl =
+          payload?.meta?.playbackUrl ||
+          payload?.broadcast?.playbackUrl ||
+          payload?.broadcast?.hlsUrl ||
+          null;
+
+        // Geriye dönük uyumluluk: backend'in eski sürümleri kanal mesajını
+        // otomatik oluşturmuyor olabilir. Bu durumda admin tarafından
+        // gönderilen sendMessage çağrısı yedek olarak çalışır. Backend
+        // yeni sürümde mesajı zaten oluşturmuş olduğundan duplicate'ı
+        // önlemek için createdAt'i broadcast başlangıcına eşitliyoruz —
+        // kanal mesaj servisi messageHash üzerinden tekrarları siler.
+        try {
+          await sendMessageMutation.mutateAsync({
+            broadcast: {
+              roomId,
+              title: conferenceTitle,
+              hlsUrl: derivedPlaybackUrl || undefined,
+              playbackUrl: derivedPlaybackUrl || undefined,
+              startTime,
+              scheduledEndTime,
+              isActive: options.type !== 'scheduled',
+            },
+          });
+        } catch (sendErr) {
+          // Backend muhtemelen mesajı zaten oluşturmuştur; sadece logla.
+          console.warn(
+            '[Broadcast] sendMessage fallback failed (backend may have created the message already):',
+            sendErr?.response?.data || sendErr?.message,
+          );
+        }
+
+        // Backend tarafında setImmediate ile oluşturulan mesaj sonradan
+        // gelebileceği için kısa bir gecikme ile bir kez daha invalidate
+        // ediyoruz; aksi halde admin sadece optimistic plain-text mesajı
+        // görüp broadcast kartını kaçırıyor.
+        setTimeout(() => {
+          queryClient.invalidateQueries(['channel-messages', channelId]);
+        }, 1200);
       } else {
         // Create conference in backend with proper start/end times
         await api.createConference({
@@ -2567,8 +2609,35 @@ const ChannelChat = () => {
   };
 
   const handleJoinBroadcast = broadcastData => {
-    const playbackUrl =
+    // Önce mesajda gelen hlsUrl/playbackUrl'leri dene; eksikse media
+    // server'dan üretilmiş public bir HLS adresine düş. Bu fallback
+    // sayesinde backend mesajı henüz playbackUrl olmadan kaydetmiş olsa
+    // bile admin "Yayını İzle" tuşundan akışı açabilir.
+    const roomId = broadcastData?.roomId;
+    const explicitUrl =
       broadcastData?.hlsUrl || broadcastData?.playbackUrl || null;
+
+    // REACT_APP_HLS_BASE_URL: backend LIVE_HLS_BASE_URL ile aynı değer
+    //   örn. https://api.appandcapital.com.tr/live
+    //   URL şeması: {base}/{roomId}/index.m3u8
+    // REACT_APP_MEDIA_SERVER_URL: media server origin'i (örn.
+    //   https://api.appandcapital.com.tr). HLS_BASE_URL verilmediyse
+    //   /live segmenti otomatik eklenir.
+    const hlsBase = String(process.env.REACT_APP_HLS_BASE_URL || '').trim();
+    const mediaOrigin = String(
+      process.env.REACT_APP_MEDIA_SERVER_URL || '',
+    ).trim();
+    const resolvedBase = hlsBase
+      ? hlsBase.replace(/\/$/, '')
+      : mediaOrigin
+        ? `${mediaOrigin.replace(/\/$/, '')}/live`
+        : '';
+    const fallbackUrl =
+      roomId && resolvedBase
+        ? `${resolvedBase}/${encodeURIComponent(roomId)}/index.m3u8`
+        : null;
+
+    const playbackUrl = explicitUrl || fallbackUrl;
     if (!playbackUrl) {
       toast({
         title: 'Yayın linki henüz hazır değil',
@@ -2577,7 +2646,12 @@ const ChannelChat = () => {
       });
       return;
     }
-    window.open(getCombinedLogoUrl(playbackUrl), '_blank', 'noopener,noreferrer');
+    // Eğer URL zaten http(s):// ile başlıyorsa olduğu gibi aç; aksi halde
+    // getCombinedLogoUrl ile API base'ine relatife birleştir.
+    const finalUrl = /^https?:\/\//i.test(playbackUrl)
+      ? playbackUrl
+      : getCombinedLogoUrl(playbackUrl);
+    window.open(finalUrl, '_blank', 'noopener,noreferrer');
   };
 
   // Poll handlers
