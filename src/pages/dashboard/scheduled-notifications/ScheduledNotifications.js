@@ -1,6 +1,5 @@
 import React, {useEffect, useState, useCallback, useMemo} from 'react';
 import {
-  Box,
   Button,
   Flex,
   HStack,

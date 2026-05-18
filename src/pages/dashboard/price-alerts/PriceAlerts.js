@@ -1,6 +1,5 @@
 import React, {useEffect, useState, useCallback, useRef} from 'react';
 import {
-  Box,
   SimpleGrid,
   Text,
   Button,

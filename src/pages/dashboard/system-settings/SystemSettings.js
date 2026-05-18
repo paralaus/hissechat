@@ -24,7 +24,7 @@ import {
   StatLabel,
   StatNumber,
 } from '@chakra-ui/react';
-import {FiRefreshCw, FiSave, FiSend, FiCheckCircle, FiXCircle} from 'react-icons/fi';
+import {FiRefreshCw, FiSave, FiSend} from 'react-icons/fi';
 import Page from '../../../components/common/Page';
 import {
   getSettingsSnapshot,
