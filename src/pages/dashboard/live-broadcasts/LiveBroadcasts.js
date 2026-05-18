@@ -29,7 +29,7 @@ import {
   TableContainer,
   Tag,
 } from '@chakra-ui/react';
-import {FiRefreshCw, FiTrash2, FiSearch, FiXCircle, FiVideo, FiUsers} from 'react-icons/fi';
+import {FiRefreshCw, FiTrash2, FiSearch, FiXCircle, FiUsers} from 'react-icons/fi';
 import Page from '../../../components/common/Page';
 import {
   getBroadcastAdminStats,

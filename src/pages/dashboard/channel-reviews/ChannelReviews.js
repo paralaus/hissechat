@@ -71,7 +71,7 @@ const ChannelReviews = () => {
   const toast = useToast();
 
   const [stats, setStats] = useState(null);
-  const [loadingStats, setLoadingStats] = useState(false);
+  const [, setLoadingStats] = useState(false);
 
   const [items, setItems] = useState([]);
   const [page, setPage] = useState(1);

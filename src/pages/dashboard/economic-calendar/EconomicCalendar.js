@@ -1,6 +1,5 @@
 import React, {useEffect, useState, useCallback} from 'react';
 import {
-  Box,
   SimpleGrid,
   Text,
   Button,
@@ -19,8 +18,6 @@ import {
   HStack,
   VStack,
   Heading,
-  IconButton,
-  Divider,
   Spinner,
   Table,
   Thead,
@@ -29,7 +26,6 @@ import {
   Th,
   Td,
   TableContainer,
-  Tooltip,
   Tag,
   TagLabel,
 } from '@chakra-ui/react';
