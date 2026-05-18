@@ -301,6 +301,34 @@ export const getPurchases = async params => {
   return apiClient.get('/purchases', {params});
 };
 
+export const getPurchaseAdminStats = async () => {
+  return apiClient.get('/purchases/admin/stats');
+};
+
+export const getPurchaseAdminList = async params => {
+  return apiClient.get('/purchases/admin/list', {params});
+};
+
+export const getPurchaseAdminDetail = async id => {
+  return apiClient.get(`/purchases/admin/${id}`);
+};
+
+export const adminSyncUserPurchases = async userId => {
+  return apiClient.post(`/purchases/admin/sync/${userId}`);
+};
+
+export const adminRefundPurchase = async (id, reason) => {
+  return apiClient.post(`/purchases/admin/${id}/refund`, {reason});
+};
+
+export const adminExtendPurchase = async (id, days) => {
+  return apiClient.post(`/purchases/admin/${id}/extend`, {days});
+};
+
+export const adminForceExpirePurchase = async id => {
+  return apiClient.post(`/purchases/admin/${id}/expire`);
+};
+
 export const getNotifications = async params => {
   return apiClient.get('/notifications', {params});
 };
@@ -435,6 +463,14 @@ export const updateBlacklist = async (id, body) => {
 
 export const createBlacklist = async body => {
   return apiClient.post('/blacklist', body);
+};
+
+export const bulkCreateBlacklist = async body => {
+  return apiClient.post('/blacklist/bulk', body);
+};
+
+export const getBlacklistStats = async () => {
+  return apiClient.get('/blacklist/stats');
 };
 
 export const getChannelsOfUser = async (id, params) => {
@@ -676,4 +712,195 @@ export const closePollAdmin = async pollId => {
 
 export const deletePollAdmin = async pollId => {
   return apiClient.delete(`/polls/${pollId}/admin`);
+};
+
+// ============== AI Servisi (tensorflow_api) Admin ==============
+export const getAiServiceStatus = async () => {
+  return apiClient.get('/tensorflow/admin/status');
+};
+
+export const getAiServiceHealth = async () => {
+  return apiClient.get('/tensorflow/health');
+};
+
+export const clearAiCache = async (prefix) => {
+  const body = prefix ? { prefix } : {};
+  return apiClient.post('/tensorflow/admin/cache/clear', body);
+};
+
+export const getAiRagStats = async () => {
+  return apiClient.get('/tensorflow/admin/rag/stats');
+};
+
+export const testAiChat = async ({ question, detailLevel = 'standard' }) => {
+  return apiClient.post('/tensorflow/admin/test-chat', { question, detailLevel });
+};
+
+// ============== Price Alerts (Admin) ==============
+export const getAdminPriceAlerts = async params => {
+  return apiClient.get('/price-alerts/admin', {params});
+};
+
+export const getAdminPriceAlertStats = async () => {
+  return apiClient.get('/price-alerts/admin/stats');
+};
+
+export const getAdminPriceAlert = async id => {
+  return apiClient.get(`/price-alerts/admin/${id}`);
+};
+
+export const cancelAdminPriceAlert = async id => {
+  return apiClient.post(`/price-alerts/admin/${id}/cancel`);
+};
+
+export const deleteAdminPriceAlert = async id => {
+  return apiClient.delete(`/price-alerts/admin/${id}`);
+};
+
+// ============== Economic Calendar (Admin) ==============
+export const getEconomicCalendarStatus = async () => {
+  return apiClient.get('/markets/economic-calendar/admin/status');
+};
+
+export const getEconomicCalendarEvents = async (params) => {
+  return apiClient.get('/markets/economic-calendar/admin/events', { params });
+};
+
+export const clearEconomicCalendarCache = async () => {
+  return apiClient.post('/markets/economic-calendar/admin/cache/clear');
+};
+
+export const refreshEconomicCalendarCache = async (body = {}) => {
+  return apiClient.post('/markets/economic-calendar/admin/cache/refresh', body);
+};
+
+// News & Bookmark moderation
+export const getNewsAdminStats = async () => {
+  return apiClient.get('/markets/news/admin/stats');
+};
+
+export const getNewsAdminList = async (params) => {
+  return apiClient.get('/markets/news/admin/list', { params });
+};
+
+export const deleteAdminNews = async (newsId) => {
+  return apiClient.delete(`/markets/news/admin/${newsId}`);
+};
+
+export const getAdminBookmarks = async (params) => {
+  return apiClient.get('/markets/news/admin/bookmarks', { params });
+};
+
+export const deleteAdminBookmark = async (bookmarkId) => {
+  return apiClient.delete(`/markets/news/admin/bookmarks/${bookmarkId}`);
+};
+
+// Live Broadcast / Conference moderation
+export const getBroadcastAdminStats = async () => {
+  return apiClient.get('/conferences/admin/stats');
+};
+
+export const getBroadcastAdminList = async (params) => {
+  return apiClient.get('/conferences/admin/list', { params });
+};
+
+export const forceEndBroadcast = async (roomId) => {
+  return apiClient.post(`/conferences/admin/${roomId}/force-end`);
+};
+
+export const adminKickBroadcastParticipant = async (roomId, userId) => {
+  return apiClient.post(`/conferences/admin/${roomId}/kick`, { userId });
+};
+
+export const deleteBroadcast = async (conferenceId) => {
+  return apiClient.delete(`/conferences/admin/${conferenceId}`);
+};
+
+// Channel Reviews & Ratings moderation
+export const getChannelReviewAdminStats = async () => {
+  return apiClient.get('/channel-reviews/admin/stats');
+};
+
+export const getChannelReviewAdminList = async (params) => {
+  return apiClient.get('/channel-reviews/admin/list', { params });
+};
+
+export const getChannelReviewAdminDetail = async (reviewId) => {
+  return apiClient.get(`/channel-reviews/admin/${reviewId}`);
+};
+
+export const deleteChannelReviewAdmin = async (reviewId) => {
+  return apiClient.delete(`/channel-reviews/admin/${reviewId}`);
+};
+
+export const bulkDeleteChannelReviews = async (ids) => {
+  return apiClient.post('/channel-reviews/admin/bulk-delete', { ids });
+};
+
+// System Settings (runtime config)
+export const getSettingsSnapshot = async () => {
+  return apiClient.get('/settings/admin/snapshot');
+};
+
+export const getSettingsList = async () => {
+  return apiClient.get('/settings/admin/list');
+};
+
+export const upsertSetting = async (key, value) => {
+  return apiClient.post('/settings/admin/upsert', { key, value });
+};
+
+export const bulkUpsertSettings = async (entries) => {
+  return apiClient.post('/settings/admin/bulk-upsert', { entries });
+};
+
+export const deleteSetting = async (key) => {
+  return apiClient.delete(`/settings/admin/${key}`);
+};
+
+export const sendTestEmail = async (to) => {
+  return apiClient.post('/settings/admin/test-email', { to });
+};
+
+// Notification Templates
+export const getNotificationTemplates = async (params) => {
+  return apiClient.get('/notification-templates/admin', { params });
+};
+export const getNotificationTemplate = async (id) => {
+  return apiClient.get(`/notification-templates/admin/${id}`);
+};
+export const createNotificationTemplate = async (body) => {
+  return apiClient.post('/notification-templates/admin', body);
+};
+export const updateNotificationTemplate = async (id, body) => {
+  return apiClient.patch(`/notification-templates/admin/${id}`, body);
+};
+export const deleteNotificationTemplate = async (id) => {
+  return apiClient.delete(`/notification-templates/admin/${id}`);
+};
+export const previewNotificationTemplate = async (id, variables) => {
+  return apiClient.post(`/notification-templates/admin/${id}/preview`, { variables });
+};
+
+// Scheduled Notifications
+export const getScheduledNotifications = async (params) => {
+  return apiClient.get('/scheduled-notifications/admin', { params });
+};
+export const getScheduledNotification = async (id) => {
+  return apiClient.get(`/scheduled-notifications/admin/${id}`);
+};
+export const createScheduledNotification = async (body) => {
+  return apiClient.post('/scheduled-notifications/admin', body);
+};
+export const updateScheduledNotification = async (id, body) => {
+  return apiClient.patch(`/scheduled-notifications/admin/${id}`, body);
+};
+export const cancelScheduledNotification = async (id) => {
+  return apiClient.post(`/scheduled-notifications/admin/${id}/cancel`);
+};
+export const deleteScheduledNotification = async (id) => {
+  return apiClient.delete(`/scheduled-notifications/admin/${id}`);
+};
+export const dispatchScheduledNotification = async (id) => {
+  return apiClient.post(`/scheduled-notifications/admin/${id}/dispatch`);
 };

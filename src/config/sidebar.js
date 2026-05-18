@@ -14,6 +14,12 @@ import {
   FiLayers,
   FiVideo,
   FiDatabase,
+  FiCalendar,
+  FiBookmark,
+  FiStar,
+  FiSliders,
+  FiFileText,
+  FiClock,
 } from 'react-icons/fi';
 import {AiOutlineUserAdd, AiOutlineProduct} from 'react-icons/ai';
 import {BiLineChart} from 'react-icons/bi';
@@ -347,6 +353,72 @@ export const sidebarRoutes = [
     name: 'Video Konferanslar',
     icon: FiVideo,
     path: routes.conferences.path,
+    group: 'Sistem',
+  },
+  {
+    name: 'AI Servisi',
+    icon: FiCpu,
+    path: routes.aiService.path,
+    group: 'Sistem',
+  },
+  {
+    name: 'Yasaklı Kelimeler',
+    icon: FiShield,
+    path: routes.profanityWords.path,
+    group: 'Sistem',
+  },
+  {
+    name: 'Fiyat Alarmları',
+    icon: FiBell,
+    path: routes.priceAlerts.path,
+    group: 'Sistem',
+  },
+  {
+    name: 'Ekonomik Takvim',
+    icon: FiCalendar,
+    path: routes.economicCalendar.path,
+    group: 'Sistem',
+  },
+  {
+    name: 'Haber Moderasyonu',
+    icon: FiBookmark,
+    path: routes.newsModeration.path,
+    group: 'Sistem',
+  },
+  {
+    name: 'Canlı Yayınlar',
+    icon: FiVideo,
+    path: routes.liveBroadcasts.path,
+    group: 'Sistem',
+  },
+  {
+    name: 'Satın Alma Yönetimi',
+    icon: RiMoneyDollarCircleFill,
+    path: routes.purchaseManagement.path,
+    group: 'Sistem',
+  },
+  {
+    name: 'Kanal Yorumları',
+    icon: FiStar,
+    path: routes.channelReviews.path,
+    group: 'Sistem',
+  },
+  {
+    name: 'Sistem Ayarları',
+    icon: FiSliders,
+    path: routes.systemSettings.path,
+    group: 'Sistem',
+  },
+  {
+    name: 'Bildirim Şablonları',
+    icon: FiFileText,
+    path: routes.notificationTemplates.path,
+    group: 'Sistem',
+  },
+  {
+    name: 'Zamanlanmış Bildirimler',
+    icon: FiClock,
+    path: routes.scheduledNotifications.path,
     group: 'Sistem',
   },
   {

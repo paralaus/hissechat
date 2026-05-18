@@ -54,6 +54,17 @@ import Moderation from '../pages/dashboard/moderation/Moderation';
 import ArchivedMessages from '../pages/dashboard/messaging/ArchivedMessages';
 import Conferences from '../pages/dashboard/conferences/Conferences';
 import DbStats from '../pages/dashboard/database/DbStats';
+import AiService from '../pages/dashboard/ai-service/AiService';
+import ProfanityWords from '../pages/dashboard/profanity-words/ProfanityWords';
+import PriceAlerts from '../pages/dashboard/price-alerts/PriceAlerts';
+import EconomicCalendar from '../pages/dashboard/economic-calendar/EconomicCalendar';
+import NewsModeration from '../pages/dashboard/news-moderation/NewsModeration';
+import LiveBroadcasts from '../pages/dashboard/live-broadcasts/LiveBroadcasts';
+import PurchaseManagement from '../pages/dashboard/purchase-management/PurchaseManagement';
+import ChannelReviews from '../pages/dashboard/channel-reviews/ChannelReviews';
+import SystemSettings from '../pages/dashboard/system-settings/SystemSettings';
+import NotificationTemplates from '../pages/dashboard/notification-templates/NotificationTemplates';
+import ScheduledNotifications from '../pages/dashboard/scheduled-notifications/ScheduledNotifications';
 import Subscriptions from '../pages/dashboard/subscriptions/Subscriptions';
 import Polls from '../pages/dashboard/polls/Polls';
 
@@ -119,6 +130,83 @@ const router = createBrowserRouter(
           element={<DbStats />}
           handle={{
             crumb: () => <Text>DB İstatistikleri</Text>,
+          }}
+        />
+        <Route
+          path="ai-service"
+          element={<AiService />}
+          handle={{
+            crumb: () => <Text>AI Servisi</Text>,
+          }}
+        />
+        <Route
+          path="profanity-words"
+          element={<ProfanityWords />}
+          handle={{
+            crumb: () => <Text>Yasaklı Kelimeler</Text>,
+          }}
+        />
+        <Route
+          path="price-alerts"
+          element={<PriceAlerts />}
+          handle={{
+            crumb: () => <Text>Fiyat Alarmları</Text>,
+          }}
+        />
+        <Route
+          path="economic-calendar"
+          element={<EconomicCalendar />}
+          handle={{
+            crumb: () => <Text>Ekonomik Takvim</Text>,
+          }}
+        />
+        <Route
+          path="news-moderation"
+          element={<NewsModeration />}
+          handle={{
+            crumb: () => <Text>Haber Moderasyonu</Text>,
+          }}
+        />
+        <Route
+          path="live-broadcasts"
+          element={<LiveBroadcasts />}
+          handle={{
+            crumb: () => <Text>Canlı Yayınlar</Text>,
+          }}
+        />
+        <Route
+          path="purchase-management"
+          element={<PurchaseManagement />}
+          handle={{
+            crumb: () => <Text>Satın Alma Yönetimi</Text>,
+          }}
+        />
+        <Route
+          path="channel-reviews"
+          element={<ChannelReviews />}
+          handle={{
+            crumb: () => <Text>Kanal Yorumları</Text>,
+          }}
+        />
+        <Route
+          path="system-settings"
+          element={<SystemSettings />}
+          handle={{
+            crumb: () => <Text>Sistem Ayarları</Text>,
+          }}
+        />
+        <Route
+          path="notification-templates"
+          element={<NotificationTemplates />}
+          handle={{
+            crumb: () => <Text>Bildirim Şablonları</Text>,
+          }}
+        />
+        <Route
+          path="scheduled-notifications"
+          element={<ScheduledNotifications />}
+          handle={{
+            crumb: () => <Text>Zamanlanmış Bildirimler</Text>,
           }}
         />
         <Route

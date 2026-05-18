@@ -149,4 +149,37 @@ export const routes = {
   polls: {
     path: '/dashboard/polls',
   },
+  aiService: {
+    path: '/dashboard/ai-service',
+  },
+  profanityWords: {
+    path: '/dashboard/profanity-words',
+  },
+  priceAlerts: {
+    path: '/dashboard/price-alerts',
+  },
+  economicCalendar: {
+    path: '/dashboard/economic-calendar',
+  },
+  newsModeration: {
+    path: '/dashboard/news-moderation',
+  },
+  liveBroadcasts: {
+    path: '/dashboard/live-broadcasts',
+  },
+  purchaseManagement: {
+    path: '/dashboard/purchase-management',
+  },
+  channelReviews: {
+    path: '/dashboard/channel-reviews',
+  },
+  systemSettings: {
+    path: '/dashboard/system-settings',
+  },
+  notificationTemplates: {
+    path: '/dashboard/notification-templates',
+  },
+  scheduledNotifications: {
+    path: '/dashboard/scheduled-notifications',
+  },
 };
