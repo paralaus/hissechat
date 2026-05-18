@@ -42,6 +42,7 @@ import {
   MenuButton,
   MenuList,
   MenuItem,
+  Code,
 } from '@chakra-ui/react';
 import {FiTrash2, FiPlus, FiSend, FiSlash, FiMoreVertical} from 'react-icons/fi';
 import Page from '../../../components/common/Page';
