@@ -104,7 +104,12 @@ const LiveBroadcasts = () => {
       if (activeFilter) params.isActive = activeFilter;
       if (search) params.search = search;
       const data = await getBroadcastAdminList(params);
-      setList(data);
+      setList({
+        results: Array.isArray(data?.results) ? data.results : [],
+        page: data?.page || 1,
+        totalPages: data?.totalPages || 1,
+        totalResults: data?.totalResults || 0,
+      });
     } catch (err) {
       toast({status: 'error', title: 'Liste alınamadı', description: err?.message || ''});
     } finally {
