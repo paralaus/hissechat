@@ -1,1 +1,1 @@
-export const POCKETBASE_URL = 'https://pocketbase-vsutx.ondigitalocean.app/';
+export const POCKETBASE_URL = 'https://pb.appandcapital.com.tr/';
