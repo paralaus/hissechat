@@ -145,6 +145,22 @@ const AiService = () => {
   const rates = data?.rate_limits || {};
   const env = data?.env || {};
 
+  // tensorflow_api LlmRouter.status() shape:
+  // { order, enabled, circuit_open, streaming, models, detail_routes, detail_routes_resolved }
+  const llmOrder = Array.isArray(llm?.order) ? llm.order : [];
+  const llmEnabled = llm?.enabled || {};
+  const llmCircuit = llm?.circuit_open || {};
+  const llmStreaming = llm?.streaming || {};
+  const llmModels = llm?.models || {};
+  const llmResolved = llm?.detail_routes_resolved || {};
+  // Birincil = sırasıyla aktif (enabled, circuit kapalı değil) ilk sağlayıcı
+  const llmPrimaryProvider = llmOrder.find(
+    (p) => llmEnabled[p] && !llmCircuit[p],
+  );
+  const llmFallbackProvider = llmOrder.find(
+    (p) => p !== llmPrimaryProvider && llmEnabled[p] && !llmCircuit[p],
+  );
+
   return (
     <Page title="AI Servisi" subtitle="tensorflow_api yönetim paneli">
       <Flex justify="space-between" align="center" mb={4} flexWrap="wrap" gap={2}>
@@ -188,11 +204,13 @@ const AiService = () => {
               <CardBody>
                 <Stat>
                   <StatLabel>LLM Sağlayıcı</StatLabel>
-                  <StatNumber fontSize="lg">
-                    {llm?.primary?.provider || llm?.provider || '-'}
+                  <StatNumber fontSize="lg" textTransform="capitalize">
+                    {llmPrimaryProvider || '-'}
                   </StatNumber>
                   <StatHelpText>
-                    {llm?.primary?.model || llm?.model || '-'}
+                    {llmPrimaryProvider
+                      ? llmModels[llmPrimaryProvider] || '-'
+                      : 'Anahtar tanımlı değil'}
                   </StatHelpText>
                 </Stat>
               </CardBody>
@@ -262,25 +280,178 @@ const AiService = () => {
               </CardHeader>
               <CardBody pt={2}>
                 {llm ? (
-                  <Stack spacing={1}>
-                    <InfoRow
-                      label="Birincil sağlayıcı"
-                      value={llm.primary?.provider}
-                    />
-                    <InfoRow label="Birincil model" value={llm.primary?.model} mono />
-                    <InfoRow
-                      label="Yedek sağlayıcı"
-                      value={llm.fallback?.provider || '-'}
-                    />
-                    <InfoRow
-                      label="Yedek model"
-                      value={llm.fallback?.model || '-'}
-                      mono
-                    />
-                    <InfoRow
-                      label="Bağlı"
-                      value={<StatusBadge on={llm.healthy ?? true} />}
-                    />
+                  <Stack spacing={3}>
+                    {/* Birincil / Yedek özeti */}
+                    <Stack spacing={1}>
+                      <InfoRow
+                        label="Birincil sağlayıcı"
+                        value={
+                          llmPrimaryProvider ? (
+                            <HStack spacing={2} justify="flex-end">
+                              <Text fontSize="sm" textTransform="capitalize">
+                                {llmPrimaryProvider}
+                              </Text>
+                              {llmStreaming[llmPrimaryProvider] && (
+                                <Badge colorScheme="blue" fontSize="0.65rem">
+                                  stream
+                                </Badge>
+                              )}
+                            </HStack>
+                          ) : (
+                            '-'
+                          )
+                        }
+                      />
+                      <InfoRow
+                        label="Birincil model"
+                        value={
+                          llmPrimaryProvider
+                            ? llmModels[llmPrimaryProvider]
+                            : '-'
+                        }
+                        mono
+                      />
+                      <InfoRow
+                        label="Yedek sağlayıcı"
+                        value={
+                          llmFallbackProvider ? (
+                            <Text
+                              fontSize="sm"
+                              textTransform="capitalize"
+                              textAlign="right">
+                              {llmFallbackProvider}
+                            </Text>
+                          ) : (
+                            '-'
+                          )
+                        }
+                      />
+                      <InfoRow
+                        label="Yedek model"
+                        value={
+                          llmFallbackProvider
+                            ? llmModels[llmFallbackProvider]
+                            : '-'
+                        }
+                        mono
+                      />
+                    </Stack>
+
+                    <Divider />
+
+                    {/* Sağlayıcı sırası ve durumları */}
+                    <Box>
+                      <Text fontSize="xs" color="gray.500" mb={2}>
+                        Sağlayıcı sırası (öncelik soldan sağa)
+                      </Text>
+                      <Stack spacing={1}>
+                        {llmOrder.map((p) => {
+                          const isEnabled = !!llmEnabled[p];
+                          const isOpen = !!llmCircuit[p];
+                          const canStream = !!llmStreaming[p];
+                          let color = 'gray';
+                          let label = 'Anahtar yok';
+                          if (isEnabled && !isOpen) {
+                            color = 'green';
+                            label = 'Hazır';
+                          } else if (isEnabled && isOpen) {
+                            color = 'orange';
+                            label = 'Devre kesik';
+                          }
+                          return (
+                            <Flex
+                              key={p}
+                              justify="space-between"
+                              align="center"
+                              gap={2}
+                              py={1}>
+                              <HStack>
+                                <Text
+                                  fontSize="sm"
+                                  textTransform="capitalize">
+                                  {p}
+                                </Text>
+                                <Code fontSize="xs" bg={codeBg}>
+                                  {llmModels[p] || '-'}
+                                </Code>
+                              </HStack>
+                              <HStack spacing={1}>
+                                {canStream && (
+                                  <Tooltip label="Streaming destekli">
+                                    <Badge
+                                      colorScheme="blue"
+                                      fontSize="0.65rem">
+                                      stream
+                                    </Badge>
+                                  </Tooltip>
+                                )}
+                                <Badge colorScheme={color} fontSize="0.65rem">
+                                  {label}
+                                </Badge>
+                              </HStack>
+                            </Flex>
+                          );
+                        })}
+                      </Stack>
+                    </Box>
+
+                    {/* detailLevel route'ları */}
+                    {Object.keys(llmResolved).length > 0 && (
+                      <>
+                        <Divider />
+                        <Box>
+                          <Text fontSize="xs" color="gray.500" mb={2}>
+                            Detay seviyesi yönlendirme
+                          </Text>
+                          <Stack spacing={1}>
+                            {['brief', 'standard', 'deep'].map((lvl) => {
+                              const r = llmResolved[lvl];
+                              if (!r) return null;
+                              return (
+                                <Flex
+                                  key={lvl}
+                                  justify="space-between"
+                                  align="center"
+                                  gap={2}
+                                  py={1}>
+                                  <Text
+                                    fontSize="sm"
+                                    textTransform="capitalize">
+                                    {lvl}
+                                  </Text>
+                                  <HStack spacing={2}>
+                                    <Text
+                                      fontSize="sm"
+                                      textTransform="capitalize"
+                                      color="gray.600">
+                                      {r.provider || '-'}
+                                    </Text>
+                                    <Code fontSize="xs" bg={codeBg}>
+                                      {r.model || '-'}
+                                    </Code>
+                                    <Badge
+                                      colorScheme={
+                                        r.enabled && !r.circuit_open
+                                          ? 'green'
+                                          : r.circuit_open
+                                          ? 'orange'
+                                          : 'gray'
+                                      }
+                                      fontSize="0.65rem">
+                                      {r.enabled && !r.circuit_open
+                                        ? 'Hazır'
+                                        : r.circuit_open
+                                        ? 'Devre kesik'
+                                        : 'Pasif'}
+                                    </Badge>
+                                  </HStack>
+                                </Flex>
+                              );
+                            })}
+                          </Stack>
+                        </Box>
+                      </>
+                    )}
                   </Stack>
                 ) : (
                   <Text fontSize="sm" color="gray.500">
