@@ -98,8 +98,8 @@ const PurchaseManagement = () => {
   const loadStats = useCallback(async () => {
     setLoadingStats(true);
     try {
-      const data = await getPurchaseAdminStats();
-      setStats(data);
+      const res = await getPurchaseAdminStats();
+      setStats(res.data);
     } catch (e) {
       toast({status: 'error', title: 'İstatistikler yüklenemedi', description: e.message});
     } finally {
@@ -116,7 +116,8 @@ const PurchaseManagement = () => {
       if (statusFilter === 'expired') params.isExpired = true;
       if (statusFilter === 'refunded') params.refundedOnly = true;
       if (search) params.search = search;
-      const data = await getPurchaseAdminList(params);
+      const res = await getPurchaseAdminList(params);
+      const data = res.data || {};
       setItems(data.results || []);
       setTotalPages(data.totalPages || 1);
       setTotalResults(data.totalResults || 0);
