@@ -38,7 +38,11 @@ const ReportDetail = () => {
             value={data?.subject}
             visible={!!data?.subject}
           />
-          <ReadOnlyInfo label={'Mesaj'} value={data?.message} />
+          <ReadOnlyInfo
+            label={'Açıklama'}
+            value={data?.message}
+            visible={!!data?.message}
+          />
           <ReadOnlyInfo
             label={'Oluşturulma Tarihi'}
             value={formatDate(data?.createdAt)}
