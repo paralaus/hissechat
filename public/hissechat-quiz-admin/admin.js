@@ -6,7 +6,7 @@ const LOCALE_URLS = {
 };
 const LANG_QUERY_PARAM = "lang";
 const LANG_STORAGE_KEY = "hissechat_lang";
-const API_BASE = window.HISSECHAT_API_BASE || "http://localhost:3000/v1";
+const API_BASE = window.HISSECHAT_API_BASE || "https://hissechat-4u7pv.ondigitalocean.app/v1";
 
 let localeData = null;
 let currentLanguage = DEFAULT_LANGUAGE;
