@@ -1,0 +1,301 @@
+{
+  "quiz": {
+    "documentTitle": "HisseChat — Hangi Ünlü Yatırımcıya Benziyorsun?",
+    "welcome": {
+      "eyebrow": "HisseChat",
+      "title": "Borsada sen kimsin gerçekten?",
+      "lead": "Sakin liman yatırımcısı mı, kriz avcısı mı, yoksa ekran başında kalp ritmini grafiğe bağlayanlardan mısın?",
+      "leadStrong": "12 soruyu cevapla, içindeki yatırımcı ortaya çıksın."
+    },
+    "buttons": {
+      "start": "Teste Başla",
+      "next": "Devam Et",
+      "copyText": "Metni Kopyala",
+      "copiedText": "Kopyalandı",
+      "copyTextManual": "Manuel Kopyala",
+      "copyLink": "Linki Kopyala",
+      "copiedLink": "Link Kopyalandı",
+      "shareX": "X'te Paylaş",
+      "restart": "Testi Yeniden Çöz",
+      "languageToggle": "EN"
+    },
+    "progress": {
+      "label": "Soru {current} / {total}",
+      "hint": "İçgüdüne güven ve devam et.",
+      "hints": [
+        "Spiker sesiyle: Ve ilk soruda tansiyon yükseliyor...",
+        "Yatırım günlüğün bu cevapları unutmayacak.",
+        "Kalbin başka, portföyün başka konuşuyor olabilir.",
+        "Bu noktada çoğu kişi 'bir kahve' molası verir.",
+        "Buradan sonrası karakterini ele verir.",
+        "Grafikler susar, içgüdüler konuşur.",
+        "Biraz dürüstlük, biraz cesaret: mükemmel karışım.",
+        "Bu soru tam ekran görüntüsü alınmalık.",
+        "Portföyün seni uzaktan izliyor.",
+        "Az kaldı, maskeler düşmek üzere.",
+        "Son viraj: şimdi vereceğin cevap kritik.",
+        "Final sorusu: efsane mi, efsane mi?"
+      ]
+    },
+    "result": {
+      "eyebrow": "Sonuç",
+      "metricsTitle": "Yatırımcı DNA",
+      "communityTitle": "Topluluk İstatistiği (Son 30 Gün)",
+      "shareLinkTitle": "Paylaşım Linki",
+      "resultLinkLabel": "Sonuç linki",
+      "shareTextTitle": "Paylaşım Metni",
+      "shareTextLabel": "Paylaşım metni",
+      "shareImageAlt": "Paylaşım kartı önizleme"
+    },
+    "messages": {
+      "shareLinkReady": "Kalıcı sonuç linkin hazır. Bu link paylaşıldığında aynı sonuç açılır.",
+      "shareLinkFallback": "Backend bağlantısı yoksa genel test linki kullanılır.",
+      "savingResult": "Sonucun kaydediliyor...",
+      "resultInvestor": "En çok benzediğin yatırımcılar: {investors}",
+      "resultTagline": "Aaaa Aynı Ben: {title}",
+      "nemesis": "Seni en çok sinir edecek yatırımcı tipi: {nemesis}",
+      "savedLoadingStats": "Sonucun kaydedildi. Topluluk istatistiği yükleniyor...",
+      "backendUnavailable": "Backend bağlantısı kurulamadığı için sonuç lokalde gösteriliyor.",
+      "shareLinkGenerationFailed": "Kalıcı link üretilemedi, genel test linki kullanılıyor.",
+      "firstResult": "İlk sonuçlardan birini sen oluşturdun.",
+      "topResultItem": "{title}: {count} kişi (%{percentage})",
+      "totalSubmissions": "Toplam {count} sonuç kaydı var.",
+      "statsUnavailable": "İstatistikler şu an getirilemedi.",
+      "showingSharedResult": "Paylaşılan sonuç gösteriliyor.",
+      "sharedResultLoadFailed": "Paylaşılan sonuç yüklenemedi, yeni test çözebilirsin.",
+      "resultLinkLine": "Sonuç linkim: {resultLink}"
+    },
+    "templates": {
+      "share": "Ben {emoji} {title} çıktım!\nRisk Seviyesi: {riskLabel}\nFOMO Seviyesi: %{fomo}\nKriz Dayanıklılığı: %{resilience}\n\nSen de testi çöz 👇"
+    },
+    "traitLabels": {
+      "risk": "Risk Seviyesi",
+      "patience": "Sabır Puanı",
+      "fomo": "FOMO Seviyesi",
+      "resilience": "Kriz Dayanıklılığı",
+      "manipulation": "Manipülasyona Açıklık",
+      "ego": "Ego Seviyesi"
+    },
+    "archetypes": {
+      "sessiz": {
+        "emoji": "🐢",
+        "title": "Sessiz İmparator",
+        "tagline": "Sakin limanların efendisi",
+        "investors": "Warren Buffett • Charlie Munger",
+        "description": "Senin dünyanda gürültü değil bilanço konuşur. Herkes sosyal medyada coşarken sen not defterine küçük bir yıldız koyup beklersin. Panik günlerinde bile sesini yükseltmeden hamle yapar, uzun vadede masayı toplamayı bilirsin.",
+        "riskLabel": "KONTROLLÜ",
+        "nemesis": "Momentum Canavarı"
+      },
+      "kaos": {
+        "emoji": "🦈",
+        "title": "Kaos Taciri",
+        "tagline": "Krizde fırsat avcısı",
+        "investors": "George Soros • Ray Dalio",
+        "description": "Piyasa sakin olduğunda sıkılırsın; senin sahnen volatil günler. Herkes kırmızı ekran görünce donarken sen senaryo yazar, ters köşe fırsatları koklarsın. Riskle dans edersin ama ritmi kaçırdığında bile geri dönüş planın hazırdır.",
+        "riskLabel": "YÜKSEK",
+        "nemesis": "Sessiz İmparator"
+      },
+      "dedektif": {
+        "emoji": "🧠",
+        "title": "Borsa Dedektifi",
+        "tagline": "Dipnotlardan geleceği okuyan",
+        "investors": "Peter Lynch • Benjamin Graham",
+        "description": "Bir hisseye bakınca fiyat değil hikayenin açıklarını görürsün. Başkalarının 'uçuyor' dediği yerde sen dipnot tarar, çarpan karşılaştırır, sessizce hükmünü verirsin. Kolay gaza gelmezsin; verin konuştuğu yerde son sözü genelde sen söylersin.",
+        "riskLabel": "ORTA",
+        "nemesis": "FOMO Prensi/Prensesi"
+      },
+      "momentum": {
+        "emoji": "⚡",
+        "title": "Momentum Canavarı",
+        "tagline": "Trend yakalayan hız makinesi",
+        "investors": "Jesse Livermore • Paul Tudor Jones",
+        "description": "Trend gördün mü refleksin düşünceden hızlı çalışır. Senin oyunun hız, zamanlama ve cesaret; doğru yakaladığında roket etkisi yaratırsın. Ama biliyorsun: bu kulvarda kemer takmayanı piyasa ilk virajda indirir.",
+        "riskLabel": "TEHLİKELİ",
+        "nemesis": "Sessiz İmparator"
+      },
+      "fomo": {
+        "emoji": "🎭",
+        "title": "FOMO Prensi/Prensesi",
+        "tagline": "Kaçanı kovalamaya yeminli",
+        "investors": "Cathie Wood",
+        "description": "Potansiyel gördüğünde gözlerin parlar, gelecek senaryolarını bir sezonluk dizi gibi kurarsın. Bazen erken, bazen geç girsen de heyecanın hiç eksilmez. Senin en güçlü yanın inanç, en riskli yanın da yine o inanç.",
+        "riskLabel": "DEĞİŞKEN",
+        "nemesis": "Soğuk Analist"
+      },
+      "kurt": {
+        "emoji": "🐺",
+        "title": "Kurt Trader",
+        "tagline": "Masaya yumruğu ilk vuran",
+        "investors": "Jordan Belfort",
+        "description": "Masaya yumruğunu koyan taraftasın: ya tam girersin ya hiç. Cesaretin yüksek, özgüvenin daha da yüksek; bu kombinasyon seni bazen zirveye bazen fırtınaya taşır. Oyunu izlemek değil, oyunu yönlendirmek istersin.",
+        "riskLabel": "ÇOK TEHLİKELİ",
+        "nemesis": "Borsa Dedektifi"
+      },
+      "soguk": {
+        "emoji": "🧊",
+        "title": "Soğuk Analist",
+        "tagline": "Kalabalığa ters giden radar",
+        "investors": "Michael Burry",
+        "description": "Kalabalık alkışlarken sen kaşını kaldıran kişisin. Coşku sana alarm gibi gelir; fiyatın değil mantığın peşinden gidersin. Erken uyarı sistemin kuvvetli olduğu için çoğu balonu daha patlamadan sezersin.",
+        "riskLabel": "SERT",
+        "nemesis": "FOMO Prensi/Prensesi"
+      }
+    },
+    "questions": [
+      {
+        "text": "1) Hissen bir günde %10 düştü. Ekrana bakarken ilk tepkin?",
+        "options": [
+          { "text": "Sessizce ekleme yaparım", "type": "sessiz", "traits": { "patience": 3, "risk": 1, "fomo": 0, "resilience": 2, "manipulation": 1, "ego": 1 } },
+          { "text": "Neden düştüğünü araştırırım", "type": "dedektif", "traits": { "patience": 2, "risk": 1, "fomo": 0, "resilience": 2, "manipulation": 1, "ego": 1 } },
+          { "text": "Panikle grafik açarım", "type": "momentum", "traits": { "patience": 0, "risk": 2, "fomo": 3, "resilience": 1, "manipulation": 2, "ego": 1 } },
+          { "text": "Kesin manipülasyon var derim", "type": "soguk", "traits": { "patience": 2, "risk": 1, "fomo": 0, "resilience": 2, "manipulation": 0, "ego": 1 } },
+          { "text": "Risk buysa heyecan da budur", "type": "kurt", "traits": { "patience": 0, "risk": 3, "fomo": 2, "resilience": 2, "manipulation": 3, "ego": 3 } }
+        ]
+      },
+      {
+        "text": "2) Aşağıdakilerden hangisi yatırım mottona daha çok benziyor?",
+        "options": [
+          { "text": "Sabır servet yaratır", "type": "sessiz", "traits": { "patience": 3, "risk": 0, "fomo": 0, "resilience": 2, "manipulation": 1, "ego": 1 } },
+          { "text": "Trend dostundur", "type": "momentum", "traits": { "patience": 0, "risk": 2, "fomo": 2, "resilience": 1, "manipulation": 2, "ego": 2 } },
+          { "text": "Herkes korkarken al", "type": "kaos", "traits": { "patience": 2, "risk": 2, "fomo": 1, "resilience": 3, "manipulation": 2, "ego": 2 } },
+          { "text": "Bilançoya bakmadan almam", "type": "dedektif", "traits": { "patience": 2, "risk": 0, "fomo": 0, "resilience": 2, "manipulation": 1, "ego": 1 } },
+          { "text": "Risk almıyorsan yaşamıyorsun", "type": "kurt", "traits": { "patience": 0, "risk": 3, "fomo": 2, "resilience": 2, "manipulation": 2, "ego": 3 } }
+        ]
+      },
+      {
+        "text": "3) Gece 03:40. Normal insanlar uyurken sen ne yapıyorsun?",
+        "options": [
+          { "text": "Uyuyorum", "type": "sessiz", "traits": { "patience": 2, "risk": 0, "fomo": 0, "resilience": 2, "manipulation": 1, "ego": 0 } },
+          { "text": "ABD vadeli işlemlerine bakıyorum", "type": "kaos", "traits": { "patience": 1, "risk": 2, "fomo": 1, "resilience": 3, "manipulation": 2, "ego": 2 } },
+          { "text": "Twitter/X dedikodusu okuyorum", "type": "fomo", "traits": { "patience": 0, "risk": 2, "fomo": 3, "resilience": 1, "manipulation": 3, "ego": 2 } },
+          { "text": "Grafik çiziyorum", "type": "momentum", "traits": { "patience": 1, "risk": 2, "fomo": 1, "resilience": 2, "manipulation": 2, "ego": 2 } },
+          { "text": "Kriptoya bakıp hayatı sorguluyorum", "type": "fomo", "traits": { "patience": 0, "risk": 2, "fomo": 3, "resilience": 1, "manipulation": 2, "ego": 1 } }
+        ]
+      },
+      {
+        "text": "4) Sana 'kesin bilgi' diye bir tüyo geldi. Hamlen ne olur?",
+        "options": [
+          { "text": "Güvenmem", "type": "sessiz", "traits": { "patience": 3, "risk": 0, "fomo": 0, "resilience": 2, "manipulation": 0, "ego": 1 } },
+          { "text": "Önce araştırırım", "type": "dedektif", "traits": { "patience": 2, "risk": 1, "fomo": 0, "resilience": 2, "manipulation": 1, "ego": 1 } },
+          { "text": "Küçük girerim", "type": "momentum", "traits": { "patience": 1, "risk": 2, "fomo": 1, "resilience": 1, "manipulation": 2, "ego": 2 } },
+          { "text": "Full risk", "type": "kurt", "traits": { "patience": 0, "risk": 3, "fomo": 2, "resilience": 2, "manipulation": 3, "ego": 3 } },
+          { "text": "Bu işte kesin terslik var", "type": "soguk", "traits": { "patience": 2, "risk": 0, "fomo": 0, "resilience": 2, "manipulation": 0, "ego": 1 } }
+        ]
+      },
+      {
+        "text": "5) Piyasada seni geceleri en çok düşündüren şey ne?",
+        "options": [
+          { "text": "Büyük fırsatı kaçırmak", "type": "fomo", "traits": { "patience": 0, "risk": 2, "fomo": 3, "resilience": 1, "manipulation": 2, "ego": 2 } },
+          { "text": "Yanlış şirkete bağlanmak", "type": "dedektif", "traits": { "patience": 2, "risk": 0, "fomo": 0, "resilience": 2, "manipulation": 1, "ego": 1 } },
+          { "text": "Panikle satmak", "type": "sessiz", "traits": { "patience": 3, "risk": 0, "fomo": 1, "resilience": 2, "manipulation": 1, "ego": 1 } },
+          { "text": "Yıllarca yerinde saymak", "type": "momentum", "traits": { "patience": 0, "risk": 2, "fomo": 2, "resilience": 1, "manipulation": 2, "ego": 2 } },
+          { "text": "Fakirken haklı olmak", "type": "kaos", "traits": { "patience": 1, "risk": 2, "fomo": 1, "resilience": 3, "manipulation": 2, "ego": 2 } }
+        ]
+      },
+      {
+        "text": "6) Portföyün dışarıdan bakınca en çok hangi kelimeyi çağrıştırıyor?",
+        "options": [
+          { "text": "Güvenli ve ağır", "type": "sessiz", "traits": { "patience": 3, "risk": 0, "fomo": 0, "resilience": 2, "manipulation": 1, "ego": 1 } },
+          { "text": "Dağınık ama potansiyelli", "type": "fomo", "traits": { "patience": 1, "risk": 2, "fomo": 3, "resilience": 1, "manipulation": 2, "ego": 2 } },
+          { "text": "Tam kaos", "type": "kurt", "traits": { "patience": 0, "risk": 3, "fomo": 2, "resilience": 2, "manipulation": 3, "ego": 3 } },
+          { "text": "Sadece veri odaklı", "type": "dedektif", "traits": { "patience": 2, "risk": 0, "fomo": 0, "resilience": 2, "manipulation": 1, "ego": 1 } },
+          { "text": "Bir hisse düşerse hepimiz düşeriz", "type": "momentum", "traits": { "patience": 0, "risk": 3, "fomo": 2, "resilience": 1, "manipulation": 2, "ego": 2 } }
+        ]
+      },
+      {
+        "text": "7) Sosyal medyada yatırım konuşulurken seni en çok ne delirtiyor?",
+        "options": [
+          { "text": "Fake guru hesaplar", "type": "soguk", "traits": { "patience": 2, "risk": 1, "fomo": 0, "resilience": 2, "manipulation": 0, "ego": 1 } },
+          { "text": "Uçacak kaçacak tayfa", "type": "sessiz", "traits": { "patience": 2, "risk": 0, "fomo": 0, "resilience": 2, "manipulation": 1, "ego": 1 } },
+          { "text": "Bilmeden konuşanlar", "type": "dedektif", "traits": { "patience": 2, "risk": 0, "fomo": 0, "resilience": 2, "manipulation": 1, "ego": 1 } },
+          { "text": "Her düşüşte felaket tellalları", "type": "kaos", "traits": { "patience": 1, "risk": 2, "fomo": 1, "resilience": 3, "manipulation": 2, "ego": 2 } },
+          { "text": "Ben demiştimciler", "type": "momentum", "traits": { "patience": 0, "risk": 2, "fomo": 1, "resilience": 1, "manipulation": 2, "ego": 2 } }
+        ]
+      },
+      {
+        "text": "8) Hayatın yatırım filmi olsa seni hangi rol anlatırdı?",
+        "options": [
+          { "text": "Sessiz dahi", "type": "sessiz", "traits": { "patience": 3, "risk": 0, "fomo": 0, "resilience": 2, "manipulation": 1, "ego": 1 } },
+          { "text": "Kumarbaz stratejist", "type": "kaos", "traits": { "patience": 1, "risk": 2, "fomo": 1, "resilience": 3, "manipulation": 2, "ego": 2 } },
+          { "text": "Çılgın trader", "type": "momentum", "traits": { "patience": 0, "risk": 3, "fomo": 2, "resilience": 1, "manipulation": 2, "ego": 2 } },
+          { "text": "Soğuk analist", "type": "soguk", "traits": { "patience": 2, "risk": 1, "fomo": 0, "resilience": 3, "manipulation": 0, "ego": 1 } },
+          { "text": "Karizmatik manipülatör", "type": "kurt", "traits": { "patience": 0, "risk": 3, "fomo": 2, "resilience": 2, "manipulation": 3, "ego": 3 } }
+        ]
+      },
+      {
+        "text": "9) Yeni bir hisseye bakınca ilk radarına ne girer?",
+        "options": [
+          { "text": "Bilanço", "type": "dedektif", "traits": { "patience": 2, "risk": 0, "fomo": 0, "resilience": 2, "manipulation": 1, "ego": 1 } },
+          { "text": "Haber", "type": "kaos", "traits": { "patience": 1, "risk": 1, "fomo": 1, "resilience": 2, "manipulation": 2, "ego": 2 } },
+          { "text": "Grafik", "type": "momentum", "traits": { "patience": 0, "risk": 2, "fomo": 2, "resilience": 1, "manipulation": 2, "ego": 2 } },
+          { "text": "Hacim", "type": "momentum", "traits": { "patience": 0, "risk": 2, "fomo": 1, "resilience": 1, "manipulation": 2, "ego": 2 } },
+          { "text": "Forumlar", "type": "fomo", "traits": { "patience": 0, "risk": 2, "fomo": 3, "resilience": 1, "manipulation": 3, "ego": 2 } }
+        ]
+      },
+      {
+        "text": "10) Tek cümlede: Yatırım senin için ne demek?",
+        "options": [
+          { "text": "Özgürlük", "type": "sessiz", "traits": { "patience": 2, "risk": 1, "fomo": 0, "resilience": 2, "manipulation": 1, "ego": 1 } },
+          { "text": "Güç", "type": "kurt", "traits": { "patience": 0, "risk": 3, "fomo": 2, "resilience": 2, "manipulation": 3, "ego": 3 } },
+          { "text": "Oyun", "type": "momentum", "traits": { "patience": 0, "risk": 2, "fomo": 2, "resilience": 1, "manipulation": 2, "ego": 2 } },
+          { "text": "Zeka savaşı", "type": "soguk", "traits": { "patience": 2, "risk": 1, "fomo": 0, "resilience": 3, "manipulation": 0, "ego": 2 } },
+          { "text": "Adrenalin", "type": "fomo", "traits": { "patience": 0, "risk": 3, "fomo": 3, "resilience": 1, "manipulation": 2, "ego": 2 } }
+        ]
+      },
+      {
+        "text": "11) Arkadaşların seni yatırımcı olarak en çok nasıl anlatır?",
+        "options": [
+          { "text": "Sabırlı", "type": "sessiz", "traits": { "patience": 3, "risk": 0, "fomo": 0, "resilience": 2, "manipulation": 1, "ego": 1 } },
+          { "text": "Tehlikeli", "type": "kurt", "traits": { "patience": 0, "risk": 3, "fomo": 2, "resilience": 2, "manipulation": 3, "ego": 3 } },
+          { "text": "Zeki", "type": "dedektif", "traits": { "patience": 2, "risk": 1, "fomo": 0, "resilience": 2, "manipulation": 1, "ego": 2 } },
+          { "text": "Takıntılı", "type": "soguk", "traits": { "patience": 2, "risk": 1, "fomo": 0, "resilience": 3, "manipulation": 0, "ego": 2 } },
+          { "text": "Deli", "type": "momentum", "traits": { "patience": 0, "risk": 3, "fomo": 2, "resilience": 1, "manipulation": 2, "ego": 2 } }
+        ]
+      },
+      {
+        "text": "12) Bir gecede zengin olma şansın var ama %50 ihtimalle sıfırlanacaksın. Ne yaparsın?",
+        "options": [
+          { "text": "Asla", "type": "sessiz", "traits": { "patience": 3, "risk": 0, "fomo": 0, "resilience": 2, "manipulation": 1, "ego": 1 } },
+          { "text": "Çok düşünürüm", "type": "dedektif", "traits": { "patience": 2, "risk": 1, "fomo": 0, "resilience": 2, "manipulation": 1, "ego": 1 } },
+          { "text": "Küçük risk alırım", "type": "kaos", "traits": { "patience": 1, "risk": 2, "fomo": 1, "resilience": 3, "manipulation": 2, "ego": 2 } },
+          { "text": "Tam girerim", "type": "kurt", "traits": { "patience": 0, "risk": 3, "fomo": 2, "resilience": 2, "manipulation": 3, "ego": 3 } },
+          { "text": "Zaten hayat da böyle değil mi?", "type": "fomo", "traits": { "patience": 0, "risk": 2, "fomo": 3, "resilience": 1, "manipulation": 2, "ego": 2 } }
+        ]
+      }
+    ]
+  },
+  "admin": {
+    "documentTitle": "HisseChat Quiz Admin",
+    "eyebrow": "HisseChat",
+    "title": "Investor Quiz Admin",
+    "summaryTitle": "Genel Özet",
+    "topResultsTitle": "Son 30 Gün Top Sonuçlar",
+    "traitsTitle": "Trait Ortalamaları",
+    "recentTitle": "Son Kayıtlar",
+    "buttons": {
+      "languageToggle": "EN"
+    },
+    "messages": {
+      "loading": "Veriler yükleniyor...",
+      "updated": "Veriler güncel.",
+      "loadFailed": "Admin verileri yüklenemedi. Backend bağlantısını kontrol et."
+    },
+    "summary": {
+      "total": "Toplam Kayıt (30 gün): {count}",
+      "topResult": "En Yüksek Sonuç: {title}",
+      "reportTime": "Rapor Üretim Zamanı: {time}"
+    },
+    "items": {
+      "topResult": "{title}: {count} kişi (%{percentage})",
+      "recent": "{resultTitle} | Risk: {risk} | Tarih: {date}"
+    },
+    "traits": {
+      "risk": "Risk Ortalaması: %{value}",
+      "patience": "Sabır Ortalaması: %{value}",
+      "fomo": "FOMO Ortalaması: %{value}",
+      "resilience": "Kriz Dayanıklılığı Ortalaması: %{value}",
+      "manipulation": "Manipülasyona Açıklık Ortalaması: %{value}",
+      "ego": "Ego Ortalaması: %{value}"
+    }
+  }
+}

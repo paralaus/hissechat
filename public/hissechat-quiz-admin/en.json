@@ -1,0 +1,301 @@
+{
+  "quiz": {
+    "documentTitle": "HisseChat — Which Famous Investor Are You?",
+    "welcome": {
+      "eyebrow": "HisseChat",
+      "title": "Who are you in the market, really?",
+      "lead": "A cool-headed strategist? A chaos trader? A silent billionaire? Or a full-blown FOMO machine?",
+      "leadStrong": "Answer 12 questions and reveal the investor inside you."
+    },
+    "buttons": {
+      "start": "Start Quiz",
+      "next": "Continue",
+      "copyText": "Copy Text",
+      "copiedText": "Copied",
+      "copyTextManual": "Copy Manually",
+      "copyLink": "Copy Link",
+      "copiedLink": "Link Copied",
+      "shareX": "Share on X",
+      "restart": "Retake Quiz",
+      "languageToggle": "TR"
+    },
+    "progress": {
+      "label": "Question {current} / {total}",
+      "hint": "Trust your gut and keep going.",
+      "hints": [
+        "Narrator voice: tension is rising...",
+        "Your investing diary will remember this answer.",
+        "Your heart and your portfolio may disagree.",
+        "Most people need a coffee at this point.",
+        "From here on, your true style appears.",
+        "Charts go silent, instincts speak.",
+        "A little honesty and a little courage.",
+        "This one is screenshot-worthy.",
+        "Your portfolio is watching from afar.",
+        "Almost there, masks are dropping.",
+        "Final bend: this answer matters.",
+        "Last question. Hero move or safe move?"
+      ]
+    },
+    "result": {
+      "eyebrow": "Result",
+      "metricsTitle": "Investor DNA",
+      "communityTitle": "Community Stats (Last 30 Days)",
+      "shareLinkTitle": "Share Link",
+      "resultLinkLabel": "Result link",
+      "shareTextTitle": "Share Text",
+      "shareTextLabel": "Share text",
+      "shareImageAlt": "Share card preview"
+    },
+    "messages": {
+      "shareLinkReady": "Your permanent result link is ready. Anyone opening it will see this exact result.",
+      "shareLinkFallback": "If backend is unavailable, the generic quiz link will be used.",
+      "savingResult": "Saving your result...",
+      "resultInvestor": "Investors you resemble most: {investors}",
+      "resultTagline": "This is so me: {title}",
+      "nemesis": "Investor type that would annoy you the most: {nemesis}",
+      "savedLoadingStats": "Your result is saved. Loading community stats...",
+      "backendUnavailable": "Backend connection is unavailable, showing the result locally.",
+      "shareLinkGenerationFailed": "Could not generate a permanent link, using the generic quiz link.",
+      "firstResult": "You just became one of the first results.",
+      "topResultItem": "{title}: {count} people (%{percentage})",
+      "totalSubmissions": "Total {count} saved results.",
+      "statsUnavailable": "Community stats are currently unavailable.",
+      "showingSharedResult": "Showing shared result.",
+      "sharedResultLoadFailed": "Could not load shared result, you can take a new quiz.",
+      "resultLinkLine": "My result link: {resultLink}"
+    },
+    "templates": {
+      "share": "I got {emoji} {title}!\nRisk Level: {riskLabel}\nFOMO Level: %{fomo}\nCrisis Resilience: %{resilience}\n\nTake the quiz too 👇"
+    },
+    "traitLabels": {
+      "risk": "Risk Level",
+      "patience": "Patience Score",
+      "fomo": "FOMO Level",
+      "resilience": "Crisis Resilience",
+      "manipulation": "Manipulation Exposure",
+      "ego": "Ego Level"
+    },
+    "archetypes": {
+      "sessiz": {
+        "emoji": "🐢",
+        "title": "Silent Emperor",
+        "tagline": "Master of calm waters",
+        "investors": "Warren Buffett • Charlie Munger",
+        "description": "Patient, disciplined, and long-term focused. You chase value, not hype.",
+        "riskLabel": "CONTROLLED",
+        "nemesis": "Momentum Beast"
+      },
+      "kaos": {
+        "emoji": "🦈",
+        "title": "Chaos Trader",
+        "tagline": "Opportunity hunter in chaos",
+        "investors": "George Soros • Ray Dalio",
+        "description": "You feed on crises. While the world burns, you hunt opportunities.",
+        "riskLabel": "HIGH",
+        "nemesis": "Silent Emperor"
+      },
+      "dedektif": {
+        "emoji": "🧠",
+        "title": "Market Detective",
+        "tagline": "Reads the future in footnotes",
+        "investors": "Peter Lynch • Benjamin Graham",
+        "description": "You spot details before everyone else. Others see hype, you see balance sheets.",
+        "riskLabel": "MEDIUM",
+        "nemesis": "FOMO Prince/Princess"
+      },
+      "momentum": {
+        "emoji": "⚡",
+        "title": "Momentum Beast",
+        "tagline": "High-speed trend rider",
+        "investors": "Jesse Livermore • Paul Tudor Jones",
+        "description": "Speed, risk, and instinct. If there is a trend, you are already there.",
+        "riskLabel": "RISKY",
+        "nemesis": "Silent Emperor"
+      },
+      "fomo": {
+        "emoji": "🎭",
+        "title": "FOMO Prince/Princess",
+        "tagline": "Always chasing the next move",
+        "investors": "Cathie Wood",
+        "description": "High imagination, high volatility. You keep believing even on the way down.",
+        "riskLabel": "VARIABLE",
+        "nemesis": "Cold Analyst"
+      },
+      "kurt": {
+        "emoji": "🐺",
+        "title": "Wolf Trader",
+        "tagline": "The first to slam the table",
+        "investors": "Jordan Belfort",
+        "description": "Charisma, courage, aggression. For you, the market is a battlefield.",
+        "riskLabel": "VERY RISKY",
+        "nemesis": "Market Detective"
+      },
+      "soguk": {
+        "emoji": "🧊",
+        "title": "Cold Analyst",
+        "tagline": "Radar that goes against the crowd",
+        "investors": "Michael Burry",
+        "description": "When everyone is euphoric, you get suspicious. You sense bubbles early.",
+        "riskLabel": "HARD",
+        "nemesis": "FOMO Prince/Princess"
+      }
+    },
+    "questions": [
+      {
+        "text": "1) Your stock dropped 10% in one day.",
+        "options": [
+          { "text": "I quietly add more", "type": "sessiz", "traits": { "patience": 3, "risk": 1, "fomo": 0, "resilience": 2, "manipulation": 1, "ego": 1 } },
+          { "text": "I investigate why it dropped", "type": "dedektif", "traits": { "patience": 2, "risk": 1, "fomo": 0, "resilience": 2, "manipulation": 1, "ego": 1 } },
+          { "text": "I panic and open the chart", "type": "momentum", "traits": { "patience": 0, "risk": 2, "fomo": 3, "resilience": 1, "manipulation": 2, "ego": 1 } },
+          { "text": "I say this is market manipulation", "type": "soguk", "traits": { "patience": 2, "risk": 1, "fomo": 0, "resilience": 2, "manipulation": 0, "ego": 1 } },
+          { "text": "If there is risk, there is excitement", "type": "kurt", "traits": { "patience": 0, "risk": 3, "fomo": 2, "resilience": 2, "manipulation": 3, "ego": 3 } }
+        ]
+      },
+      {
+        "text": "2) Your favorite investing quote?",
+        "options": [
+          { "text": "Patience creates wealth", "type": "sessiz", "traits": { "patience": 3, "risk": 0, "fomo": 0, "resilience": 2, "manipulation": 1, "ego": 1 } },
+          { "text": "The trend is your friend", "type": "momentum", "traits": { "patience": 0, "risk": 2, "fomo": 2, "resilience": 1, "manipulation": 2, "ego": 2 } },
+          { "text": "Buy when everyone is afraid", "type": "kaos", "traits": { "patience": 2, "risk": 2, "fomo": 1, "resilience": 3, "manipulation": 2, "ego": 2 } },
+          { "text": "I never buy without checking balance sheets", "type": "dedektif", "traits": { "patience": 2, "risk": 0, "fomo": 0, "resilience": 2, "manipulation": 1, "ego": 1 } },
+          { "text": "If you do not take risk, you are not living", "type": "kurt", "traits": { "patience": 0, "risk": 3, "fomo": 2, "resilience": 2, "manipulation": 2, "ego": 3 } }
+        ]
+      },
+      {
+        "text": "3) It is 03:40 at night. What are you doing?",
+        "options": [
+          { "text": "Sleeping", "type": "sessiz", "traits": { "patience": 2, "risk": 0, "fomo": 0, "resilience": 2, "manipulation": 1, "ego": 0 } },
+          { "text": "Checking US futures", "type": "kaos", "traits": { "patience": 1, "risk": 2, "fomo": 1, "resilience": 3, "manipulation": 2, "ego": 2 } },
+          { "text": "Reading rumors on Twitter/X", "type": "fomo", "traits": { "patience": 0, "risk": 2, "fomo": 3, "resilience": 1, "manipulation": 3, "ego": 2 } },
+          { "text": "Drawing charts", "type": "momentum", "traits": { "patience": 1, "risk": 2, "fomo": 1, "resilience": 2, "manipulation": 2, "ego": 2 } },
+          { "text": "Checking crypto and questioning life", "type": "fomo", "traits": { "patience": 0, "risk": 2, "fomo": 3, "resilience": 1, "manipulation": 2, "ego": 1 } }
+        ]
+      },
+      {
+        "text": "4) You got an inside tip.",
+        "options": [
+          { "text": "I do not trust it", "type": "sessiz", "traits": { "patience": 3, "risk": 0, "fomo": 0, "resilience": 2, "manipulation": 0, "ego": 1 } },
+          { "text": "I research first", "type": "dedektif", "traits": { "patience": 2, "risk": 1, "fomo": 0, "resilience": 2, "manipulation": 1, "ego": 1 } },
+          { "text": "I enter with a small position", "type": "momentum", "traits": { "patience": 1, "risk": 2, "fomo": 1, "resilience": 1, "manipulation": 2, "ego": 2 } },
+          { "text": "All in", "type": "kurt", "traits": { "patience": 0, "risk": 3, "fomo": 2, "resilience": 2, "manipulation": 3, "ego": 3 } },
+          { "text": "There must be something fishy", "type": "soguk", "traits": { "patience": 2, "risk": 0, "fomo": 0, "resilience": 2, "manipulation": 0, "ego": 1 } }
+        ]
+      },
+      {
+        "text": "5) What is your biggest fear?",
+        "options": [
+          { "text": "Missing a huge opportunity", "type": "fomo", "traits": { "patience": 0, "risk": 2, "fomo": 3, "resilience": 1, "manipulation": 2, "ego": 2 } },
+          { "text": "Getting attached to the wrong company", "type": "dedektif", "traits": { "patience": 2, "risk": 0, "fomo": 0, "resilience": 2, "manipulation": 1, "ego": 1 } },
+          { "text": "Selling in panic", "type": "sessiz", "traits": { "patience": 3, "risk": 0, "fomo": 1, "resilience": 2, "manipulation": 1, "ego": 1 } },
+          { "text": "Stagnating for years", "type": "momentum", "traits": { "patience": 0, "risk": 2, "fomo": 2, "resilience": 1, "manipulation": 2, "ego": 2 } },
+          { "text": "Being right while staying poor", "type": "kaos", "traits": { "patience": 1, "risk": 2, "fomo": 1, "resilience": 3, "manipulation": 2, "ego": 2 } }
+        ]
+      },
+      {
+        "text": "6) How is your portfolio?",
+        "options": [
+          { "text": "Safe and heavy", "type": "sessiz", "traits": { "patience": 3, "risk": 0, "fomo": 0, "resilience": 2, "manipulation": 1, "ego": 1 } },
+          { "text": "Messy but full of potential", "type": "fomo", "traits": { "patience": 1, "risk": 2, "fomo": 3, "resilience": 1, "manipulation": 2, "ego": 2 } },
+          { "text": "Pure chaos", "type": "kurt", "traits": { "patience": 0, "risk": 3, "fomo": 2, "resilience": 2, "manipulation": 3, "ego": 3 } },
+          { "text": "Data-driven only", "type": "dedektif", "traits": { "patience": 2, "risk": 0, "fomo": 0, "resilience": 2, "manipulation": 1, "ego": 1 } },
+          { "text": "If one stock falls, we all fall", "type": "momentum", "traits": { "patience": 0, "risk": 3, "fomo": 2, "resilience": 1, "manipulation": 2, "ego": 2 } }
+        ]
+      },
+      {
+        "text": "7) What annoys you most on social media?",
+        "options": [
+          { "text": "Fake guru accounts", "type": "soguk", "traits": { "patience": 2, "risk": 1, "fomo": 0, "resilience": 2, "manipulation": 0, "ego": 1 } },
+          { "text": "Moon boys and hype squads", "type": "sessiz", "traits": { "patience": 2, "risk": 0, "fomo": 0, "resilience": 2, "manipulation": 1, "ego": 1 } },
+          { "text": "People who speak without knowing", "type": "dedektif", "traits": { "patience": 2, "risk": 0, "fomo": 0, "resilience": 2, "manipulation": 1, "ego": 1 } },
+          { "text": "Doom prophets at every drop", "type": "kaos", "traits": { "patience": 1, "risk": 2, "fomo": 1, "resilience": 3, "manipulation": 2, "ego": 2 } },
+          { "text": "The \"I told you so\" crowd", "type": "momentum", "traits": { "patience": 0, "risk": 2, "fomo": 1, "resilience": 1, "manipulation": 2, "ego": 2 } }
+        ]
+      },
+      {
+        "text": "8) If there were an investor movie, who would play you?",
+        "options": [
+          { "text": "Silent genius", "type": "sessiz", "traits": { "patience": 3, "risk": 0, "fomo": 0, "resilience": 2, "manipulation": 1, "ego": 1 } },
+          { "text": "Gambler strategist", "type": "kaos", "traits": { "patience": 1, "risk": 2, "fomo": 1, "resilience": 3, "manipulation": 2, "ego": 2 } },
+          { "text": "Crazy trader", "type": "momentum", "traits": { "patience": 0, "risk": 3, "fomo": 2, "resilience": 1, "manipulation": 2, "ego": 2 } },
+          { "text": "Cold analyst", "type": "soguk", "traits": { "patience": 2, "risk": 1, "fomo": 0, "resilience": 3, "manipulation": 0, "ego": 1 } },
+          { "text": "Charismatic manipulator", "type": "kurt", "traits": { "patience": 0, "risk": 3, "fomo": 2, "resilience": 2, "manipulation": 3, "ego": 3 } }
+        ]
+      },
+      {
+        "text": "9) What do you check first?",
+        "options": [
+          { "text": "Balance sheet", "type": "dedektif", "traits": { "patience": 2, "risk": 0, "fomo": 0, "resilience": 2, "manipulation": 1, "ego": 1 } },
+          { "text": "News", "type": "kaos", "traits": { "patience": 1, "risk": 1, "fomo": 1, "resilience": 2, "manipulation": 2, "ego": 2 } },
+          { "text": "Chart", "type": "momentum", "traits": { "patience": 0, "risk": 2, "fomo": 2, "resilience": 1, "manipulation": 2, "ego": 2 } },
+          { "text": "Volume", "type": "momentum", "traits": { "patience": 0, "risk": 2, "fomo": 1, "resilience": 1, "manipulation": 2, "ego": 2 } },
+          { "text": "Forums", "type": "fomo", "traits": { "patience": 0, "risk": 2, "fomo": 3, "resilience": 1, "manipulation": 3, "ego": 2 } }
+        ]
+      },
+      {
+        "text": "10) What is investing for you?",
+        "options": [
+          { "text": "Freedom", "type": "sessiz", "traits": { "patience": 2, "risk": 1, "fomo": 0, "resilience": 2, "manipulation": 1, "ego": 1 } },
+          { "text": "Power", "type": "kurt", "traits": { "patience": 0, "risk": 3, "fomo": 2, "resilience": 2, "manipulation": 3, "ego": 3 } },
+          { "text": "Game", "type": "momentum", "traits": { "patience": 0, "risk": 2, "fomo": 2, "resilience": 1, "manipulation": 2, "ego": 2 } },
+          { "text": "Battle of minds", "type": "soguk", "traits": { "patience": 2, "risk": 1, "fomo": 0, "resilience": 3, "manipulation": 0, "ego": 2 } },
+          { "text": "Adrenaline", "type": "fomo", "traits": { "patience": 0, "risk": 3, "fomo": 3, "resilience": 1, "manipulation": 2, "ego": 2 } }
+        ]
+      },
+      {
+        "text": "11) How would people describe you as an investor?",
+        "options": [
+          { "text": "Patient", "type": "sessiz", "traits": { "patience": 3, "risk": 0, "fomo": 0, "resilience": 2, "manipulation": 1, "ego": 1 } },
+          { "text": "Dangerous", "type": "kurt", "traits": { "patience": 0, "risk": 3, "fomo": 2, "resilience": 2, "manipulation": 3, "ego": 3 } },
+          { "text": "Smart", "type": "dedektif", "traits": { "patience": 2, "risk": 1, "fomo": 0, "resilience": 2, "manipulation": 1, "ego": 2 } },
+          { "text": "Obsessive", "type": "soguk", "traits": { "patience": 2, "risk": 1, "fomo": 0, "resilience": 3, "manipulation": 0, "ego": 2 } },
+          { "text": "Crazy", "type": "momentum", "traits": { "patience": 0, "risk": 3, "fomo": 2, "resilience": 1, "manipulation": 2, "ego": 2 } }
+        ]
+      },
+      {
+        "text": "12) You can become rich overnight, but with a 50% chance of losing everything.",
+        "options": [
+          { "text": "Never", "type": "sessiz", "traits": { "patience": 3, "risk": 0, "fomo": 0, "resilience": 2, "manipulation": 1, "ego": 1 } },
+          { "text": "I would think a lot", "type": "dedektif", "traits": { "patience": 2, "risk": 1, "fomo": 0, "resilience": 2, "manipulation": 1, "ego": 1 } },
+          { "text": "I would take a small risk", "type": "kaos", "traits": { "patience": 1, "risk": 2, "fomo": 1, "resilience": 3, "manipulation": 2, "ego": 2 } },
+          { "text": "I am all in", "type": "kurt", "traits": { "patience": 0, "risk": 3, "fomo": 2, "resilience": 2, "manipulation": 3, "ego": 3 } },
+          { "text": "Is not life already like that?", "type": "fomo", "traits": { "patience": 0, "risk": 2, "fomo": 3, "resilience": 1, "manipulation": 2, "ego": 2 } }
+        ]
+      }
+    ]
+  },
+  "admin": {
+    "documentTitle": "HisseChat Quiz Admin",
+    "eyebrow": "HisseChat",
+    "title": "Investor Quiz Admin",
+    "summaryTitle": "General Summary",
+    "topResultsTitle": "Top Results in Last 30 Days",
+    "traitsTitle": "Trait Averages",
+    "recentTitle": "Recent Records",
+    "buttons": {
+      "languageToggle": "TR"
+    },
+    "messages": {
+      "loading": "Loading data...",
+      "updated": "Data is up to date.",
+      "loadFailed": "Could not load admin data. Check backend connection."
+    },
+    "summary": {
+      "total": "Total Records (30 days): {count}",
+      "topResult": "Top Result: {title}",
+      "reportTime": "Report Time: {time}"
+    },
+    "items": {
+      "topResult": "{title}: {count} people (%{percentage})",
+      "recent": "{resultTitle} | Risk: {risk} | Date: {date}"
+    },
+    "traits": {
+      "risk": "Risk Average: %{value}",
+      "patience": "Patience Average: %{value}",
+      "fomo": "FOMO Average: %{value}",
+      "resilience": "Crisis Resilience Average: %{value}",
+      "manipulation": "Manipulation Exposure Average: %{value}",
+      "ego": "Ego Average: %{value}"
+    }
+  }
+}

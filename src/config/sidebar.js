@@ -422,6 +422,13 @@ export const sidebarRoutes = [
     group: 'Sistem',
   },
   {
+    name: 'HisseChat Quiz Admin',
+    icon: FiPieChart,
+    path: '/hissechat-quiz-admin/',
+    external: true,
+    group: 'Sistem',
+  },
+  {
     name: 'Ayarlar',
     icon: FiSettings,
     path: routes.settings.path,

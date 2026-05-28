@@ -52,6 +52,7 @@ import {playNotificationSound} from '../../utils/sound';
 const SIDEBAR_WIDTH = '260px';
 
 const getIsActive = (link, location) => {
+  if (link.external) return false;
   const [linkPath, linkSearch] = link.path.split('?');
 
   const isPathMatch = link.exact
@@ -255,7 +256,8 @@ const Links = ({onClose}) => {
                         <NavItem
                           key={child.name}
                           path={child.path}
-                          isActive={getIsActive(child, location)}
+                          external={child.external}
+                          isActive={child.external ? false : getIsActive(child, location)}
                           icon={child.icon}
                           onClose={onClose}>
                           {child.name}
@@ -272,7 +274,8 @@ const Links = ({onClose}) => {
                 key={link.name}
                 icon={link.icon}
                 path={link.path}
-                isActive={getIsActive(link, location)}
+                external={link.external}
+                isActive={link.external ? false : getIsActive(link, location)}
                 onClose={onClose}>
                 {link.name}
               </NavItem>
@@ -288,6 +291,7 @@ const NavItem = ({
   icon,
   children,
   path,
+  external,
   isActive,
   isParent,
   collapsed,
@@ -335,6 +339,19 @@ const NavItem = ({
 
   if (isParent) {
     return <Box role="group">{content}</Box>;
+  }
+
+  if (external) {
+    return (
+      <Link
+        href={path}
+        style={{textDecoration: 'none'}}
+        _focus={{boxShadow: 'none'}}
+        role="group"
+        onClick={onClose}>
+        {content}
+      </Link>
+    );
   }
 
   return (

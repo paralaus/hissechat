@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="tr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title id="adminDocumentTitle">HisseChat Quiz Admin</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="lang-bar">
+      <button id="languageToggleBtn" class="btn ghost lang-toggle" type="button">EN</button>
+    </div>
+    <main class="app">
+      <section class="card visible">
+        <p id="adminEyebrow" class="eyebrow">HisseChat</p>
+        <h1 id="adminTitle">Investor Quiz Admin</h1>
+        <p id="adminStatus" class="small-muted">Veriler yükleniyor...</p>
+      </section>
+
+      <section class="card visible metrics">
+        <h3 id="summaryTitle">Genel Özet</h3>
+        <ul id="summaryList"></ul>
+      </section>
+
+      <section class="card visible community-box">
+        <h3 id="topResultsTitle">Son 30 Gün Top Sonuçlar</h3>
+        <ul id="topResultsList" class="community-list"></ul>
+      </section>
+
+      <section class="card visible community-box">
+        <h3 id="traitsTitle">Trait Ortalamaları</h3>
+        <ul id="traitsList" class="community-list"></ul>
+      </section>
+
+      <section class="card visible community-box">
+        <h3 id="recentTitle">Son Kayıtlar</h3>
+        <ul id="recentList" class="community-list"></ul>
+      </section>
+    </main>
+
+    <script src="./admin.js"></script>
+  </body>
+</html>
