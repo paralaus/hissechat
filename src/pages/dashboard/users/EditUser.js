@@ -24,7 +24,7 @@ import {useMutation, useQuery} from '@tanstack/react-query';
 import * as yup from 'yup';
 import {api} from '../../../api';
 import {getErrorMessage} from '../../../utils/string';
-import {roles} from '../../../config';
+import {roles, BlacklistScope} from '../../../config';
 import {formatDate} from '../../../utils/date';
 import useDisclosure from '../../../hooks/useDisclosure';
 import {routes} from '../../../config/routes';
@@ -50,7 +50,9 @@ const EditUser = () => {
   const {id} = useParams();
   const toast = useToast();
   const deleteModal = useDisclosure();
+  const banDevicesModal = useDisclosure();
   const cancelRef = useRef();
+  const banDevicesCancelRef = useRef();
   const navigate = useNavigate();
 
   const {
@@ -72,6 +74,45 @@ const EditUser = () => {
   const {mutateAsync: deleteUser, isPending: isDeleting} = useMutation({
     mutationFn: () => api.deleteUser(id),
   });
+
+  const {
+    data: userDevices,
+    refetch: refetchUserDevices,
+  } = useQuery({
+    queryKey: ['user-device-ids', id],
+    queryFn: () => api.getUserDeviceIds(id).then(res => res.data),
+    enabled: !!id,
+  });
+
+  const {mutateAsync: banDevices, isPending: isBanningDevices} = useMutation({
+    mutationFn: () =>
+      api.banUserDevices({
+        userId: id,
+        scopes: [
+          BlacklistScope.Register,
+          BlacklistScope.ChannelMessage,
+        ],
+      }),
+  });
+
+  const onBanDevices = async () => {
+    try {
+      const {data: result} = await banDevices();
+      banDevicesModal.close();
+      toast({
+        title: `${result?.createdCount ?? 0} yeni kayit olusturuldu (${result?.skippedCount ?? 0} mevcut).`,
+        status: 'success',
+        position: 'top',
+      });
+      refetchUserDevices();
+    } catch (error) {
+      toast({
+        title: getErrorMessage(error),
+        status: 'error',
+        position: 'top',
+      });
+    }
+  };
 
   const {data} = useQuery({
     queryKey: ['user', id],
@@ -254,6 +295,14 @@ const EditUser = () => {
             )}
             <ReadOnlyInfo label={'Bildirim Tokenı'} value={data?.deviceToken} />
             <ReadOnlyInfo label={'Cihaz'} value={data?.platform} />
+            <ReadOnlyInfo
+              label={'Kayıtlı Cihaz ID’leri'}
+              value={
+                userDevices?.deviceIds?.length
+                  ? userDevices.deviceIds.join(', ')
+                  : '—'
+              }
+            />
             <Button
               isLoading={isPending}
               colorScheme={'primary'}
@@ -265,7 +314,17 @@ const EditUser = () => {
           </Flex>
         </form>
       </Box>
-      <Box display={'flex'} justifyContent={'end'}>
+      <Box display={'flex'} justifyContent={'end'} gap={'2'}>
+        <Button
+          isLoading={isBanningDevices}
+          colorScheme={'orange'}
+          isDisabled={isBanningDevices || !userDevices?.deviceIds?.length}
+          type="button"
+          my={'4'}
+          onClick={banDevicesModal.open}
+          fontSize={'sm'}>
+          Tüm Cihazlarını Banla
+        </Button>
         <Button
           isLoading={isDeleting}
           colorScheme={'red'}
@@ -312,6 +371,40 @@ const EditUser = () => {
                 isLoading={isDeleting}
                 disabled={isDeleting}>
                 Sil
+              </Button>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialogOverlay>
+      </AlertDialog>
+      <AlertDialog
+        closeOnOverlayClick
+        closeOnEsc
+        leastDestructiveRef={banDevicesCancelRef}
+        isOpen={banDevicesModal.isOpen}
+        onClose={banDevicesModal.close}>
+        <AlertDialogOverlay>
+          <AlertDialogContent>
+            <AlertDialogHeader fontSize="lg" fontWeight="bold">
+              Tüm Cihazlarını Banla
+            </AlertDialogHeader>
+            <AlertDialogBody>
+              Kullanıcının {userDevices?.deviceIds?.length ?? 0} cihazı için
+              "Kayıt Olma" ve "Kanala Mesaj Gönderme" kapsamlarında blacklist
+              kaydı oluşturulacak. Devam edilsin mi?
+            </AlertDialogBody>
+            <AlertDialogFooter>
+              <Button
+                ref={banDevicesCancelRef}
+                onClick={banDevicesModal.close}>
+                Vazgeç
+              </Button>
+              <Button
+                colorScheme="orange"
+                onClick={onBanDevices}
+                ml={3}
+                isLoading={isBanningDevices}
+                disabled={isBanningDevices}>
+                Banla
               </Button>
             </AlertDialogFooter>
           </AlertDialogContent>

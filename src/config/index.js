@@ -87,6 +87,7 @@ export const BlacklistValueType = {
   Email: 'email',
   Ip: 'ip',
   Text: 'text',
+  DeviceId: 'device-id',
 };
 
 export const blacklistValueTypes = Object.values(BlacklistValueType);
@@ -104,6 +105,7 @@ export const BlacklistValueLabel = {
   [BlacklistValueType.Email]: 'E-posta',
   [BlacklistValueType.Ip]: 'IP Adresi',
   [BlacklistValueType.Text]: 'Metin',
+  [BlacklistValueType.DeviceId]: 'Cihaz ID',
 };
 
 export const BlacklistScopeLabel = {
@@ -114,7 +116,11 @@ export const BlacklistScopeLabel = {
 
 export const BlacklistValueConfig = {
   [BlacklistScope.Register]: {
-    values: [BlacklistValueType.Email, BlacklistValueType.Ip],
+    values: [
+      BlacklistValueType.Email,
+      BlacklistValueType.Ip,
+      BlacklistValueType.DeviceId,
+    ],
     resource: {
       enabled: false,
     },
@@ -124,6 +130,7 @@ export const BlacklistValueConfig = {
       BlacklistValueType.UserId,
       BlacklistValueType.Email,
       BlacklistValueType.Ip,
+      BlacklistValueType.DeviceId,
     ],
     resource: {
       enabled: true,

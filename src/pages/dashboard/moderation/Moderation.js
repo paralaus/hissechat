@@ -293,26 +293,75 @@ const MessageCard = ({
             {/* Message Content */}
             <Box
               p={3}
-              bg={message.isBlocked ? 'red.100' : 'gray.50'}
+              bg={
+                message.isReport
+                  ? 'yellow.50'
+                  : message.isBlocked
+                    ? 'red.100'
+                    : 'gray.50'
+              }
+              borderLeft={message.isReport ? '4px solid' : undefined}
+              borderLeftColor={message.isReport ? 'orange.400' : undefined}
               borderRadius="md"
               position="relative">
-              
+
               {message.isReport && (
-                 <Text fontSize="xs" fontWeight="bold" color="gray.500" mb={1}>
-                    Şikayet Detayı:
-                 </Text>
+                <Box mb={2}>
+                  <Text
+                    fontSize="xs"
+                    fontWeight="bold"
+                    color="orange.600"
+                    textTransform="uppercase"
+                    letterSpacing="wide"
+                    mb={1}>
+                    Şikayet Açıklaması
+                  </Text>
+                  {message.user && (
+                    <HStack spacing={2} mb={1}>
+                      <Avatar
+                        size="2xs"
+                        name={message.user?.fullname}
+                        src={getCombinedLogoUrl(message.user?.thumbnail)}
+                      />
+                      <Text fontSize="xs" color="gray.700">
+                        <b>Şikayet eden:</b>{' '}
+                        {message.user?.fullname || message.user?.email || '—'}
+                        {message.user?.email
+                          ? ` (${message.user.email})`
+                          : ''}
+                      </Text>
+                    </HStack>
+                  )}
+                  {message.sub && (
+                    <Text fontSize="xs" color="gray.700" mb={1}>
+                      <b>Şikayet edilen:</b>{' '}
+                      {message.sub?.fullname || message.sub?.email || '—'}
+                    </Text>
+                  )}
+                  {message.createdAt && (
+                    <Text fontSize="xs" color="gray.500" mb={1}>
+                      {new Date(message.createdAt).toLocaleString('tr-TR')}
+                    </Text>
+                  )}
+                </Box>
               )}
 
               {message.subject && (
                 <Text fontSize="sm" fontWeight="bold" mb={1}>
-                  Konu: {message.subject}
+                  {message.isReport ? 'Konu' : 'Konu'}: {message.subject}
                 </Text>
               )}
-              
-              {message.text && (
+
+              {message.text ? (
                 <Text fontSize="sm" whiteSpace="pre-wrap">
                   {message.text}
                 </Text>
+              ) : (
+                message.isReport && (
+                  <Text fontSize="sm" fontStyle="italic" color="gray.500">
+                    (Açıklama yazılmamış)
+                  </Text>
+                )
               )}
 
               {/* Media indicator */}
@@ -1215,13 +1264,29 @@ const Moderation = () => {
         isBanned: true,
         banDuration,
       }),
-    onSuccess: () => {
+    onSuccess: async (_res, variables) => {
+      // Best-effort: kullanıcının tüm kayıtlı cihazlarını da blacklist'e ekle
+      // (eski client'lar deviceId göndermez → cihaz yoksa hiçbir kayıt oluşmaz,
+      // ana ban işlemi etkilenmez).
+      let deviceBanInfo = '';
+      try {
+        const {data: result} = await api.banUserDevices({
+          userId: variables.userId,
+          scopes: ['register', 'channel-message'],
+        });
+        if (result?.createdCount > 0) {
+          deviceBanInfo = ` (${result.createdCount} cihaz blacklist'e eklendi)`;
+        }
+      } catch (_) {
+        // sessiz devam et — ana ban zaten başarılı
+      }
       toast({
-        title: 'Kullanıcı banlandı',
+        title: `Kullanıcı banlandı${deviceBanInfo}`,
         status: 'success',
-        duration: 2000,
+        duration: 2500,
       });
       queryClient.invalidateQueries(['moderation-messages']);
+      queryClient.invalidateQueries(['banned-users-moderation']);
     },
     onError: error => {
       toast({

@@ -473,6 +473,14 @@ export const getBlacklistStats = async () => {
   return apiClient.get('/blacklist/stats');
 };
 
+export const banUserDevices = async body => {
+  return apiClient.post('/blacklist/ban-user-devices', body);
+};
+
+export const getUserDeviceIds = async userId => {
+  return apiClient.get(`/blacklist/user-devices/${userId}`);
+};
+
 export const getChannelsOfUser = async (id, params) => {
   return apiClient.get(`/users/${id}/channels`, {params});
 };
