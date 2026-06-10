@@ -1,6 +1,8 @@
-import React, {useRef} from 'react';
+import React, {useRef, useState} from 'react';
 import {useNavigate, useParams} from 'react-router-dom';
 import {
+  Avatar,
+  Badge,
   Box,
   Button,
   Flex,
@@ -27,7 +29,7 @@ import {
 import {FiImage, FiUpload} from 'react-icons/fi';
 import {useForm} from 'react-hook-form';
 import {yupResolver} from '@hookform/resolvers/yup';
-import {useMutation, useQuery} from '@tanstack/react-query';
+import {useMutation, useQuery, useQueryClient} from '@tanstack/react-query';
 import * as yup from 'yup';
 import {getErrorMessage} from '../../../utils/string';
 import {formatDate} from '../../../utils/date';
@@ -65,6 +67,212 @@ const object = {
 };
 
 const schema = yup.object().shape(object);
+
+const VipMemberManagement = ({channelId}) => {
+  const toast = useToast();
+  const queryClient = useQueryClient();
+  const [selectedUser, setSelectedUser] = useState(null);
+  const [emailToAdd, setEmailToAdd] = useState('');
+  const [memberSearch, setMemberSearch] = useState('');
+
+  const loadUsers = async query => {
+    const {data} = await api.getUsers({query});
+    return (data?.results || []).map(user => ({
+      label: `${user?.fullname || 'İsimsiz'}${user?.email ? ` (${user.email})` : ''}`,
+      value: user?.id,
+    }));
+  };
+
+  const {data: members, isFetching: isMembersLoading} = useQuery({
+    queryKey: ['vipMembers', channelId, memberSearch],
+    queryFn: () =>
+      api
+        .getVipChannelMembers(channelId, memberSearch ? {search: memberSearch} : undefined)
+        .then(res => res.data),
+  });
+
+  const grantMutation = useMutation({
+    mutationFn: userId => api.grantVipMemberAccess(channelId, userId),
+    onSuccess: () => {
+      setSelectedUser(null);
+      queryClient.invalidateQueries(['vipMembers', channelId]);
+      toast({title: 'Kullanıcı VIP kanala eklendi', status: 'success', position: 'top'});
+    },
+    onError: error => {
+      toast({
+        title: getErrorMessage(error),
+        status: 'error',
+        position: 'top',
+      });
+    },
+  });
+
+  const revokeMutation = useMutation({
+    mutationFn: userId => api.revokeVipMemberAccess(channelId, userId),
+    onSuccess: () => {
+      queryClient.invalidateQueries(['vipMembers', channelId]);
+      toast({title: 'Kullanıcının VIP kanal erişimi kaldırıldı', status: 'success', position: 'top'});
+    },
+    onError: error => {
+      toast({
+        title: getErrorMessage(error),
+        status: 'error',
+        position: 'top',
+      });
+    },
+  });
+
+  const addUserByEmail = async () => {
+    const normalizedEmail = emailToAdd.trim().toLowerCase();
+    if (!normalizedEmail) return;
+
+    try {
+      const {data} = await api.getUsers({query: normalizedEmail, limit: 20});
+      const matchedUser = (data?.results || []).find(
+        user => String(user?.email || '').trim().toLowerCase() === normalizedEmail,
+      );
+
+      if (!matchedUser?.id) {
+        toast({
+          title: 'Bu email ile kullanıcı bulunamadı',
+          status: 'warning',
+          position: 'top',
+        });
+        return;
+      }
+
+      await grantMutation.mutateAsync(matchedUser.id);
+      setEmailToAdd('');
+    } catch (error) {
+      toast({
+        title: getErrorMessage(error),
+        status: 'error',
+        position: 'top',
+      });
+    }
+  };
+
+  return (
+    <Box mt={8} bg="gray.50" p={4} borderRadius="md">
+      <Flex align="center" gap={3} mb={2}>
+        <Text fontSize="lg" fontWeight="bold">
+          VIP Üyelik Yönetimi
+        </Text>
+        <Badge colorScheme="purple" px={2} py={1} borderRadius="md">
+          Sadece VIP
+        </Badge>
+      </Flex>
+      <Text fontSize="sm" color="gray.600" mb={4}>
+        Apple veya Google dışındaki kullanıcıları bu kanala manuel olarak ekleyebilir ya da kaldırabilirsiniz.
+      </Text>
+
+      <Box bg="white" p={4} borderRadius="md" boxShadow="sm" mb={4}>
+        <Text fontWeight="bold" mb={3}>
+          Kullanıcı Ekle
+        </Text>
+        <Flex gap={3} direction={{base: 'column', md: 'row'}} align={{base: 'stretch', md: 'center'}}>
+          <Box flex="1">
+            <AsyncSelect
+              value={selectedUser}
+              onChange={val => setSelectedUser(val || null)}
+              placeholder="Kullanıcı seçin (isim veya email ile arayın)"
+              loadOptions={loadUsers}
+              cacheOptions
+              defaultOptions
+            />
+          </Box>
+          <Button
+            colorScheme="green"
+            onClick={() => selectedUser?.value && grantMutation.mutate(selectedUser.value)}
+            isDisabled={!selectedUser?.value}
+            isLoading={grantMutation.isPending}>
+            Kullanıcı Ekle
+          </Button>
+        </Flex>
+        <Text fontSize="xs" color="gray.500" mt={2}>
+          Bu alan sadece VIP kanallarda görünür ve kullanıcıyı doğrudan kanal üyeliğine ekler.
+        </Text>
+      </Box>
+
+      <Box bg="white" p={4} borderRadius="md" boxShadow="sm" mb={4}>
+        <Text fontWeight="bold" mb={3}>
+          Email ile Direkt Ekle
+        </Text>
+        <Flex gap={3} direction={{base: 'column', md: 'row'}} align={{base: 'stretch', md: 'center'}}>
+          <Input
+            flex="1"
+            placeholder="ornek@email.com"
+            value={emailToAdd}
+            onChange={e => setEmailToAdd(e.target.value)}
+          />
+          <Button
+            colorScheme="purple"
+            onClick={addUserByEmail}
+            isDisabled={!emailToAdd.trim()}
+            isLoading={grantMutation.isPending}>
+            Email ile Ekle
+          </Button>
+        </Flex>
+        <Text fontSize="xs" color="gray.500" mt={2}>
+          Kullanıcı sistemde kayıtlıysa email ile bulunur ve VIP kanala eklenir.
+        </Text>
+      </Box>
+
+      <Box bg="white" p={4} borderRadius="md" boxShadow="sm">
+        <Flex justify="space-between" align={{base: 'stretch', md: 'center'}} direction={{base: 'column', md: 'row'}} mb={4} gap={3}>
+          <Text fontWeight="bold">Mevcut VIP Üyeleri ({members?.length || 0})</Text>
+          <Input
+            maxW={{base: '100%', md: '280px'}}
+            placeholder="Üye ara"
+            value={memberSearch}
+            onChange={e => setMemberSearch(e.target.value)}
+          />
+        </Flex>
+        <VStack align="stretch" spacing={2} maxH="420px" overflowY="auto">
+          {!isMembersLoading && members?.length === 0 && (
+            <Text fontSize="sm" color="gray.500">
+              Üye bulunamadı.
+            </Text>
+          )}
+          {members?.map(user => (
+            <Flex
+              key={user.id}
+              align="center"
+              justify="space-between"
+              p={2}
+              borderBottom="1px solid #eee">
+              <Flex align="center">
+                <Avatar
+                  src={getCombinedLogoUrl(user.thumbnail)}
+                  name={user.fullname}
+                  size="sm"
+                  mr={2}
+                />
+                <Box>
+                  <Text fontSize="sm" fontWeight="medium">
+                    {user.fullname}
+                  </Text>
+                  {!!user.email && (
+                    <Text fontSize="xs" color="gray.500">
+                      {user.email}
+                    </Text>
+                  )}
+                </Box>
+              </Flex>
+              <Button
+                size="xs"
+                colorScheme="red"
+                onClick={() => revokeMutation.mutate(user.id)}
+                isLoading={revokeMutation.isPending}>
+                Kaldır
+              </Button>
+            </Flex>
+          ))}
+        </VStack>
+      </Box>
+    </Box>
+  );
+};
 
 const EditVipChannel = ({id}) => {
   const isNew = !id || id === 'new';
@@ -516,6 +724,7 @@ const EditVipChannel = ({id}) => {
           </Flex>
         </form>
       </Box>
+      {!isNew && <VipMemberManagement channelId={id} />}
       <Box display={'flex'} justifyContent={'end'}>
         <Button
           isLoading={isDeleting}

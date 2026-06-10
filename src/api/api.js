@@ -701,12 +701,24 @@ export const getAllowedUsers = async channelId => {
   return apiClient.get(`/channels/${channelId}/allowed-users`);
 };
 
+export const getVipChannelMembers = async (channelId, params) => {
+  return apiClient.get(`/channels/${channelId}/vip-members`, {params});
+};
+
 export const approveUser = async (channelId, userId) => {
   return apiClient.post(`/channels/${channelId}/approve/${userId}`);
 };
 
 export const revokeUser = async (channelId, userId) => {
   return apiClient.post(`/channels/${channelId}/revoke/${userId}`);
+};
+
+export const grantVipMemberAccess = async (channelId, userId) => {
+  return apiClient.post(`/channels/${channelId}/vip-members/${userId}/grant`);
+};
+
+export const revokeVipMemberAccess = async (channelId, userId) => {
+  return apiClient.post(`/channels/${channelId}/vip-members/${userId}/revoke`);
 };
 
 // Poll Management
