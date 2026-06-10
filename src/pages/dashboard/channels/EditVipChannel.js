@@ -68,26 +68,54 @@ const object = {
 
 const schema = yup.object().shape(object);
 
-const VipMemberManagement = ({channelId}) => {
+const escapeHtml = value =>
+  String(value || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+
+const sanitizeFileName = value =>
+  String(value || 'vip-uye-listesi')
+    .replace(/[<>:"/\\|?*\x00-\x1F]/g, ' ')
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '')
+    .toLowerCase();
+
+const formatJoinDate = value =>
+  value ? new Date(value).toLocaleString('tr-TR') : '-';
+
+const VipMemberManagement = ({channelId, channelName}) => {
   const toast = useToast();
   const queryClient = useQueryClient();
   const [selectedUser, setSelectedUser] = useState(null);
   const [emailToAdd, setEmailToAdd] = useState('');
   const [memberSearch, setMemberSearch] = useState('');
+  const [memberPage, setMemberPage] = useState(1);
+  const [exportingType, setExportingType] = useState(null);
+  const memberLimit = 20;
 
   const loadUsers = async query => {
     const {data} = await api.getUsers({query});
     return (data?.results || []).map(user => ({
-      label: `${user?.fullname || 'İsimsiz'}${user?.email ? ` (${user.email})` : ''}`,
+      label: `${user?.fullname || 'İsimsiz'}${
+        user?.email ? ` (${user.email})` : ''
+      }`,
       value: user?.id,
     }));
   };
 
   const {data: members, isFetching: isMembersLoading} = useQuery({
-    queryKey: ['vipMembers', channelId, memberSearch],
+    queryKey: ['vipMembers', channelId, memberSearch, memberPage],
     queryFn: () =>
       api
-        .getVipChannelMembers(channelId, memberSearch ? {search: memberSearch} : undefined)
+        .getVipChannelMembers(channelId, {
+          search: memberSearch,
+          page: memberPage,
+          limit: memberLimit,
+        })
         .then(res => res.data),
   });
 
@@ -95,8 +123,13 @@ const VipMemberManagement = ({channelId}) => {
     mutationFn: userId => api.grantVipMemberAccess(channelId, userId),
     onSuccess: () => {
       setSelectedUser(null);
-      queryClient.invalidateQueries(['vipMembers', channelId]);
-      toast({title: 'Kullanıcı VIP kanala eklendi', status: 'success', position: 'top'});
+      setMemberPage(1);
+      queryClient.invalidateQueries({queryKey: ['vipMembers', channelId]});
+      toast({
+        title: 'Kullanıcı VIP kanala eklendi',
+        status: 'success',
+        position: 'top',
+      });
     },
     onError: error => {
       toast({
@@ -110,8 +143,12 @@ const VipMemberManagement = ({channelId}) => {
   const revokeMutation = useMutation({
     mutationFn: userId => api.revokeVipMemberAccess(channelId, userId),
     onSuccess: () => {
-      queryClient.invalidateQueries(['vipMembers', channelId]);
-      toast({title: 'Kullanıcının VIP kanal erişimi kaldırıldı', status: 'success', position: 'top'});
+      queryClient.invalidateQueries({queryKey: ['vipMembers', channelId]});
+      toast({
+        title: 'Kullanıcının VIP kanal erişimi kaldırıldı',
+        status: 'success',
+        position: 'top',
+      });
     },
     onError: error => {
       toast({
@@ -129,7 +166,10 @@ const VipMemberManagement = ({channelId}) => {
     try {
       const {data} = await api.getUsers({query: normalizedEmail, limit: 20});
       const matchedUser = (data?.results || []).find(
-        user => String(user?.email || '').trim().toLowerCase() === normalizedEmail,
+        user =>
+          String(user?.email || '')
+            .trim()
+            .toLowerCase() === normalizedEmail,
       );
 
       if (!matchedUser?.id) {
@@ -152,6 +192,274 @@ const VipMemberManagement = ({channelId}) => {
     }
   };
 
+  const memberResults = members?.results || [];
+  const totalResults = members?.totalResults || 0;
+  const totalPages = members?.totalPages || 1;
+
+  React.useEffect(() => {
+    setMemberPage(1);
+  }, [memberSearch, channelId]);
+
+  const fetchAllMembersForExport = async () => {
+    const exportLimit = 100;
+    const firstResponse = await api
+      .getVipChannelMembers(channelId, {
+        page: 1,
+        limit: exportLimit,
+      })
+      .then(res => res.data);
+
+    const allMembers = [...(firstResponse?.results || [])];
+    const totalPagesForExport = firstResponse?.totalPages || 1;
+
+    for (let page = 2; page <= totalPagesForExport; page += 1) {
+      const pageResponse = await api
+        .getVipChannelMembers(channelId, {
+          page,
+          limit: exportLimit,
+        })
+        .then(res => res.data);
+
+      allMembers.push(...(pageResponse?.results || []));
+    }
+
+    if (allMembers.length === 0) {
+      throw new Error('export_empty');
+    }
+
+    return allMembers;
+  };
+
+  const downloadBlob = (content, mimeType, fileName) => {
+    const blob = new Blob([content], {type: mimeType});
+    const objectUrl = URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    anchor.href = objectUrl;
+    anchor.download = fileName;
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+    window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
+  };
+
+  const handleExportError = error => {
+    if (error?.message === 'export_empty') {
+      toast({
+        title: 'Export edilecek uye bulunamadi',
+        status: 'warning',
+        position: 'top',
+      });
+      return;
+    }
+
+    toast({
+      title: getErrorMessage(error),
+      status: 'error',
+      position: 'top',
+    });
+  };
+
+  const exportMembersAsPdf = async () => {
+    const exportWindow = window.open('', '_blank', 'width=1200,height=900');
+
+    if (!exportWindow) {
+      toast({
+        title: 'PDF penceresi acilamadi',
+        description: 'Tarayiciniz popup engelliyor olabilir.',
+        status: 'warning',
+        position: 'top',
+      });
+      return;
+    }
+
+    setExportingType('pdf');
+
+    try {
+      const allMembers = await fetchAllMembersForExport();
+
+      const exportedAt = new Date().toLocaleString('tr-TR');
+      const safeChannelName = escapeHtml(channelName || 'VIP Kanal');
+      const rows = allMembers
+        .map(
+          (user, index) => `
+            <tr>
+              <td>${index + 1}</td>
+              <td>${escapeHtml(user.fullname || '-')}</td>
+              <td>${escapeHtml(user.email || '-')}</td>
+              <td>${escapeHtml(formatJoinDate(user.joinDate))}</td>
+            </tr>
+          `,
+        )
+        .join('');
+
+      exportWindow.document.write(`
+        <!doctype html>
+        <html>
+          <head>
+            <meta charset="utf-8" />
+            <title>${safeChannelName} - VIP Uye Listesi</title>
+            <style>
+              body {
+                font-family: Arial, sans-serif;
+                color: #111827;
+                margin: 24px;
+              }
+              h1 {
+                font-size: 22px;
+                margin: 0 0 8px 0;
+              }
+              .meta {
+                margin-bottom: 18px;
+                color: #4b5563;
+                font-size: 13px;
+              }
+              table {
+                width: 100%;
+                border-collapse: collapse;
+                table-layout: fixed;
+              }
+              th, td {
+                border: 1px solid #d1d5db;
+                padding: 8px 10px;
+                text-align: left;
+                font-size: 12px;
+                word-break: break-word;
+              }
+              th {
+                background: #f3f4f6;
+              }
+              @page {
+                size: A4 portrait;
+                margin: 14mm;
+              }
+            </style>
+          </head>
+          <body>
+            <h1>${safeChannelName} - VIP Uye Listesi</h1>
+            <div class="meta">
+              Toplam uye: ${allMembers.length}<br />
+              Export tarihi: ${escapeHtml(exportedAt)}
+            </div>
+            <table>
+              <thead>
+                <tr>
+                  <th style="width: 40px;">#</th>
+                  <th>Ad Soyad</th>
+                  <th>Email</th>
+                  <th style="width: 180px;">Katilma Tarihi</th>
+                </tr>
+              </thead>
+              <tbody>${rows}</tbody>
+            </table>
+          </body>
+        </html>
+      `);
+      exportWindow.document.close();
+      exportWindow.focus();
+      setTimeout(() => {
+        exportWindow.print();
+      }, 400);
+    } catch (error) {
+      exportWindow.close();
+      handleExportError(error);
+    } finally {
+      setExportingType(null);
+    }
+  };
+
+  const exportMembersAsCsv = async () => {
+    setExportingType('csv');
+
+    try {
+      const allMembers = await fetchAllMembersForExport();
+      const fileBaseName = sanitizeFileName(
+        `${channelName || 'vip-kanal'}-uye-listesi`,
+      );
+      const csvRows = allMembers.map((user, index) =>
+        [
+          index + 1,
+          user.fullname || '-',
+          user.email || '-',
+          formatJoinDate(user.joinDate),
+        ]
+          .map(value => `"${String(value).replace(/"/g, '""')}"`)
+          .join(';'),
+      );
+
+      const csvContent = `\uFEFF"Sira";"Ad Soyad";"Email";"Katilma Tarihi"\n${csvRows.join(
+        '\n',
+      )}`;
+
+      downloadBlob(
+        csvContent,
+        'text/csv;charset=utf-8;',
+        `${fileBaseName}.csv`,
+      );
+    } catch (error) {
+      handleExportError(error);
+    } finally {
+      setExportingType(null);
+    }
+  };
+
+  const exportMembersAsExcel = async () => {
+    setExportingType('excel');
+
+    try {
+      const allMembers = await fetchAllMembersForExport();
+      const fileBaseName = sanitizeFileName(
+        `${channelName || 'vip-kanal'}-uye-listesi`,
+      );
+      const safeChannelName = escapeHtml(channelName || 'VIP Kanal');
+      const exportedAt = escapeHtml(new Date().toLocaleString('tr-TR'));
+      const rows = allMembers
+        .map(
+          (user, index) => `
+            <tr>
+              <td>${index + 1}</td>
+              <td>${escapeHtml(user.fullname || '-')}</td>
+              <td>${escapeHtml(user.email || '-')}</td>
+              <td>${escapeHtml(formatJoinDate(user.joinDate))}</td>
+            </tr>
+          `,
+        )
+        .join('');
+
+      const excelContent = `
+        <html xmlns:o="urn:schemas-microsoft-com:office:office"
+              xmlns:x="urn:schemas-microsoft-com:office:excel"
+              xmlns="http://www.w3.org/TR/REC-html40">
+          <head>
+            <meta charset="utf-8" />
+          </head>
+          <body>
+            <table border="1">
+              <tr><th colspan="4">${safeChannelName} - VIP Uye Listesi</th></tr>
+              <tr><td colspan="4">Export Tarihi: ${exportedAt}</td></tr>
+              <tr>
+                <th>Sira</th>
+                <th>Ad Soyad</th>
+                <th>Email</th>
+                <th>Katilma Tarihi</th>
+              </tr>
+              ${rows}
+            </table>
+          </body>
+        </html>
+      `;
+
+      downloadBlob(
+        `\uFEFF${excelContent}`,
+        'application/vnd.ms-excel;charset=utf-8;',
+        `${fileBaseName}.xls`,
+      );
+    } catch (error) {
+      handleExportError(error);
+    } finally {
+      setExportingType(null);
+    }
+  };
+
   return (
     <Box mt={8} bg="gray.50" p={4} borderRadius="md">
       <Flex align="center" gap={3} mb={2}>
@@ -163,14 +471,18 @@ const VipMemberManagement = ({channelId}) => {
         </Badge>
       </Flex>
       <Text fontSize="sm" color="gray.600" mb={4}>
-        Apple veya Google dışındaki kullanıcıları bu kanala manuel olarak ekleyebilir ya da kaldırabilirsiniz.
+        Apple veya Google dışındaki kullanıcıları bu kanala manuel olarak
+        ekleyebilir ya da kaldırabilirsiniz.
       </Text>
 
       <Box bg="white" p={4} borderRadius="md" boxShadow="sm" mb={4}>
         <Text fontWeight="bold" mb={3}>
           Kullanıcı Ekle
         </Text>
-        <Flex gap={3} direction={{base: 'column', md: 'row'}} align={{base: 'stretch', md: 'center'}}>
+        <Flex
+          gap={3}
+          direction={{base: 'column', md: 'row'}}
+          align={{base: 'stretch', md: 'center'}}>
           <Box flex="1">
             <AsyncSelect
               value={selectedUser}
@@ -183,14 +495,17 @@ const VipMemberManagement = ({channelId}) => {
           </Box>
           <Button
             colorScheme="green"
-            onClick={() => selectedUser?.value && grantMutation.mutate(selectedUser.value)}
+            onClick={() =>
+              selectedUser?.value && grantMutation.mutate(selectedUser.value)
+            }
             isDisabled={!selectedUser?.value}
             isLoading={grantMutation.isPending}>
             Kullanıcı Ekle
           </Button>
         </Flex>
         <Text fontSize="xs" color="gray.500" mt={2}>
-          Bu alan sadece VIP kanallarda görünür ve kullanıcıyı doğrudan kanal üyeliğine ekler.
+          Bu alan sadece VIP kanallarda görünür ve kullanıcıyı doğrudan kanal
+          üyeliğine ekler.
         </Text>
       </Box>
 
@@ -198,7 +513,10 @@ const VipMemberManagement = ({channelId}) => {
         <Text fontWeight="bold" mb={3}>
           Email ile Direkt Ekle
         </Text>
-        <Flex gap={3} direction={{base: 'column', md: 'row'}} align={{base: 'stretch', md: 'center'}}>
+        <Flex
+          gap={3}
+          direction={{base: 'column', md: 'row'}}
+          align={{base: 'stretch', md: 'center'}}>
           <Input
             flex="1"
             placeholder="ornek@email.com"
@@ -219,22 +537,53 @@ const VipMemberManagement = ({channelId}) => {
       </Box>
 
       <Box bg="white" p={4} borderRadius="md" boxShadow="sm">
-        <Flex justify="space-between" align={{base: 'stretch', md: 'center'}} direction={{base: 'column', md: 'row'}} mb={4} gap={3}>
-          <Text fontWeight="bold">Mevcut VIP Üyeleri ({members?.length || 0})</Text>
-          <Input
-            maxW={{base: '100%', md: '280px'}}
-            placeholder="Üye ara"
-            value={memberSearch}
-            onChange={e => setMemberSearch(e.target.value)}
-          />
+        <Flex
+          justify="space-between"
+          align={{base: 'stretch', md: 'center'}}
+          direction={{base: 'column', md: 'row'}}
+          mb={4}
+          gap={3}>
+          <Text fontWeight="bold">Mevcut VIP Üyeleri ({totalResults})</Text>
+          <Flex gap={3} direction={{base: 'column', md: 'row'}}>
+            <Input
+              maxW={{base: '100%', md: '280px'}}
+              placeholder="Üye ara"
+              value={memberSearch}
+              onChange={e => setMemberSearch(e.target.value)}
+            />
+            <Button
+              colorScheme="blue"
+              variant="outline"
+              onClick={exportMembersAsPdf}
+              isLoading={exportingType === 'pdf'}
+              isDisabled={!!exportingType}>
+              PDF Export
+            </Button>
+            <Button
+              colorScheme="teal"
+              variant="outline"
+              onClick={exportMembersAsCsv}
+              isLoading={exportingType === 'csv'}
+              isDisabled={!!exportingType}>
+              CSV Export
+            </Button>
+            <Button
+              colorScheme="green"
+              variant="outline"
+              onClick={exportMembersAsExcel}
+              isLoading={exportingType === 'excel'}
+              isDisabled={!!exportingType}>
+              Excel Export
+            </Button>
+          </Flex>
         </Flex>
         <VStack align="stretch" spacing={2} maxH="420px" overflowY="auto">
-          {!isMembersLoading && members?.length === 0 && (
+          {!isMembersLoading && memberResults.length === 0 && (
             <Text fontSize="sm" color="gray.500">
               Üye bulunamadı.
             </Text>
           )}
-          {members?.map(user => (
+          {memberResults.map(user => (
             <Flex
               key={user.id}
               align="center"
@@ -269,6 +618,32 @@ const VipMemberManagement = ({channelId}) => {
             </Flex>
           ))}
         </VStack>
+        <Flex
+          justify="space-between"
+          align="center"
+          mt={4}
+          gap={3}
+          direction={{base: 'column', md: 'row'}}>
+          <Text fontSize="sm" color="gray.500">
+            Sayfa {memberPage} / {totalPages}
+          </Text>
+          <Flex gap={2}>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setMemberPage(prev => Math.max(1, prev - 1))}
+              isDisabled={memberPage <= 1 || isMembersLoading}>
+              Önceki
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setMemberPage(prev => prev + 1)}
+              isDisabled={memberPage >= totalPages || isMembersLoading}>
+              Sonraki
+            </Button>
+          </Flex>
+        </Flex>
       </Box>
     </Box>
   );
@@ -724,7 +1099,9 @@ const EditVipChannel = ({id}) => {
           </Flex>
         </form>
       </Box>
-      {!isNew && <VipMemberManagement channelId={id} />}
+      {!isNew && (
+        <VipMemberManagement channelId={id} channelName={data?.name} />
+      )}
       <Box display={'flex'} justifyContent={'end'}>
         <Button
           isLoading={isDeleting}
