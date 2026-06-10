@@ -78,7 +78,10 @@ const escapeHtml = value =>
 
 const sanitizeFileName = value =>
   String(value || 'vip-uye-listesi')
-    .replace(/[<>:"/\\|?*\x00-\x1F]/g, ' ')
+    .split('')
+    .filter(char => char.charCodeAt(0) >= 32)
+    .join('')
+    .replace(/[<>:"/\\|?*]/g, ' ')
     .replace(/\s+/g, '-')
     .replace(/-+/g, '-')
     .replace(/^-|-$/g, '')
