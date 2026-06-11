@@ -89,6 +89,7 @@ const EditUser = () => {
       api.banUserDevices({
         userId: id,
         scopes: [
+          BlacklistScope.Access,
           BlacklistScope.Register,
           BlacklistScope.ChannelMessage,
         ],
@@ -100,7 +101,8 @@ const EditUser = () => {
       const {data: result} = await banDevices();
       banDevicesModal.close();
       toast({
-        title: `${result?.createdCount ?? 0} yeni kayit olusturuldu (${result?.skippedCount ?? 0} mevcut).`,
+        title: 'Kullanıcının cihazları engellendi.',
+        description: `Uygulamaya giriş, kayıt olma ve kanala mesaj gönderme cihaz bazında engellendi. ${result?.createdCount ?? 0} yeni kayıt oluşturuldu, ${result?.skippedCount ?? 0} kayıt zaten mevcuttu.`,
         status: 'success',
         position: 'top',
       });
@@ -389,8 +391,10 @@ const EditUser = () => {
             </AlertDialogHeader>
             <AlertDialogBody>
               Kullanıcının {userDevices?.deviceIds?.length ?? 0} cihazı için
-              "Kayıt Olma" ve "Kanala Mesaj Gönderme" kapsamlarında blacklist
-              kaydı oluşturulacak. Devam edilsin mi?
+              "Uygulamaya Giriş", "Kayıt Olma" ve "Kanala Mesaj Gönderme"
+              kapsamlarında cihaz bazlı engel uygulanacak. Bu cihazlar artık
+              uygulamaya giriş yapamayacak, yeni hesap açamayacak ve mesaj
+              gönderemeyecek. Devam edilsin mi?
             </AlertDialogBody>
             <AlertDialogFooter>
               <Button

@@ -96,6 +96,7 @@ export const BlacklistScope = {
   Register: 'register',
   ChannelMessage: 'channel-message',
   BannedText: 'banned-text',
+  Access: 'access',
 };
 
 export const blacklistScopes = Object.values(BlacklistScope);
@@ -112,9 +113,21 @@ export const BlacklistScopeLabel = {
   [BlacklistScope.Register]: 'Kayıt Olma',
   [BlacklistScope.ChannelMessage]: 'Kanala Mesaj Gönderme',
   [BlacklistScope.BannedText]: 'Yasaklı Mesaj',
+  [BlacklistScope.Access]: 'Uygulamaya Giriş',
 };
 
 export const BlacklistValueConfig = {
+  [BlacklistScope.Access]: {
+    values: [
+      BlacklistValueType.UserId,
+      BlacklistValueType.Email,
+      BlacklistValueType.Ip,
+      BlacklistValueType.DeviceId,
+    ],
+    resource: {
+      enabled: false,
+    },
+  },
   [BlacklistScope.Register]: {
     values: [
       BlacklistValueType.Email,

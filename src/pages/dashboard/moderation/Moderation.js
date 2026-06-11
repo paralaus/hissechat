@@ -1272,7 +1272,7 @@ const Moderation = () => {
       try {
         const {data: result} = await api.banUserDevices({
           userId: variables.userId,
-          scopes: ['register', 'channel-message'],
+          scopes: ['access', 'register', 'channel-message'],
         });
         if (result?.createdCount > 0) {
           deviceBanInfo = ` (${result.createdCount} cihaz blacklist'e eklendi)`;
@@ -1282,6 +1282,8 @@ const Moderation = () => {
       }
       toast({
         title: `Kullanıcı banlandı${deviceBanInfo}`,
+        description:
+          'Kullanıcının kayıtlı cihazlarında uygulamaya giriş, yeni kayıt ve mesaj gönderimi de engellendi.',
         status: 'success',
         duration: 2500,
       });
