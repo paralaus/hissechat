@@ -1150,7 +1150,7 @@ const Moderation = () => {
       if (entry.scope === 'access' && entry.type === 'user-id') {
         return true;
       }
-      if (entry.scope === 'channel-message') {
+      if (entry.scope === 'channel-message' && entry.type === 'user-id') {
         if (!selectedChannel) {
           return true;
         }
