@@ -495,11 +495,12 @@ const EditChannel = ({id}) => {
               </FormLabel>
               <AsyncSelect
                 {...register('admins')}
-                key={data?.admins}
+                key={(data?.admins || []).map(item => item?.id).join(',')}
                 onChange={val =>
                   setValue(
                     'admins',
                     val?.map(item => item?.value),
+                    {shouldDirty: true},
                   )
                 }
                 placeholder="Kullanıcı seçin (Filtrelemek için ismini yazın)"
@@ -510,7 +511,10 @@ const EditChannel = ({id}) => {
                 isMulti
                 bg={'red'}
                 colorScheme={'white'}
-                defaultInputValue={data?.admins.map(item => item?.fullname)}
+                defaultValue={data?.admins?.map(item => ({
+                  label: item?.fullname,
+                  value: item?.id,
+                }))}
               />
               <FormErrorMessage>{errors.admins?.message}</FormErrorMessage>
             </FormControl>
