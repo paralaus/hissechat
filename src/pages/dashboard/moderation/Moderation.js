@@ -681,11 +681,17 @@ const BannedUserCard = ({blacklistEntry, onUnban, isUnbanning}) => {
                   ID: {blacklistEntry.value}
                 </Text>
               </VStack>
-              <Badge colorScheme="red">Banlı</Badge>
+              <HStack spacing={2}>
+                <Badge colorScheme="orange">Users'da Yok</Badge>
+                <Badge colorScheme="red">Banlı</Badge>
+              </HStack>
             </HStack>
             <Alert status="error" size="sm" borderRadius="md">
               <AlertIcon />
               <Box>
+                <Text fontSize="xs" mb={1}>
+                  Bu blacklist kaydı aktif, ancak `users` koleksiyonunda karşılık gelen kullanıcı bulunamadı.
+                </Text>
                 <Text fontSize="xs" fontWeight="bold">
                   Ban Süresi:
                 </Text>
@@ -1145,7 +1151,7 @@ const Moderation = () => {
     messagesData?.pages.flatMap(page => page.results || []) || [];
   const activeBannedUsers = React.useMemo(() => {
     const list = bannedUsersData || [];
-    return list.filter(entry => {
+    const filtered = list.filter(entry => {
       if (!entry?.isActive) return false;
       if (entry.scope === 'access' && entry.type === 'user-id') {
         return true;
@@ -1158,6 +1164,20 @@ const Moderation = () => {
       }
       return false;
     });
+    const deduped = new Map();
+    filtered.forEach(entry => {
+      const existing = deduped.get(entry.value);
+      if (!existing) {
+        deduped.set(entry.value, entry);
+        return;
+      }
+      const existingExpires = existing.expiresAt ? new Date(existing.expiresAt).getTime() : Infinity;
+      const nextExpires = entry.expiresAt ? new Date(entry.expiresAt).getTime() : Infinity;
+      if (nextExpires > existingExpires || entry.scope === 'access') {
+        deduped.set(entry.value, entry);
+      }
+    });
+    return Array.from(deduped.values());
   }, [bannedUsersData, selectedChannel]);
 
   const bannedTextEntries = React.useMemo(() => {
