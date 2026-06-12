@@ -71,6 +71,19 @@ const schema = yup
   })
   .required();
 
+const deleteSchema = yup
+  .object({
+    text: yup.string().required('Silinecek bildirim metni zorunludur.').min(1),
+    title: yup.string(),
+    since: yup.string(),
+    until: yup.string(),
+    confirm: yup
+      .string()
+      .oneOf(['DELETE'], 'Onay için DELETE yazmalısınız.')
+      .required('Onay zorunludur.'),
+  })
+  .required();
+
 const pushStageLabels = {
   queued: 'Kuyrukta',
   waiting: 'Bekliyor',
@@ -78,9 +91,11 @@ const pushStageLabels = {
   sending: 'Gönderiliyor',
   sent: 'Push Gönderildi',
   persisting: 'Kaydediliyor',
+  deleting: 'Siliniyor',
   cancel_requested: 'Iptal Istendi',
   cancelled: 'Iptal Edildi',
   completed: 'Tamamlandı',
+  completed_with_errors: 'Tamamlandı (Hatalı)',
   failed: 'Başarısız',
   active: 'İşleniyor',
 };
@@ -130,6 +145,21 @@ const matchesPushJobFilter = (job, filter) => {
   return job.state === filter;
 };
 
+const getPushJobType = jobName => {
+  if (jobName === 'delete-notifications-by-text') return 'delete';
+  return 'send';
+};
+
+const getPushJobTypeLabel = jobName => {
+  if (jobName === 'delete-notifications-by-text') return 'Silme';
+  return 'Gönderim';
+};
+
+const getPushJobTypeColor = jobName => {
+  if (jobName === 'delete-notifications-by-text') return 'red';
+  return 'blue';
+};
+
 const SendPushNotification = () => {
   useNavigate();
   const toast = useToast();
@@ -145,6 +175,7 @@ const SendPushNotification = () => {
   const pollTimeoutRef = React.useRef(null);
   const activeJobIdRef = React.useRef(null);
   const [activeJobId, setActiveJobId] = React.useState(null);
+  const [activeJobName, setActiveJobName] = React.useState(null);
   const [pushJobFilter, setPushJobFilter] = React.useState('all');
 
   const {
@@ -154,6 +185,22 @@ const SendPushNotification = () => {
     watch,
   } = useForm({
     resolver: yupResolver(schema),
+  });
+
+  const {
+    register: registerDelete,
+    handleSubmit: handleSubmitDelete,
+    formState: {errors: deleteErrors},
+    reset: resetDelete,
+  } = useForm({
+    resolver: yupResolver(deleteSchema),
+    defaultValues: {
+      text: '',
+      title: '',
+      since: '',
+      until: '',
+      confirm: '',
+    },
   });
   const formValues = watch();
   const previewBody =
@@ -193,13 +240,20 @@ const SendPushNotification = () => {
     mutationFn: values => api.sendPushNotification(values),
   });
 
+  const {mutateAsync: deleteMutateAsync, isPending: isDeletePending} =
+    useMutation({
+      mutationFn: values => api.deletePushNotificationsByText(values),
+    });
+
   const retryJobMutation = useMutation({
     mutationFn: jobId => api.retryPushNotificationJob(jobId),
     onSuccess: ({data}) => {
+      const jobType = getPushJobType(data?.jobName);
       const total =
         data?.progress?.total || data?.result?.estimatedRecipients || 0;
       activeJobIdRef.current = data?.jobId || null;
       setActiveJobId(data?.jobId || null);
+      setActiveJobName(data?.jobName || null);
       setSendResult(null);
       setSendProgress({
         current: data?.progress?.current || 0,
@@ -209,7 +263,7 @@ const SendPushNotification = () => {
         stage: data?.progress?.stage || data?.state || 'queued',
       });
       toast({
-        title: 'Bildirim işi yeniden kuyruğa alındı',
+        title: jobType === 'delete' ? 'Silme işi yeniden kuyruğa alındı' : 'Bildirim işi yeniden kuyruğa alındı',
         description: 'Arka planda tekrar işleniyor.',
         status: 'info',
         position: 'top',
@@ -232,6 +286,7 @@ const SendPushNotification = () => {
   const cancelJobMutation = useMutation({
     mutationFn: jobId => api.cancelPushNotificationJob(jobId),
     onSuccess: ({data}) => {
+      const jobType = getPushJobType(data?.jobName);
       const total =
         data?.progress?.total || data?.result?.estimatedRecipients || 0;
       if (activeJobIdRef.current === data?.jobId) {
@@ -242,11 +297,16 @@ const SendPushNotification = () => {
           notificationCreated: Boolean(data?.progress?.notificationCreated),
           stage: data?.progress?.stage || data?.state || 'cancel_requested',
         });
+        setActiveJobName(data?.jobName || null);
       }
       toast({
         title:
           data?.state === 'cancelled'
-            ? 'Bildirim isi iptal edildi'
+            ? jobType === 'delete'
+              ? 'Silme isi iptal edildi'
+              : 'Bildirim isi iptal edildi'
+            : jobType === 'delete'
+            ? 'Silme isi icin iptal istendi'
             : 'Bildirim isi icin iptal istendi',
         description:
           data?.state === 'cancelled'
@@ -288,6 +348,8 @@ const SendPushNotification = () => {
     try {
       const {data: status} = await api.getPushNotificationJobStatus(jobId);
       const progress = status?.progress || {};
+      const jobType = getPushJobType(status?.jobName);
+      setActiveJobName(status?.jobName || null);
       const total =
         progress.total ||
         status?.result?.estimatedRecipients ||
@@ -309,14 +371,18 @@ const SendPushNotification = () => {
         clearPolling();
         activeJobIdRef.current = null;
         setActiveJobId(null);
+        setActiveJobName(null);
         setSendResult({
           ...status.result,
           queued: false,
           state: 'completed',
         });
         toast({
-          title: 'Bildirim gönderildi',
-          description: 'Bildirim işi arka planda tamamlandı.',
+          title: jobType === 'delete' ? 'Bildirim silindi' : 'Bildirim gönderildi',
+          description:
+            jobType === 'delete'
+              ? 'Bildirim silme işi arka planda tamamlandı.'
+              : 'Bildirim işi arka planda tamamlandı.',
           status: 'success',
           position: 'top',
           duration: 5000,
@@ -329,14 +395,18 @@ const SendPushNotification = () => {
         clearPolling();
         activeJobIdRef.current = null;
         setActiveJobId(null);
+        setActiveJobName(null);
         setSendResult({
           ...(status.result || {}),
           cancelled: true,
           state: 'cancelled',
         });
         toast({
-          title: 'Bildirim isi iptal edildi',
-          description: 'Bekleyen bildirim gonderimi sonlandirildi.',
+          title: jobType === 'delete' ? 'Silme isi iptal edildi' : 'Bildirim isi iptal edildi',
+          description:
+            jobType === 'delete'
+              ? 'Bekleyen bildirim silme islemi sonlandirildi.'
+              : 'Bekleyen bildirim gonderimi sonlandirildi.',
           status: 'warning',
           position: 'top',
           duration: 5000,
@@ -349,8 +419,12 @@ const SendPushNotification = () => {
         clearPolling();
         activeJobIdRef.current = null;
         setActiveJobId(null);
+        setActiveJobName(null);
         toast({
-          title: 'Bildirim gönderimi başarısız oldu',
+          title:
+            jobType === 'delete'
+              ? 'Bildirim silme islemi basarisiz oldu'
+              : 'Bildirim gönderimi başarısız oldu',
           description: status.failedReason || 'Kuyruktaki iş tamamlanamadı.',
           status: 'error',
           position: 'top',
@@ -368,6 +442,79 @@ const SendPushNotification = () => {
       clearPolling();
       activeJobIdRef.current = null;
       setActiveJobId(null);
+      setActiveJobName(null);
+      toast({
+        title: getErrorMessage(error),
+        status: 'error',
+        position: 'top',
+      });
+    }
+  };
+
+  const onDeleteSubmit = async values => {
+    try {
+      setSendResult(null);
+      clearPolling();
+      activeJobIdRef.current = null;
+      setActiveJobId(null);
+      setActiveJobName(null);
+
+      const payload = {
+        text: values.text,
+        ...(values.title ? {title: values.title} : {}),
+        ...(values.since ? {since: values.since} : {}),
+        ...(values.until ? {until: values.until} : {}),
+        confirm: values.confirm,
+      };
+
+      const {data} = await deleteMutateAsync(payload);
+      if (data) {
+        if (data.queued && data.jobId) {
+          activeJobIdRef.current = data.jobId;
+          setActiveJobId(data.jobId);
+          setActiveJobName('delete-notifications-by-text');
+          resetDelete();
+          setSendProgress({
+            current: 0,
+            total: data.estimatedRecipients || 0,
+            deliveredCount: 0,
+            notificationCreated: false,
+            stage: data.state || 'queued',
+          });
+          toast({
+            title: 'Silme kuyruğa alındı',
+            description: 'Arka planda silme başlatıldı.',
+            status: 'info',
+            position: 'top',
+            duration: 4000,
+          });
+          pollPushNotificationJob(data.jobId, data.estimatedRecipients || 0);
+          return;
+        }
+
+        activeJobIdRef.current = null;
+        setActiveJobId(null);
+        setActiveJobName(null);
+        setSendProgress({
+          current: data.estimatedRecipients || 0,
+          total: data.estimatedRecipients || 0,
+          deliveredCount: data.delivery?.totalTokens || 0,
+          notificationCreated: false,
+          stage: data.state || (data.failCount > 0 ? 'completed_with_errors' : 'completed'),
+        });
+        setSendResult(data);
+        toast({
+          title: 'Bildirim silindi.',
+          status: data.failCount > 0 ? 'warning' : 'success',
+          position: 'top',
+        });
+        refetchPushJobs();
+      }
+    } catch (error) {
+      clearPolling();
+      activeJobIdRef.current = null;
+      setActiveJobId(null);
+      setActiveJobName(null);
       toast({
         title: getErrorMessage(error),
         status: 'error',
@@ -379,6 +526,10 @@ const SendPushNotification = () => {
   const onSubmit = async values => {
     try {
       setSendResult(null);
+      clearPolling();
+      activeJobIdRef.current = null;
+      setActiveJobId(null);
+      setActiveJobName(null);
       const payload = pruneOptionalFields(values);
       payload.imageUrl =
         typeof values.imageUrl === 'string' && values.imageUrl.trim()
@@ -389,6 +540,7 @@ const SendPushNotification = () => {
         if (data.queued && data.jobId) {
           activeJobIdRef.current = data.jobId;
           setActiveJobId(data.jobId);
+          setActiveJobName('send-admin-push-notification');
           setSendProgress({
             current: 0,
             total: data.estimatedRecipients || 0,
@@ -409,6 +561,7 @@ const SendPushNotification = () => {
 
         activeJobIdRef.current = null;
         setActiveJobId(null);
+        setActiveJobName(null);
         setSendProgress({
           current: data.estimatedRecipients || 0,
           total: data.estimatedRecipients || 0,
@@ -428,6 +581,7 @@ const SendPushNotification = () => {
       clearPolling();
       activeJobIdRef.current = null;
       setActiveJobId(null);
+      setActiveJobName(null);
       toast({
         title: getErrorMessage(error),
         status: 'error',
@@ -469,7 +623,11 @@ const SendPushNotification = () => {
           <HStack width="100%" mb="3" justify="space-between">
             <HStack>
               <Spinner size="sm" color="blue.500" />
-              <AlertTitle>Bildirim arka planda isleniyor</AlertTitle>
+              <AlertTitle>
+                {getPushJobType(activeJobName) === 'delete'
+                  ? 'Silme isi arka planda isleniyor'
+                  : 'Bildirim arka planda isleniyor'}
+              </AlertTitle>
             </HStack>
             <HStack>
               <Badge colorScheme="purple" fontSize="sm">
@@ -490,10 +648,16 @@ const SendPushNotification = () => {
           <Box width="100%">
             <HStack justify="space-between" mb="2">
               <Text fontSize="sm" color="gray.600">
-                Tahmini hedef: {sendProgress.total || 0}
+                {getPushJobType(activeJobName) === 'delete'
+                  ? 'Tahmini eslesme'
+                  : 'Tahmini hedef'}
+                : {sendProgress.total || 0}
               </Text>
               <Text fontSize="sm" color="gray.600">
-                Gonderilen: {sendProgress.deliveredCount || 0}
+                {getPushJobType(activeJobName) === 'delete'
+                  ? 'Silinen'
+                  : 'Gonderilen'}
+                : {sendProgress.deliveredCount || 0}
               </Text>
             </HStack>
             <Progress
@@ -503,7 +667,7 @@ const SendPushNotification = () => {
                   : 100
               }
               size="sm"
-              colorScheme="blue"
+              colorScheme={getPushJobType(activeJobName) === 'delete' ? 'red' : 'blue'}
               borderRadius="full"
               isIndeterminate={sendProgress.current === 0}
             />
@@ -527,6 +691,8 @@ const SendPushNotification = () => {
           <AlertTitle>
             {sendResult.cancelled
               ? 'Bildirim isi iptal edildi'
+              : sendResult.operation === 'delete'
+              ? 'Bildirim silme tamamlandi'
               : 'Bildirim gonderimi tamamlandi'}
           </AlertTitle>
           <AlertDescription mt="2" width="100%">
@@ -536,13 +702,16 @@ const SendPushNotification = () => {
                   Hedef: {sendResult.estimatedRecipients || 0}
                 </Badge>
                 <Badge colorScheme="blue">
-                  Push: {sendResult.delivery?.totalTokens || 0}
+                  {sendResult.operation === 'delete' ? 'Silinen' : 'Push'}:{' '}
+                  {sendResult.delivery?.totalTokens || 0}
                 </Badge>
                 <Badge
                   colorScheme={
                     sendResult.notificationCreated ? 'purple' : 'gray'
                   }>
-                  {sendResult.notificationCreated
+                  {sendResult.operation === 'delete'
+                    ? 'Kalici kayit yok'
+                    : sendResult.notificationCreated
                     ? 'Kalici bildirim kaydedildi'
                     : 'Kalici kayit yok'}
                 </Badge>
@@ -630,6 +799,7 @@ const SendPushNotification = () => {
         ) : (
           <VStack align="stretch" spacing="3">
             {filteredPushJobs.map(job => {
+              const jobType = getPushJobType(job.jobName);
               const total =
                 job.progress?.total || job.result?.estimatedRecipients || 0;
               const current = job.progress?.current || 0;
@@ -661,14 +831,21 @@ const SendPushNotification = () => {
                         <Badge colorScheme="purple">
                           {formatPushStage(stage)}
                         </Badge>
-                        <Badge colorScheme="blue">
-                          {NotificationReceiverTypeLabel[job.receiverType] ||
-                            job.receiverType ||
-                            'Hedef'}
+                        <Badge colorScheme={getPushJobTypeColor(job.jobName)}>
+                          {getPushJobTypeLabel(job.jobName)}
                         </Badge>
+                        {jobType === 'send' && (
+                          <Badge colorScheme="blue">
+                            {NotificationReceiverTypeLabel[job.receiverType] ||
+                              job.receiverType ||
+                              'Hedef'}
+                          </Badge>
+                        )}
                       </HStack>
                       <Text fontSize="sm" color="gray.700">
-                        {job.title || 'Basliksiz bildirim'}
+                        {jobType === 'delete'
+                          ? job.title || 'Metne gore silme'
+                          : job.title || 'Basliksiz bildirim'}
                       </Text>
                       <Text fontSize="xs" color="gray.500">
                         Job ID: {job.jobId}
@@ -720,6 +897,8 @@ const SendPushNotification = () => {
                         ? 'gray'
                         : job.state === 'completed'
                         ? 'green'
+                        : jobType === 'delete'
+                        ? 'red'
                         : 'blue'
                     }
                     borderRadius="full"
@@ -733,11 +912,16 @@ const SendPushNotification = () => {
                     fontSize="sm"
                     color="gray.600">
                     <Text>Hedef: {total}</Text>
-                    <Text>Push: {deliveredCount}</Text>
                     <Text>
-                      Kalici kayit:{' '}
-                      {notificationCreated ? 'Olusturuldu' : 'Yok'}
+                      {jobType === 'delete' ? 'Silinen' : 'Push'}:{' '}
+                      {deliveredCount}
                     </Text>
+                    {jobType === 'send' && (
+                      <Text>
+                        Kalici kayit:{' '}
+                        {notificationCreated ? 'Olusturuldu' : 'Yok'}
+                      </Text>
+                    )}
                     {job.state === 'cancel_requested' && (
                       <Text color="orange.500">Iptal istegi bekliyor</Text>
                     )}
@@ -754,6 +938,85 @@ const SendPushNotification = () => {
             })}
           </VStack>
         )}
+      </Box>
+
+      <Box bg="white" borderRadius="md" boxShadow="md" p="4" mb="6">
+        <HStack justify="space-between" mb="4" align="center">
+          <Box>
+            <Text fontSize="lg" fontWeight="bold" color="gray.800">
+              Bildirim Sil (Metne Gore)
+            </Text>
+            <Text fontSize="sm" color="gray.500">
+              Daha once kaydedilmis (DB) sistem bildirimlerini metne gore topluca siler.
+            </Text>
+          </Box>
+        </HStack>
+
+        <Alert status="warning" borderRadius="lg" mb="4" alignItems="start">
+          <AlertIcon />
+          <Box>
+            <AlertTitle fontSize="sm">Dikkat!</AlertTitle>
+            <AlertDescription fontSize="sm">
+              Islem geri alinamaz. Metin birebir ayni olmalidir. Onay icin DELETE yazin.
+            </AlertDescription>
+          </Box>
+        </Alert>
+
+        <form onSubmit={handleSubmitDelete(onDeleteSubmit)}>
+          <FormControl isInvalid={!!deleteErrors.text} mb="4">
+            <FormLabel fontWeight="600" fontSize="sm">
+              Bildirim Metni (Body)
+            </FormLabel>
+            <Textarea
+              placeholder="Silmek istediginiz bildirim metnini birebir yapistirin..."
+              rows={4}
+              {...registerDelete('text')}
+            />
+            <FormErrorMessage>{deleteErrors.text?.message}</FormErrorMessage>
+          </FormControl>
+
+          <FormControl isInvalid={!!deleteErrors.title} mb="4">
+            <FormLabel fontWeight="600" fontSize="sm">
+              Baslik (Opsiyonel)
+            </FormLabel>
+            <Input placeholder="Baslik (birebir eslesme)" {...registerDelete('title')} />
+            <FormErrorMessage>{deleteErrors.title?.message}</FormErrorMessage>
+          </FormControl>
+
+          <HStack spacing="4" flexWrap="wrap" mb="4" align="start">
+            <FormControl isInvalid={!!deleteErrors.since} flex="1" minW="240px">
+              <FormLabel fontWeight="600" fontSize="sm">
+                Baslangic (Opsiyonel)
+              </FormLabel>
+              <Input type="datetime-local" {...registerDelete('since')} />
+              <FormErrorMessage>{deleteErrors.since?.message}</FormErrorMessage>
+            </FormControl>
+            <FormControl isInvalid={!!deleteErrors.until} flex="1" minW="240px">
+              <FormLabel fontWeight="600" fontSize="sm">
+                Bitis (Opsiyonel)
+              </FormLabel>
+              <Input type="datetime-local" {...registerDelete('until')} />
+              <FormErrorMessage>{deleteErrors.until?.message}</FormErrorMessage>
+            </FormControl>
+          </HStack>
+
+          <FormControl isInvalid={!!deleteErrors.confirm} mb="4">
+            <FormLabel fontWeight="600" fontSize="sm">
+              Onay
+            </FormLabel>
+            <Input placeholder="DELETE" autoComplete="off" {...registerDelete('confirm')} />
+            <FormErrorMessage>{deleteErrors.confirm?.message}</FormErrorMessage>
+          </FormControl>
+
+          <Button
+            type="submit"
+            colorScheme="red"
+            isLoading={isDeletePending}
+            isDisabled={Boolean(activeJobId)}
+            loadingText="Siliniyor...">
+            Metne Gore Toplu Sil
+          </Button>
+        </form>
       </Box>
 
       <Box

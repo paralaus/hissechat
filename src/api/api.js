@@ -402,6 +402,12 @@ export const sendPushNotification = async (body, options = {}) => {
   });
 };
 
+export const deletePushNotificationsByText = async (body, options = {}) => {
+  return apiClient.post(`/notifications/push/delete-by-text`, body, {
+    signal: options.signal,
+  });
+};
+
 export const getPushNotificationJobStatus = async (jobId, options = {}) => {
   return apiClient.get(`/notifications/push/jobs/${jobId}`, {
     signal: options.signal,
