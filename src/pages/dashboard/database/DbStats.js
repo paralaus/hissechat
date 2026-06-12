@@ -206,6 +206,9 @@ const DbStats = () => {
                     <Select
                       value={selectedDays}
                       onChange={e => setSelectedDays(e.target.value)}>
+                      <option value="1">1 Günden Eski</option>
+                      <option value="2">2 Günden Eski</option>
+                      <option value="3">3 Günden Eski</option>
                       <option value="7">7 Günden Eski</option>
                       <option value="30">30 Günden Eski</option>
                       <option value="90">3 Ay (90 Gün)dan Eski</option>
