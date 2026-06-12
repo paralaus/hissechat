@@ -43,7 +43,13 @@ import {
   MenuItem,
   Code,
 } from '@chakra-ui/react';
-import {FiTrash2, FiPlus, FiSend, FiSlash, FiMoreVertical} from 'react-icons/fi';
+import {
+  FiTrash2,
+  FiPlus,
+  FiSend,
+  FiSlash,
+  FiMoreVertical,
+} from 'react-icons/fi';
 import Page from '../../../components/common/Page';
 import {
   getScheduledNotifications,
@@ -71,11 +77,13 @@ const cronPresets = [
   {label: 'Her saatin başında', value: '0 * * * *'},
 ];
 
-const toLocalDt = (d) => {
+const toLocalDt = d => {
   if (!d) return '';
   const dt = new Date(d);
-  const pad = (n) => String(n).padStart(2, '0');
-  return `${dt.getFullYear()}-${pad(dt.getMonth() + 1)}-${pad(dt.getDate())}T${pad(dt.getHours())}:${pad(dt.getMinutes())}`;
+  const pad = n => String(n).padStart(2, '0');
+  return `${dt.getFullYear()}-${pad(dt.getMonth() + 1)}-${pad(
+    dt.getDate(),
+  )}T${pad(dt.getHours())}:${pad(dt.getMinutes())}`;
 };
 
 const emptyForm = {
@@ -101,7 +109,11 @@ const ScheduledNotifications = () => {
   const [list, setList] = useState([]);
   const [loading, setLoading] = useState(false);
   const [templates, setTemplates] = useState([]);
-  const [filter, setFilter] = useState({status: '', receiverType: '', search: ''});
+  const [filter, setFilter] = useState({
+    status: '',
+    receiverType: '',
+    search: '',
+  });
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState(emptyForm);
 
@@ -125,7 +137,10 @@ const ScheduledNotifications = () => {
 
   const fetchTemplates = useCallback(async () => {
     try {
-      const {data} = await getNotificationTemplates({limit: 200, isActive: true});
+      const {data} = await getNotificationTemplates({
+        limit: 200,
+        isActive: true,
+      });
       setTemplates(data.results || data || []);
     } catch (e) {
       // optional
@@ -142,7 +157,7 @@ const ScheduledNotifications = () => {
 
   const stats = useMemo(() => {
     const s = {pending: 0, processing: 0, sent: 0, failed: 0, canceled: 0};
-    list.forEach((x) => {
+    list.forEach(x => {
       if (s[x.status] !== undefined) s[x.status] += 1;
     });
     return s;
@@ -154,7 +169,7 @@ const ScheduledNotifications = () => {
     editor.onOpen();
   };
 
-  const openEdit = (doc) => {
+  const openEdit = doc => {
     setEditing(doc);
     setForm({
       name: doc.name || '',
@@ -185,19 +200,33 @@ const ScheduledNotifications = () => {
       toast({status: 'error', title: 'data/variables geçerli JSON değil'});
       return;
     }
+    if (form.receiverType === 'channel' && !form.channel) {
+      toast({status: 'error', title: 'Kanal hedefi için Kanal ID zorunlu'});
+      return;
+    }
+    if (form.receiverType === 'user' && !form.topic) {
+      toast({status: 'error', title: 'Topic hedefi için Topic zorunlu'});
+      return;
+    }
     const body = {
       name: form.name,
       template: form.template || undefined,
       title: form.title,
       body: form.body,
       receiverType: form.receiverType,
-      channel: form.receiverType === 'channel' && form.channel ? form.channel : undefined,
+      channel:
+        form.receiverType === 'channel' && form.channel
+          ? form.channel
+          : undefined,
       topic: form.topic || undefined,
-      scheduledAt: form.scheduledAt ? new Date(form.scheduledAt).toISOString() : new Date().toISOString(),
+      scheduledAt: form.scheduledAt
+        ? new Date(form.scheduledAt).toISOString()
+        : new Date().toISOString(),
       recurrence: form.recurrence || '',
       timezone: form.timezone || 'Europe/Istanbul',
       isImportant: form.isImportant,
-      shouldCreateNotification: form.shouldCreateNotification,
+      shouldCreateNotification:
+        form.receiverType === 'user' ? false : form.shouldCreateNotification,
       data,
       variables,
     };
@@ -212,11 +241,15 @@ const ScheduledNotifications = () => {
       editor.onClose();
       fetchList();
     } catch (e) {
-      toast({status: 'error', title: 'Kayıt başarısız', description: e?.response?.data?.message});
+      toast({
+        status: 'error',
+        title: 'Kayıt başarısız',
+        description: e?.response?.data?.message,
+      });
     }
   };
 
-  const handleDelete = async (doc) => {
+  const handleDelete = async doc => {
     if (!window.confirm('Silmek istediğinize emin misiniz?')) return;
     try {
       await deleteScheduledNotification(doc.id);
@@ -227,7 +260,7 @@ const ScheduledNotifications = () => {
     }
   };
 
-  const handleCancel = async (doc) => {
+  const handleCancel = async doc => {
     try {
       await cancelScheduledNotification(doc.id);
       toast({status: 'success', title: 'İptal edildi'});
@@ -237,14 +270,18 @@ const ScheduledNotifications = () => {
     }
   };
 
-  const handleDispatch = async (doc) => {
+  const handleDispatch = async doc => {
     if (!window.confirm('Şimdi gönderilsin mi?')) return;
     try {
       await dispatchScheduledNotification(doc.id);
       toast({status: 'success', title: 'Gönderildi'});
       fetchList();
     } catch (e) {
-      toast({status: 'error', title: 'Gönderim başarısız', description: e?.response?.data?.message});
+      toast({
+        status: 'error',
+        title: 'Gönderim başarısız',
+        description: e?.response?.data?.message,
+      });
     }
   };
 
@@ -269,7 +306,7 @@ const ScheduledNotifications = () => {
             <Select
               placeholder="Tüm durumlar"
               value={filter.status}
-              onChange={(e) => setFilter((p) => ({...p, status: e.target.value}))}
+              onChange={e => setFilter(p => ({...p, status: e.target.value}))}
               maxW="200px">
               <option value="pending">pending</option>
               <option value="processing">processing</option>
@@ -280,7 +317,9 @@ const ScheduledNotifications = () => {
             <Select
               placeholder="Tüm alıcılar"
               value={filter.receiverType}
-              onChange={(e) => setFilter((p) => ({...p, receiverType: e.target.value}))}
+              onChange={e =>
+                setFilter(p => ({...p, receiverType: e.target.value}))
+              }
               maxW="200px">
               <option value="all">all</option>
               <option value="channel">channel</option>
@@ -289,9 +328,12 @@ const ScheduledNotifications = () => {
             <Input
               placeholder="Başlık ara"
               value={filter.search}
-              onChange={(e) => setFilter((p) => ({...p, search: e.target.value}))}
+              onChange={e => setFilter(p => ({...p, search: e.target.value}))}
             />
-            <Button leftIcon={<FiPlus />} colorScheme="blue" onClick={openCreate}>
+            <Button
+              leftIcon={<FiPlus />}
+              colorScheme="blue"
+              onClick={openCreate}>
               Yeni
             </Button>
           </HStack>
@@ -318,7 +360,7 @@ const ScheduledNotifications = () => {
                 </Tr>
               </Thead>
               <Tbody>
-                {list.map((doc) => (
+                {list.map(doc => (
                   <Tr key={doc.id}>
                     <Td maxW="250px">
                       <Text fontWeight="medium" isTruncated>
@@ -332,18 +374,35 @@ const ScheduledNotifications = () => {
                       <Tag size="sm">{doc.receiverType}</Tag>
                     </Td>
                     <Td>
-                      <Text fontSize="xs">{doc.scheduledAt ? new Date(doc.scheduledAt).toLocaleString('tr-TR') : '-'}</Text>
+                      <Text fontSize="xs">
+                        {doc.scheduledAt
+                          ? new Date(doc.scheduledAt).toLocaleString('tr-TR')
+                          : '-'}
+                      </Text>
                       {doc.nextRunAt && (
                         <Text fontSize="xs" color="blue.500">
                           → {new Date(doc.nextRunAt).toLocaleString('tr-TR')}
                         </Text>
                       )}
                     </Td>
-                    <Td>{doc.recurrence ? <Code fontSize="xs">{doc.recurrence}</Code> : '-'}</Td>
                     <Td>
-                      <Badge colorScheme={statusColor[doc.status] || 'gray'}>{doc.status}</Badge>
+                      {doc.recurrence ? (
+                        <Code fontSize="xs">{doc.recurrence}</Code>
+                      ) : (
+                        '-'
+                      )}
+                    </Td>
+                    <Td>
+                      <Badge colorScheme={statusColor[doc.status] || 'gray'}>
+                        {doc.status}
+                      </Badge>
                       {doc.lastError && (
-                        <Text fontSize="xs" color="red.400" title={doc.lastError} isTruncated maxW="180px">
+                        <Text
+                          fontSize="xs"
+                          color="red.400"
+                          title={doc.lastError}
+                          isTruncated
+                          maxW="180px">
                           {doc.lastError}
                         </Text>
                       )}
@@ -351,18 +410,32 @@ const ScheduledNotifications = () => {
                     <Td>{doc.sentCount || 0}</Td>
                     <Td>
                       <Menu>
-                        <MenuButton as={IconButton} size="sm" icon={<FiMoreVertical />} aria-label="actions" />
+                        <MenuButton
+                          as={IconButton}
+                          size="sm"
+                          icon={<FiMoreVertical />}
+                          aria-label="actions"
+                        />
                         <MenuList>
-                          <MenuItem onClick={() => openEdit(doc)}>Düzenle</MenuItem>
-                          <MenuItem icon={<FiSend />} onClick={() => handleDispatch(doc)}>
+                          <MenuItem onClick={() => openEdit(doc)}>
+                            Düzenle
+                          </MenuItem>
+                          <MenuItem
+                            icon={<FiSend />}
+                            onClick={() => handleDispatch(doc)}>
                             Şimdi gönder
                           </MenuItem>
                           {doc.status === 'pending' && (
-                            <MenuItem icon={<FiSlash />} onClick={() => handleCancel(doc)}>
+                            <MenuItem
+                              icon={<FiSlash />}
+                              onClick={() => handleCancel(doc)}>
                               İptal et
                             </MenuItem>
                           )}
-                          <MenuItem icon={<FiTrash2 />} color="red.500" onClick={() => handleDelete(doc)}>
+                          <MenuItem
+                            icon={<FiTrash2 />}
+                            color="red.500"
+                            onClick={() => handleDelete(doc)}>
                             Sil
                           </MenuItem>
                         </MenuList>
@@ -387,21 +460,30 @@ const ScheduledNotifications = () => {
       <Modal isOpen={editor.isOpen} onClose={editor.onClose} size="2xl">
         <ModalOverlay />
         <ModalContent>
-          <ModalHeader>{editing ? 'Zamanlanmış Bildirimi Düzenle' : 'Yeni Zamanlanmış Bildirim'}</ModalHeader>
+          <ModalHeader>
+            {editing
+              ? 'Zamanlanmış Bildirimi Düzenle'
+              : 'Yeni Zamanlanmış Bildirim'}
+          </ModalHeader>
           <ModalCloseButton />
           <ModalBody>
             <VStack align="stretch" spacing={3}>
               <FormControl>
                 <FormLabel>İsim (opsiyonel)</FormLabel>
-                <Input value={form.name} onChange={(e) => setForm((p) => ({...p, name: e.target.value}))} />
+                <Input
+                  value={form.name}
+                  onChange={e => setForm(p => ({...p, name: e.target.value}))}
+                />
               </FormControl>
               <FormControl>
                 <FormLabel>Şablon (opsiyonel)</FormLabel>
                 <Select
                   placeholder="Şablon seçin"
                   value={form.template}
-                  onChange={(e) => setForm((p) => ({...p, template: e.target.value}))}>
-                  {templates.map((t) => (
+                  onChange={e =>
+                    setForm(p => ({...p, template: e.target.value}))
+                  }>
+                  {templates.map(t => (
                     <option key={t.id} value={t.id}>
                       {t.name} — {t.title}
                     </option>
@@ -410,16 +492,27 @@ const ScheduledNotifications = () => {
               </FormControl>
               <FormControl>
                 <FormLabel>Başlık (override)</FormLabel>
-                <Input value={form.title} onChange={(e) => setForm((p) => ({...p, title: e.target.value}))} />
+                <Input
+                  value={form.title}
+                  onChange={e => setForm(p => ({...p, title: e.target.value}))}
+                />
               </FormControl>
               <FormControl>
                 <FormLabel>İçerik (override)</FormLabel>
-                <Textarea rows={2} value={form.body} onChange={(e) => setForm((p) => ({...p, body: e.target.value}))} />
+                <Textarea
+                  rows={2}
+                  value={form.body}
+                  onChange={e => setForm(p => ({...p, body: e.target.value}))}
+                />
               </FormControl>
               <HStack>
                 <FormControl>
                   <FormLabel>Alıcı tipi</FormLabel>
-                  <Select value={form.receiverType} onChange={(e) => setForm((p) => ({...p, receiverType: e.target.value}))}>
+                  <Select
+                    value={form.receiverType}
+                    onChange={e =>
+                      setForm(p => ({...p, receiverType: e.target.value}))
+                    }>
                     <option value="all">Tümü</option>
                     <option value="channel">Kanal</option>
                     <option value="user">Kullanıcı (topic)</option>
@@ -428,15 +521,26 @@ const ScheduledNotifications = () => {
                 {form.receiverType === 'channel' && (
                   <FormControl>
                     <FormLabel>Kanal ID</FormLabel>
-                    <Input value={form.channel} onChange={(e) => setForm((p) => ({...p, channel: e.target.value}))} />
+                    <Input
+                      value={form.channel}
+                      onChange={e =>
+                        setForm(p => ({...p, channel: e.target.value}))
+                      }
+                    />
                   </FormControl>
                 )}
-                {form.receiverType !== 'all' && form.receiverType !== 'channel' && (
-                  <FormControl>
-                    <FormLabel>Topic</FormLabel>
-                    <Input value={form.topic} onChange={(e) => setForm((p) => ({...p, topic: e.target.value}))} />
-                  </FormControl>
-                )}
+                {form.receiverType !== 'all' &&
+                  form.receiverType !== 'channel' && (
+                    <FormControl>
+                      <FormLabel>Topic</FormLabel>
+                      <Input
+                        value={form.topic}
+                        onChange={e =>
+                          setForm(p => ({...p, topic: e.target.value}))
+                        }
+                      />
+                    </FormControl>
+                  )}
               </HStack>
               <HStack>
                 <FormControl isRequired>
@@ -444,12 +548,19 @@ const ScheduledNotifications = () => {
                   <Input
                     type="datetime-local"
                     value={form.scheduledAt}
-                    onChange={(e) => setForm((p) => ({...p, scheduledAt: e.target.value}))}
+                    onChange={e =>
+                      setForm(p => ({...p, scheduledAt: e.target.value}))
+                    }
                   />
                 </FormControl>
                 <FormControl>
                   <FormLabel>Saat dilimi</FormLabel>
-                  <Input value={form.timezone} onChange={(e) => setForm((p) => ({...p, timezone: e.target.value}))} />
+                  <Input
+                    value={form.timezone}
+                    onChange={e =>
+                      setForm(p => ({...p, timezone: e.target.value}))
+                    }
+                  />
                 </FormControl>
               </HStack>
               <FormControl>
@@ -457,7 +568,9 @@ const ScheduledNotifications = () => {
                 <HStack>
                   <Input
                     value={form.recurrence}
-                    onChange={(e) => setForm((p) => ({...p, recurrence: e.target.value}))}
+                    onChange={e =>
+                      setForm(p => ({...p, recurrence: e.target.value}))
+                    }
                     placeholder="0 9 * * *  (boş = tek seferlik)"
                   />
                   <Menu>
@@ -465,12 +578,19 @@ const ScheduledNotifications = () => {
                       Hazır
                     </MenuButton>
                     <MenuList>
-                      {cronPresets.map((c) => (
-                        <MenuItem key={c.value} onClick={() => setForm((p) => ({...p, recurrence: c.value}))}>
+                      {cronPresets.map(c => (
+                        <MenuItem
+                          key={c.value}
+                          onClick={() =>
+                            setForm(p => ({...p, recurrence: c.value}))
+                          }>
                           {c.label} — <Code ml={2}>{c.value}</Code>
                         </MenuItem>
                       ))}
-                      <MenuItem onClick={() => setForm((p) => ({...p, recurrence: ''}))}>Temizle</MenuItem>
+                      <MenuItem
+                        onClick={() => setForm(p => ({...p, recurrence: ''}))}>
+                        Temizle
+                      </MenuItem>
                     </MenuList>
                   </Menu>
                 </HStack>
@@ -480,24 +600,44 @@ const ScheduledNotifications = () => {
                   <FormLabel mb={0}>Önemli</FormLabel>
                   <Switch
                     isChecked={form.isImportant}
-                    onChange={(e) => setForm((p) => ({...p, isImportant: e.target.checked}))}
+                    onChange={e =>
+                      setForm(p => ({...p, isImportant: e.target.checked}))
+                    }
                   />
                 </FormControl>
                 <FormControl display="flex" alignItems="center">
                   <FormLabel mb={0}>Bildirim kaydı oluştur</FormLabel>
                   <Switch
-                    isChecked={form.shouldCreateNotification}
-                    onChange={(e) => setForm((p) => ({...p, shouldCreateNotification: e.target.checked}))}
+                    isChecked={
+                      form.receiverType === 'user'
+                        ? false
+                        : form.shouldCreateNotification
+                    }
+                    isDisabled={form.receiverType === 'user'}
+                    onChange={e =>
+                      setForm(p => ({
+                        ...p,
+                        shouldCreateNotification: e.target.checked,
+                      }))
+                    }
                   />
                 </FormControl>
               </HStack>
+              {form.receiverType === 'user' && (
+                <Text fontSize="sm" color="orange.400">
+                  Topic hedefli zamanlanmış bildirimlerde uygulama içi bildirim
+                  kaydı oluşturulmaz.
+                </Text>
+              )}
               <FormControl>
                 <FormLabel>Değişkenler (JSON, şablon doldurma için)</FormLabel>
                 <Textarea
                   rows={3}
                   fontFamily="mono"
                   value={form.variables}
-                  onChange={(e) => setForm((p) => ({...p, variables: e.target.value}))}
+                  onChange={e =>
+                    setForm(p => ({...p, variables: e.target.value}))
+                  }
                 />
               </FormControl>
               <FormControl>
@@ -506,7 +646,7 @@ const ScheduledNotifications = () => {
                   rows={3}
                   fontFamily="mono"
                   value={form.data}
-                  onChange={(e) => setForm((p) => ({...p, data: e.target.value}))}
+                  onChange={e => setForm(p => ({...p, data: e.target.value}))}
                 />
               </FormControl>
             </VStack>

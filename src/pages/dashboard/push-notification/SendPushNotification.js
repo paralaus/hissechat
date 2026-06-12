@@ -8,6 +8,7 @@ import {
   FormErrorMessage,
   FormLabel,
   Input,
+  Textarea,
   useToast,
   Select,
   FormHelperText,
@@ -56,6 +57,17 @@ const schema = yup
     groupKey: yup.string(),
     approveUrl: yup.string(),
     rejectUrl: yup.string(),
+    summary: yup.string(),
+    summaryFocus: yup.string(),
+    deepLink: yup.string(),
+    marketCode: yup.string(),
+    channelId: yup.string(),
+    actionPrimaryId: yup.string(),
+    actionPrimaryTitle: yup.string(),
+    actionPrimaryValue: yup.string(),
+    actionSecondaryId: yup.string(),
+    actionSecondaryTitle: yup.string(),
+    actionSecondaryValue: yup.string(),
   })
   .required();
 
@@ -143,6 +155,16 @@ const SendPushNotification = () => {
   } = useForm({
     resolver: yupResolver(schema),
   });
+  const formValues = watch();
+  const previewBody =
+    formValues.summary || formValues.body || 'Mesaj onizlemesi';
+  const previewDeepLink =
+    formValues.deepLink || formValues.subject || 'default';
+  const previewHasActions = Boolean(
+    (formValues.actionPrimaryId && formValues.actionPrimaryTitle) ||
+      (formValues.actionSecondaryId && formValues.actionSecondaryTitle) ||
+      formValues.category === 'approval',
+  );
 
   React.useEffect(() => {
     return () => {
@@ -750,6 +772,177 @@ const SendPushNotification = () => {
             background="transparent"
             borderRadius="md"
             me="auto">
+            <Alert status="info" borderRadius="lg" mb="4" alignItems="start">
+              <AlertIcon />
+              <Box>
+                <AlertTitle fontSize="sm">
+                  Rich notification uyumlulugu
+                </AlertTitle>
+                <AlertDescription fontSize="sm">
+                  `C:\mobile2\src` tarafinda tam rich notification icin esik su
+                  an `Android {'>='} 2.8.0` ve `iOS {'>='} 2.8.0`. `appVersion`
+                  bossa da eski client gibi davranir. Daha eski clientlerde
+                  bildirim yine ulasir ama genelde standart push gorunumuyle
+                  kalir.
+                </AlertDescription>
+              </Box>
+            </Alert>
+            <Box
+              borderWidth="1px"
+              borderColor="gray.200"
+              borderRadius="lg"
+              p="4"
+              mb="4"
+              bg="gray.50">
+              <HStack justify="space-between" align="start" mb="3">
+                <Box>
+                  <Text fontSize="sm" fontWeight="600" color="gray.800">
+                    Canli Onizleme
+                  </Text>
+                  <Text fontSize="xs" color="gray.500">
+                    Yeni clientte yaklasik gorunum
+                  </Text>
+                </Box>
+                <HStack spacing="2" flexWrap="wrap" justify="flex-end">
+                  <Badge
+                    colorScheme={
+                      formValues.category === 'approval'
+                        ? 'orange'
+                        : formValues.category === 'important'
+                        ? 'red'
+                        : 'gray'
+                    }>
+                    {formValues.category || 'default'}
+                  </Badge>
+                  {formValues.groupKey && (
+                    <Badge colorScheme="purple">Group</Badge>
+                  )}
+                  {previewHasActions && (
+                    <Badge colorScheme="blue">Aksiyonlu</Badge>
+                  )}
+                  {formValues.imageUrl && (
+                    <Badge colorScheme="green">Gorselli</Badge>
+                  )}
+                </HStack>
+              </HStack>
+              <Box
+                borderWidth="1px"
+                borderColor="gray.200"
+                borderRadius="xl"
+                bg="white"
+                p="4"
+                boxShadow="sm">
+                <HStack align="start" spacing="3">
+                  <Flex
+                    width="10"
+                    height="10"
+                    borderRadius="full"
+                    bg={
+                      formValues.category === 'approval'
+                        ? 'orange.100'
+                        : formValues.category === 'important'
+                        ? 'red.100'
+                        : 'blue.100'
+                    }
+                    align="center"
+                    justify="center"
+                    color={
+                      formValues.category === 'approval'
+                        ? 'orange.700'
+                        : formValues.category === 'important'
+                        ? 'red.700'
+                        : 'blue.700'
+                    }
+                    fontSize="xs"
+                    fontWeight="700">
+                    App
+                  </Flex>
+                  <Box flex="1">
+                    <HStack justify="space-between" align="start" mb="1">
+                      <Text fontSize="sm" fontWeight="700" color="gray.800">
+                        {formValues.title || 'Bildirim Basligi'}
+                      </Text>
+                      <Text fontSize="xs" color="gray.400">
+                        simdi
+                      </Text>
+                    </HStack>
+                    <Text fontSize="sm" color="gray.700" whiteSpace="pre-wrap">
+                      {previewBody}
+                    </Text>
+                    {formValues.imageUrl && (
+                      <Box
+                        mt="3"
+                        borderRadius="md"
+                        borderWidth="1px"
+                        borderColor="gray.200"
+                        bg="gray.100"
+                        px="3"
+                        py="2">
+                        <Text fontSize="xs" color="gray.600" isTruncated>
+                          Gorsel: {formValues.imageUrl}
+                        </Text>
+                      </Box>
+                    )}
+                    <HStack spacing="2" flexWrap="wrap" mt="3">
+                      {formValues.category === 'approval' ? (
+                        <>
+                          <Button
+                            size="xs"
+                            colorScheme="green"
+                            variant="outline">
+                            Onayla
+                          </Button>
+                          <Button size="xs" colorScheme="red" variant="outline">
+                            Reddet
+                          </Button>
+                        </>
+                      ) : (
+                        <>
+                          {formValues.actionPrimaryId &&
+                            formValues.actionPrimaryTitle && (
+                              <Button
+                                size="xs"
+                                colorScheme="blue"
+                                variant="outline">
+                                {formValues.actionPrimaryTitle}
+                              </Button>
+                            )}
+                          {formValues.actionSecondaryId &&
+                            formValues.actionSecondaryTitle && (
+                              <Button
+                                size="xs"
+                                colorScheme="gray"
+                                variant="outline">
+                                {formValues.actionSecondaryTitle}
+                              </Button>
+                            )}
+                        </>
+                      )}
+                    </HStack>
+                    <HStack spacing="3" flexWrap="wrap" mt="3">
+                      <Text fontSize="xs" color="gray.500">
+                        Deep link: {previewDeepLink}
+                      </Text>
+                      {formValues.marketCode && (
+                        <Text fontSize="xs" color="gray.500">
+                          Market: {formValues.marketCode}
+                        </Text>
+                      )}
+                      {formValues.channelId && (
+                        <Text fontSize="xs" color="gray.500">
+                          Channel: {formValues.channelId}
+                        </Text>
+                      )}
+                      {formValues.summaryFocus && (
+                        <Text fontSize="xs" color="gray.500">
+                          Focus: {formValues.summaryFocus}
+                        </Text>
+                      )}
+                    </HStack>
+                  </Box>
+                </HStack>
+              </Box>
+            </Box>
             <FormControl isInvalid={!!errors.receiverType} mb="4">
               <FormLabel
                 display="flex"
@@ -827,11 +1020,11 @@ const SendPushNotification = () => {
                 mb="8px">
                 Mesaj
               </FormLabel>
-              <Input
+              <Textarea
                 fontSize="sm"
-                type="text"
                 fontWeight="500"
                 size="md"
+                rows={3}
                 {...register('body')}
               />
               <FormErrorMessage>{errors.body?.message}</FormErrorMessage>
@@ -1002,6 +1195,122 @@ const SendPushNotification = () => {
               </FormHelperText>
               <FormErrorMessage>{errors.groupKey?.message}</FormErrorMessage>
             </FormControl>
+            <FormControl isInvalid={!!errors.summary} mb="4">
+              <FormLabel
+                display="flex"
+                ms="4px"
+                fontSize="sm"
+                fontWeight="500"
+                mb="8px">
+                Ozet Metni (Opsiyonel)
+              </FormLabel>
+              <Textarea
+                fontSize="sm"
+                fontWeight="500"
+                size="md"
+                rows={2}
+                {...register('summary')}
+              />
+              <FormHelperText>
+                Ozellikle grouped ve rich kartlarda govde yerine one cikarilacak
+                kisa metin olarak kullanilir.
+              </FormHelperText>
+              <FormErrorMessage>{errors.summary?.message}</FormErrorMessage>
+            </FormControl>
+            <FormControl isInvalid={!!errors.summaryFocus} mb="4">
+              <FormLabel
+                display="flex"
+                ms="4px"
+                fontSize="sm"
+                fontWeight="500"
+                mb="8px">
+                Ozet Odagi (Opsiyonel)
+              </FormLabel>
+              <Select
+                fontSize="sm"
+                placeholder="Otomatik"
+                fontWeight="500"
+                size="md"
+                {...register('summaryFocus')}>
+                <option value="hero">hero</option>
+                <option value="insights">insights</option>
+                <option value="surprise">surprise</option>
+                <option value="recommendations">recommendations</option>
+              </Select>
+              <FormHelperText>
+                Market ozet gibi ekranlarda hangi bolume odaklanilacagini
+                belirler.
+              </FormHelperText>
+              <FormErrorMessage>
+                {errors.summaryFocus?.message}
+              </FormErrorMessage>
+            </FormControl>
+            <FormControl isInvalid={!!errors.deepLink} mb="4">
+              <FormLabel
+                display="flex"
+                ms="4px"
+                fontSize="sm"
+                fontWeight="500"
+                mb="8px">
+                Deep Link (Opsiyonel)
+              </FormLabel>
+              <Input
+                fontSize="sm"
+                type="text"
+                placeholder="hissechat://market/BIST100 veya default"
+                fontWeight="500"
+                size="md"
+                {...register('deepLink')}
+              />
+              <FormHelperText>
+                Bildirime basildiginda uygulama ici yonlendirme icin kullanilir.
+              </FormHelperText>
+              <FormErrorMessage>{errors.deepLink?.message}</FormErrorMessage>
+            </FormControl>
+            <HStack align="start" spacing="4" flexWrap="wrap">
+              <FormControl isInvalid={!!errors.marketCode} mb="4">
+                <FormLabel
+                  display="flex"
+                  ms="4px"
+                  fontSize="sm"
+                  fontWeight="500"
+                  mb="8px">
+                  Market Code (Opsiyonel)
+                </FormLabel>
+                <Input
+                  fontSize="sm"
+                  type="text"
+                  fontWeight="500"
+                  size="md"
+                  {...register('marketCode')}
+                />
+                <FormHelperText>Ornek: BIST100, BTCUSDT</FormHelperText>
+                <FormErrorMessage>
+                  {errors.marketCode?.message}
+                </FormErrorMessage>
+              </FormControl>
+              <FormControl isInvalid={!!errors.channelId} mb="4">
+                <FormLabel
+                  display="flex"
+                  ms="4px"
+                  fontSize="sm"
+                  fontWeight="500"
+                  mb="8px">
+                  Channel ID (Opsiyonel)
+                </FormLabel>
+                <Input
+                  fontSize="sm"
+                  type="text"
+                  fontWeight="500"
+                  size="md"
+                  {...register('channelId')}
+                />
+                <FormHelperText>
+                  Sessize al gibi kanal aksiyonlarinda kullanilir.
+                </FormHelperText>
+                <FormErrorMessage>{errors.channelId?.message}</FormErrorMessage>
+              </FormControl>
+            </HStack>
             <Condition condition={watch().category === 'approval'}>
               <FormControl isInvalid={!!errors.approveUrl} mb="4">
                 <FormLabel
@@ -1050,6 +1359,143 @@ const SendPushNotification = () => {
                 <FormErrorMessage>{errors.rejectUrl?.message}</FormErrorMessage>
               </FormControl>
             </Condition>
+            <Box
+              borderWidth="1px"
+              borderColor="gray.200"
+              borderRadius="lg"
+              p="4"
+              mb="4">
+              <Text fontSize="sm" fontWeight="600" mb="3">
+                Ozel Aksiyon Butonlari
+              </Text>
+              <HStack align="start" spacing="4" flexWrap="wrap">
+                <FormControl isInvalid={!!errors.actionPrimaryId} mb="4">
+                  <FormLabel
+                    display="flex"
+                    ms="4px"
+                    fontSize="sm"
+                    fontWeight="500"
+                    mb="8px">
+                    Birincil Aksiyon ID
+                  </FormLabel>
+                  <Input
+                    fontSize="sm"
+                    type="text"
+                    fontWeight="500"
+                    size="md"
+                    {...register('actionPrimaryId')}
+                  />
+                  <FormErrorMessage>
+                    {errors.actionPrimaryId?.message}
+                  </FormErrorMessage>
+                </FormControl>
+                <FormControl isInvalid={!!errors.actionPrimaryTitle} mb="4">
+                  <FormLabel
+                    display="flex"
+                    ms="4px"
+                    fontSize="sm"
+                    fontWeight="500"
+                    mb="8px">
+                    Birincil Buton Metni
+                  </FormLabel>
+                  <Input
+                    fontSize="sm"
+                    type="text"
+                    fontWeight="500"
+                    size="md"
+                    {...register('actionPrimaryTitle')}
+                  />
+                  <FormErrorMessage>
+                    {errors.actionPrimaryTitle?.message}
+                  </FormErrorMessage>
+                </FormControl>
+                <FormControl isInvalid={!!errors.actionPrimaryValue} mb="4">
+                  <FormLabel
+                    display="flex"
+                    ms="4px"
+                    fontSize="sm"
+                    fontWeight="500"
+                    mb="8px">
+                    Birincil Deger
+                  </FormLabel>
+                  <Input
+                    fontSize="sm"
+                    type="text"
+                    fontWeight="500"
+                    size="md"
+                    {...register('actionPrimaryValue')}
+                  />
+                  <FormErrorMessage>
+                    {errors.actionPrimaryValue?.message}
+                  </FormErrorMessage>
+                </FormControl>
+              </HStack>
+              <HStack align="start" spacing="4" flexWrap="wrap">
+                <FormControl isInvalid={!!errors.actionSecondaryId} mb="4">
+                  <FormLabel
+                    display="flex"
+                    ms="4px"
+                    fontSize="sm"
+                    fontWeight="500"
+                    mb="8px">
+                    Ikincil Aksiyon ID
+                  </FormLabel>
+                  <Input
+                    fontSize="sm"
+                    type="text"
+                    fontWeight="500"
+                    size="md"
+                    {...register('actionSecondaryId')}
+                  />
+                  <FormErrorMessage>
+                    {errors.actionSecondaryId?.message}
+                  </FormErrorMessage>
+                </FormControl>
+                <FormControl isInvalid={!!errors.actionSecondaryTitle} mb="4">
+                  <FormLabel
+                    display="flex"
+                    ms="4px"
+                    fontSize="sm"
+                    fontWeight="500"
+                    mb="8px">
+                    Ikincil Buton Metni
+                  </FormLabel>
+                  <Input
+                    fontSize="sm"
+                    type="text"
+                    fontWeight="500"
+                    size="md"
+                    {...register('actionSecondaryTitle')}
+                  />
+                  <FormErrorMessage>
+                    {errors.actionSecondaryTitle?.message}
+                  </FormErrorMessage>
+                </FormControl>
+                <FormControl isInvalid={!!errors.actionSecondaryValue} mb="4">
+                  <FormLabel
+                    display="flex"
+                    ms="4px"
+                    fontSize="sm"
+                    fontWeight="500"
+                    mb="8px">
+                    Ikincil Deger
+                  </FormLabel>
+                  <Input
+                    fontSize="sm"
+                    type="text"
+                    fontWeight="500"
+                    size="md"
+                    {...register('actionSecondaryValue')}
+                  />
+                  <FormErrorMessage>
+                    {errors.actionSecondaryValue?.message}
+                  </FormErrorMessage>
+                </FormControl>
+              </HStack>
+              <FormHelperText>
+                Yeni clientlerde en fazla iki aksiyon butonu render edilir.
+              </FormHelperText>
+            </Box>
             <Button
               isLoading={isPending}
               colorScheme={'primary'}
