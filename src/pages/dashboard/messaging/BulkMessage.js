@@ -744,19 +744,31 @@ const BulkMessage = () => {
       // Upload media files if present
       if (imageInput.objectUrl) {
         const url = await imageInput.upload();
-        if (url) values.image = url;
+        if (!url) {
+          throw new Error('Görsel yüklenemedi. Lütfen tekrar deneyin.');
+        }
+        values.image = url;
       }
       if (videoInput.objectUrl) {
         const url = await videoInput.upload();
-        if (url) values.video = url;
+        if (!url) {
+          throw new Error('Video yüklenemedi. Lütfen tekrar deneyin.');
+        }
+        values.video = url;
       }
       if (audioInput.objectUrl) {
         const url = await audioInput.upload();
-        if (url) values.audio = url;
+        if (!url) {
+          throw new Error('Ses dosyası yüklenemedi. Lütfen tekrar deneyin.');
+        }
+        values.audio = url;
       }
       if (fileInput.objectUrl) {
         const url = await fileInput.upload();
-        if (url) values.file = url;
+        if (!url) {
+          throw new Error('Dosya yüklenemedi. Lütfen tekrar deneyin.');
+        }
+        values.file = url;
       }
 
       setIsUploading(false);

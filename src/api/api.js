@@ -156,7 +156,7 @@ export const createAdDetail = async body => {
 export const uploadFile = async file => {
   const formData = new FormData();
   formData.append('file', file);
-  return apiClient.post(`/upload/file`, formData, {
+  return apiClient.post(`/upload/upload/file`, formData, {
     headers: {
       'Content-Type': 'multipart/form-data',
     },
@@ -182,11 +182,13 @@ export const uploadFileWithProgress = async (
   const sizeMB = file.size / (1024 * 1024);
   const timeout = Math.max(60000, Math.ceil(sizeMB / 10) * 60000);
 
-  return apiClient.post(`/upload/file`, formData, {
+  return apiClient.post(`/upload/upload/file`, formData, {
     headers: {
       'Content-Type': 'multipart/form-data',
     },
     timeout,
+    maxContentLength: 500 * 1024 * 1024,
+    maxBodyLength: 500 * 1024 * 1024,
     onUploadProgress: progressEvent => {
       if (onProgress && progressEvent.total) {
         const percentCompleted = Math.round(
@@ -214,13 +216,13 @@ export const uploadVideo = async (file, onProgress, options = {}) => {
   const sizeMB = file.size / (1024 * 1024);
   const timeout = Math.max(120000, Math.ceil(sizeMB / 10) * 120000);
 
-  return apiClient.post(`/upload/file`, formData, {
+  return apiClient.post(`/upload/upload/file`, formData, {
     headers: {
       'Content-Type': 'multipart/form-data',
     },
     timeout,
-    maxContentLength: 100 * 1024 * 1024, // 100MB
-    maxBodyLength: 100 * 1024 * 1024,
+    maxContentLength: 500 * 1024 * 1024,
+    maxBodyLength: 500 * 1024 * 1024,
     onUploadProgress: progressEvent => {
       if (onProgress && progressEvent.total) {
         const percentCompleted = Math.round(
