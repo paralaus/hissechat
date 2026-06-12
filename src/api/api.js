@@ -566,6 +566,12 @@ export const sendBulkMessage = async (body, options = {}) => {
   });
 };
 
+export const deleteBulkMessagesByText = async (body, options = {}) => {
+  return apiClient.post('/channels/bulk-message/delete-by-text', body, {
+    signal: options.signal,
+  });
+};
+
 export const getBulkMessageJobStatus = async (jobId, options = {}) => {
   return apiClient.get(`/channels/bulk-message/jobs/${jobId}`, {
     signal: options.signal,
