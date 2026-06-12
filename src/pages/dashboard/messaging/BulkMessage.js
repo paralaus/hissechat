@@ -6,6 +6,7 @@ import {
   FormControl,
   FormErrorMessage,
   FormLabel,
+  Input,
   Textarea,
   useToast,
   Select,
@@ -87,6 +88,18 @@ const schema = yup
   })
   .required();
 
+const deleteSchema = yup
+  .object({
+    text: yup.string().required('Silinecek mesaj metni zorunludur.').min(1),
+    confirm: yup
+      .string()
+      .oneOf(['DELETE'], 'Onay için DELETE yazmalısınız.')
+      .required('Onay zorunludur.'),
+    since: yup.string().notRequired(),
+    until: yup.string().notRequired(),
+  })
+  .required();
+
 const targetTypes = [
   {value: 'all_channels', label: 'Tüm Kanallara'},
   {value: 'all_markets', label: 'Tüm Piyasa Kanallarına'},
@@ -136,9 +149,11 @@ const bulkStageLabels = {
   preparing: 'Hazırlanıyor',
   persisted: 'Veritabanına Yazıldı',
   fanout: 'Kanallara Dağıtılıyor',
+  deleting: 'Siliniyor',
   cancel_requested: 'İptal İstendi',
   cancelled: 'İptal Edildi',
   completed: 'Tamamlandı',
+  completed_with_errors: 'Tamamlandı (Hatalı)',
   failed: 'Başarısız',
   active: 'İşleniyor',
 };
@@ -188,11 +203,27 @@ const matchesBulkJobFilter = (job, filter) => {
   return job.state === filter;
 };
 
+const getBulkJobType = jobName => {
+  if (jobName === 'delete-bulk-message-by-text') return 'delete';
+  return 'send';
+};
+
+const getBulkJobTypeLabel = jobName => {
+  if (jobName === 'delete-bulk-message-by-text') return 'Silme';
+  return 'Gönderim';
+};
+
+const getBulkJobTypeColor = jobName => {
+  if (jobName === 'delete-bulk-message-by-text') return 'red';
+  return 'blue';
+};
+
 const BulkMessage = () => {
   const toast = useToast();
   const [sendResult, setSendResult] = useState(null);
   const [isUploading, setIsUploading] = useState(false);
   const [isSending, setIsSending] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [isCancelled, setIsCancelled] = useState(false);
   const [sendProgress, setSendProgress] = useState({
     current: 0,
@@ -234,6 +265,21 @@ const BulkMessage = () => {
       video: '',
       audio: '',
       file: '',
+    },
+  });
+
+  const {
+    register: registerDelete,
+    handleSubmit: handleSubmitDelete,
+    formState: {errors: deleteErrors},
+    reset: resetDelete,
+  } = useForm({
+    resolver: yupResolver(deleteSchema),
+    defaultValues: {
+      text: '',
+      since: '',
+      until: '',
+      confirm: '',
     },
   });
 
@@ -325,6 +371,16 @@ const BulkMessage = () => {
     },
   });
 
+  const {mutateAsync: deleteMutateAsync, isPending: isDeletePending} =
+    useMutation({
+      mutationFn: values => {
+        abortControllerRef.current = new AbortController();
+        return api.deleteBulkMessagesByText(values, {
+          signal: abortControllerRef.current.signal,
+        });
+      },
+    });
+
   // Merge VİOP markets with existing channels
   const mergedViopChannels = React.useMemo(() => {
     if (!viopMarketsData) return [];
@@ -403,7 +459,7 @@ const BulkMessage = () => {
       toast({
         title: 'İşlem başladı',
         description:
-          'Başlamış bulk mesaj işi güvenli şekilde yarıda kesilmiyor.',
+          'Başlamış bulk işi güvenli şekilde yarıda kesilmiyor.',
         status: 'info',
         position: 'top',
       });
@@ -413,10 +469,13 @@ const BulkMessage = () => {
       abortControllerRef.current.abort();
       setIsCancelled(true);
       setIsSending(false);
+      setIsDeleting(false);
       setIsUploading(false);
       toast({
-        title: 'Gönderim iptal edildi',
-        description: 'Bazı mesajlar gönderilmiş olabilir.',
+        title: 'İşlem iptal edildi',
+        description: isDeleting
+          ? 'Bazı mesajlar silinmiş olabilir.'
+          : 'Bazı mesajlar gönderilmiş olabilir.',
         status: 'warning',
         position: 'top',
         duration: 5000,
@@ -443,6 +502,7 @@ const BulkMessage = () => {
     try {
       const {data: status} = await api.getBulkMessageJobStatus(jobId);
       const progress = status?.progress || {};
+      const jobType = getBulkJobType(status?.jobName);
       const total =
         progress.total || status?.result?.totalChannels || fallbackTotal || 0;
 
@@ -459,16 +519,21 @@ const BulkMessage = () => {
         activeJobIdRef.current = null;
         setActiveJobId(null);
         setIsSending(false);
+        setIsDeleting(false);
         setSendResult({
           ...status.result,
           queued: false,
           state: 'completed',
         });
         toast({
-          title: 'Toplu mesaj gönderildi!',
-          description: `${
-            status.result.successCount || 0
-          } kanala başarıyla gönderildi.`,
+          title:
+            jobType === 'delete'
+              ? 'Toplu mesaj silme tamamlandı!'
+              : 'Toplu mesaj gönderildi!',
+          description:
+            jobType === 'delete'
+              ? `${status.result.successCount || 0} mesaj silindi.`
+              : `${status.result.successCount || 0} kanala başarıyla gönderildi.`,
           status: 'success',
           position: 'top',
           duration: 5000,
@@ -482,14 +547,21 @@ const BulkMessage = () => {
         activeJobIdRef.current = null;
         setActiveJobId(null);
         setIsSending(false);
+        setIsDeleting(false);
         setSendResult({
           ...(status.result || {}),
           cancelled: true,
           state: 'cancelled',
         });
         toast({
-          title: 'Bulk mesaj işi iptal edildi',
-          description: 'Bekleyen bulk mesaj gönderimi sonlandırıldı.',
+          title:
+            jobType === 'delete'
+              ? 'Toplu silme işi iptal edildi'
+              : 'Bulk mesaj işi iptal edildi',
+          description:
+            jobType === 'delete'
+              ? 'Bekleyen toplu silme işlemi sonlandırıldı.'
+              : 'Bekleyen bulk mesaj gönderimi sonlandırıldı.',
           status: 'warning',
           position: 'top',
           duration: 5000,
@@ -503,8 +575,12 @@ const BulkMessage = () => {
         activeJobIdRef.current = null;
         setActiveJobId(null);
         setIsSending(false);
+        setIsDeleting(false);
         toast({
-          title: 'Toplu mesaj gönderimi başarısız oldu',
+          title:
+            jobType === 'delete'
+              ? 'Toplu silme işlemi başarısız oldu'
+              : 'Toplu mesaj gönderimi başarısız oldu',
           description: status.failedReason || 'Kuyruktaki işlem tamamlanamadı.',
           status: 'error',
           position: 'top',
@@ -523,6 +599,7 @@ const BulkMessage = () => {
       activeJobIdRef.current = null;
       setActiveJobId(null);
       setIsSending(false);
+      setIsDeleting(false);
       toast({
         title: getErrorMessage(error),
         status: 'error',
@@ -534,12 +611,14 @@ const BulkMessage = () => {
   const retryJobMutation = useMutation({
     mutationFn: jobId => api.retryBulkMessageJob(jobId),
     onSuccess: ({data}) => {
+      const jobType = getBulkJobType(data?.jobName);
       const total = data?.progress?.total || data?.result?.totalChannels || 0;
       activeJobIdRef.current = data?.jobId || null;
       setActiveJobId(data?.jobId || null);
       setSendResult(null);
       setIsCancelled(false);
-      setIsSending(true);
+      setIsSending(jobType === 'send');
+      setIsDeleting(jobType === 'delete');
       setSendProgress({
         current: data?.progress?.current || 0,
         total,
@@ -647,7 +726,11 @@ const BulkMessage = () => {
     try {
       setSendResult(null);
       setIsCancelled(false);
+      setIsDeleting(false);
       setIsUploading(true);
+      clearPolling();
+      activeJobIdRef.current = null;
+      setActiveJobId(null);
 
       const totalChannels = getTargetChannelCount();
       setSendProgress({
@@ -764,6 +847,95 @@ const BulkMessage = () => {
     }
   };
 
+  const onDeleteSubmit = async values => {
+    try {
+      setSendResult(null);
+      setIsCancelled(false);
+      setIsUploading(false);
+      setIsSending(false);
+      setIsDeleting(true);
+      clearPolling();
+      activeJobIdRef.current = null;
+      setActiveJobId(null);
+
+      setSendProgress({
+        current: 0,
+        total: 0,
+        successCount: 0,
+        failCount: 0,
+        stage: 'preparing',
+      });
+
+      const payload = {
+        text: values.text,
+        confirm: values.confirm,
+        ...(values.since ? {since: values.since} : {}),
+        ...(values.until ? {until: values.until} : {}),
+      };
+
+      const {data} = await deleteMutateAsync(payload);
+
+      if (data) {
+        if (data.queued && data.jobId) {
+          activeJobIdRef.current = data.jobId;
+          setActiveJobId(data.jobId);
+          resetDelete();
+          setSendProgress({
+            current: 0,
+            total: 0,
+            successCount: 0,
+            failCount: 0,
+            stage: data.state || 'queued',
+          });
+          toast({
+            title: 'Toplu silme kuyruğa alındı',
+            description: 'Arka planda silme işlemi başlatıldı.',
+            status: 'info',
+            position: 'top',
+            duration: 4000,
+          });
+          pollBulkMessageJob(data.jobId, 0);
+          return;
+        }
+
+        activeJobIdRef.current = null;
+        setActiveJobId(null);
+        setIsDeleting(false);
+        setSendProgress({
+          current: data.successCount + data.failCount,
+          total: data.successCount + data.failCount,
+          successCount: data.successCount || 0,
+          failCount: data.failCount || 0,
+          stage: data.state || (data.failCount > 0 ? 'completed_with_errors' : 'completed'),
+        });
+        setSendResult(data);
+        toast({
+          title: 'Toplu mesaj silme tamamlandı!',
+          description: `${data.successCount || 0} mesaj silindi.`,
+          status: data.failCount > 0 ? 'warning' : 'success',
+          position: 'top',
+          duration: 5000,
+        });
+        refetchBulkJobs();
+      }
+    } catch (error) {
+      setIsDeleting(false);
+      clearPolling();
+      activeJobIdRef.current = null;
+      setActiveJobId(null);
+
+      if (error.name === 'AbortError' || error.message === 'canceled') {
+        return;
+      }
+
+      toast({
+        title: getErrorMessage(error),
+        status: 'error',
+        position: 'top',
+      });
+    }
+  };
+
   const selectedChannels = watch('selectedChannels') || [];
 
   // Calculate target channel count
@@ -819,10 +991,10 @@ const BulkMessage = () => {
     <Page>
       <Box mb="6">
         <Text fontSize="2xl" fontWeight="bold" color="gray.800">
-          Toplu Mesaj Gönder
+          Toplu Mesaj
         </Text>
         <Text color="gray.500" mt="1">
-          Tüm kanallara veya seçili kanallara toplu mesaj ve medya gönderin.
+          Tüm kanallara veya seçili kanallara toplu mesaj gönderin; isterseniz metne göre toplu silin.
         </Text>
       </Box>
 
@@ -932,7 +1104,7 @@ const BulkMessage = () => {
       </StatGroup>
 
       {/* Sending Progress */}
-      {(isUploading || isSending) && (
+      {(isUploading || isSending || isDeleting) && (
         <Alert
           status={
             sendProgress.stage === 'cancel_requested' ? 'warning' : 'info'
@@ -949,7 +1121,9 @@ const BulkMessage = () => {
               <AlertTitle>
                 {isUploading
                   ? '📤 Medya yükleniyor...'
-                  : '📨 Mesajlar gönderiliyor...'}
+                  : isDeleting
+                  ? '�️ Mesajlar siliniyor...'
+                  : '�� Mesajlar gönderiliyor...'}
               </AlertTitle>
             </HStack>
             <Button
@@ -963,11 +1137,11 @@ const BulkMessage = () => {
             </Button>
           </HStack>
 
-          {isSending && sendProgress.total > 0 && (
+          {(isSending || isDeleting) && sendProgress.total > 0 && (
             <Box width="100%">
               <HStack justify="space-between" mb="2">
                 <Text fontSize="sm" color="gray.600">
-                  Hedef: {sendProgress.total} kanal
+                  Hedef: {sendProgress.total} {isDeleting ? 'mesaj' : 'kanal'}
                 </Text>
                 <HStack spacing="2">
                   <Badge colorScheme="purple" fontSize="sm">
@@ -976,6 +1150,8 @@ const BulkMessage = () => {
                   <Badge colorScheme="blue" fontSize="sm">
                     {sendProgress.current > 0
                       ? `${sendProgress.current}/${sendProgress.total}`
+                      : isDeleting
+                      ? 'Siliniyor...'
                       : 'Gönderiliyor...'}
                   </Badge>
                 </HStack>
@@ -1041,6 +1217,8 @@ const BulkMessage = () => {
           <AlertTitle mt={2}>
             {sendResult.cancelled
               ? 'Bulk mesaj işi iptal edildi'
+              : sendResult.operation === 'delete'
+              ? '🗑️ Silme Tamamlandı'
               : '🎉 Gönderim Tamamlandı'}
           </AlertTitle>
           <AlertDescription mt={2} width="100%">
@@ -1054,7 +1232,9 @@ const BulkMessage = () => {
                     py="1">
                     ✅ {sendResult.successCount}
                   </Badge>
-                  <Text>Başarılı</Text>
+                  <Text>
+                    {sendResult.operation === 'delete' ? 'Silinen' : 'Başarılı'}
+                  </Text>
                 </HStack>
                 {sendResult.failCount > 0 && (
                   <HStack>
@@ -1083,7 +1263,7 @@ const BulkMessage = () => {
               <HStack spacing="4" fontSize="sm" color="gray.500">
                 <Text>
                   📊 Toplam: {sendResult.successCount + sendResult.failCount}{' '}
-                  kanal
+                  {sendResult.operation === 'delete' ? 'mesaj' : 'kanal'}
                 </Text>
                 <Text>⏱️ Süre: {(sendResult.duration / 1000).toFixed(1)}s</Text>
                 <Text>
@@ -1210,6 +1390,9 @@ const BulkMessage = () => {
                         <Badge colorScheme="purple">
                           {formatBulkStage(stage)}
                         </Badge>
+                        <Badge colorScheme={getBulkJobTypeColor(job.jobName)}>
+                          {getBulkJobTypeLabel(job.jobName)}
+                        </Badge>
                         <Badge colorScheme="blue">
                           {job.targetType || 'bulk'}
                         </Badge>
@@ -1300,6 +1483,114 @@ const BulkMessage = () => {
             })}
           </VStack>
         )}
+      </Box>
+
+      <Box bg="white" borderRadius="xl" boxShadow="md" p="6" mb="6">
+        <HStack justify="space-between" mb="4" align="center">
+          <Box>
+            <Text fontSize="lg" fontWeight="bold" color="gray.800">
+              Toplu Mesaj Sil (Metne Göre)
+            </Text>
+            <Text fontSize="sm" color="gray.500">
+              Daha önce “tüm kanallara” gönderdiğiniz aynı metindeki mesajları
+              topluca siler.
+            </Text>
+          </Box>
+        </HStack>
+
+        <Alert status="warning" borderRadius="lg" mb="6">
+          <AlertIcon />
+          <Box>
+            <AlertTitle fontSize="sm">Dikkat!</AlertTitle>
+            <AlertDescription fontSize="sm">
+              Bu işlem geri alınamaz. Metin birebir aynı olmalıdır. Güvenlik
+              için onay alanına DELETE yazmalısınız.
+            </AlertDescription>
+          </Box>
+        </Alert>
+
+        <form onSubmit={handleSubmitDelete(onDeleteSubmit)}>
+          <Flex direction="column" maxW="100%">
+            <FormControl isInvalid={!!deleteErrors.text} mb="6">
+              <FormLabel fontWeight="600" fontSize="sm">
+                Mesaj Metni
+              </FormLabel>
+              <Textarea
+                placeholder="Silmek istediğiniz mesaj metnini birebir yapıştırın..."
+                size="lg"
+                rows={4}
+                {...registerDelete('text')}
+              />
+              <FormHelperText>
+                Metin eşleşmesi birebir yapılır. Gerekirse tarih aralığı ile
+                daraltın.
+              </FormHelperText>
+              <FormErrorMessage>{deleteErrors.text?.message}</FormErrorMessage>
+            </FormControl>
+
+            <HStack spacing="4" align="start" flexWrap="wrap" mb="6">
+              <FormControl isInvalid={!!deleteErrors.since} flex="1" minW="240px">
+                <FormLabel fontWeight="600" fontSize="sm">
+                  Başlangıç (Opsiyonel)
+                </FormLabel>
+                <Input type="datetime-local" size="lg" {...registerDelete('since')} />
+                <FormErrorMessage>
+                  {deleteErrors.since?.message}
+                </FormErrorMessage>
+              </FormControl>
+
+              <FormControl isInvalid={!!deleteErrors.until} flex="1" minW="240px">
+                <FormLabel fontWeight="600" fontSize="sm">
+                  Bitiş (Opsiyonel)
+                </FormLabel>
+                <Input type="datetime-local" size="lg" {...registerDelete('until')} />
+                <FormErrorMessage>
+                  {deleteErrors.until?.message}
+                </FormErrorMessage>
+              </FormControl>
+            </HStack>
+
+            <FormControl isInvalid={!!deleteErrors.confirm} mb="6">
+              <FormLabel fontWeight="600" fontSize="sm">
+                Onay
+              </FormLabel>
+              <Input
+                placeholder="DELETE"
+                size="lg"
+                autoComplete="off"
+                {...registerDelete('confirm')}
+              />
+              <FormErrorMessage>
+                {deleteErrors.confirm?.message}
+              </FormErrorMessage>
+            </FormControl>
+
+            {(isDeletePending || isDeleting) && (
+              <Box mb="4">
+                <Text mb="2" fontSize="sm" color="gray.500">
+                  Silme işlemi başlatılıyor...
+                </Text>
+                <Progress
+                  size="sm"
+                  isIndeterminate
+                  colorScheme="red"
+                  borderRadius="full"
+                />
+              </Box>
+            )}
+
+            <Button
+              isLoading={isDeletePending || isDeleting}
+              loadingText="Siliniyor..."
+              colorScheme="red"
+              size="lg"
+              type="submit"
+              leftIcon={<Icon as={FiX} />}
+              isDisabled={isUploading || isSending}>
+              Metne Göre Toplu Sil
+            </Button>
+          </Flex>
+        </form>
       </Box>
 
       <Box
