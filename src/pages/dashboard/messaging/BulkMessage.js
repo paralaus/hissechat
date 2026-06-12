@@ -59,6 +59,7 @@ import {
   FiFile,
   FiSmile,
   FiActivity,
+  FiRefreshCw,
   FiCpu,
   FiPieChart,
   FiStar,
@@ -128,6 +129,65 @@ const fetchAll = async (apiFunc, params = {}) => {
   return allResults;
 };
 
+const bulkStageLabels = {
+  uploading: 'Medya Yükleniyor',
+  queued: 'Kuyrukta',
+  waiting: 'Bekliyor',
+  preparing: 'Hazırlanıyor',
+  persisted: 'Veritabanına Yazıldı',
+  fanout: 'Kanallara Dağıtılıyor',
+  cancel_requested: 'İptal İstendi',
+  cancelled: 'İptal Edildi',
+  completed: 'Tamamlandı',
+  failed: 'Başarısız',
+  active: 'İşleniyor',
+};
+
+const bulkStateColors = {
+  completed: 'green',
+  failed: 'red',
+  active: 'blue',
+  waiting: 'yellow',
+  delayed: 'orange',
+  cancel_requested: 'orange',
+  cancelled: 'gray',
+};
+
+const formatBulkStage = stage =>
+  bulkStageLabels[stage] || (stage ? stage : 'Hazırlanıyor');
+
+const formatBulkState = state =>
+  bulkStageLabels[state] || (state ? state : 'Bekliyor');
+
+const bulkJobFilters = [
+  {value: 'all', label: 'Tümü'},
+  {value: 'active', label: 'Aktif'},
+  {value: 'waiting', label: 'Bekleyen'},
+  {value: 'failed', label: 'Başarısız'},
+  {value: 'cancelled', label: 'İptal'},
+  {value: 'completed', label: 'Tamamlanan'},
+];
+
+const bulkJobFilterColors = {
+  all: 'purple',
+  active: 'blue',
+  waiting: 'orange',
+  failed: 'red',
+  cancelled: 'gray',
+  completed: 'green',
+};
+
+const matchesBulkJobFilter = (job, filter) => {
+  if (filter === 'all') return true;
+  if (filter === 'active') return job.state === 'active';
+  if (filter === 'waiting') {
+    return ['queued', 'waiting', 'delayed', 'cancel_requested'].includes(
+      job.state,
+    );
+  }
+  return job.state === filter;
+};
+
 const BulkMessage = () => {
   const toast = useToast();
   const [sendResult, setSendResult] = useState(null);
@@ -139,10 +199,15 @@ const BulkMessage = () => {
     total: 0,
     successCount: 0,
     failCount: 0,
+    stage: 'idle',
   });
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [bulkJobFilter, setBulkJobFilter] = useState('all');
   const textareaRef = React.useRef(null);
   const abortControllerRef = React.useRef(null);
+  const pollTimeoutRef = React.useRef(null);
+  const activeJobIdRef = React.useRef(null);
+  const [activeJobId, setActiveJobId] = useState(null);
 
   // File inputs for different media types
   const imageInput = useFileInput({accept: 'image/*'});
@@ -171,6 +236,14 @@ const BulkMessage = () => {
       file: '',
     },
   });
+
+  React.useEffect(() => {
+    return () => {
+      if (pollTimeoutRef.current) {
+        clearTimeout(pollTimeoutRef.current);
+      }
+    };
+  }, []);
 
   // Fetch all channels for selection
   const targetType = watch('targetType');
@@ -225,6 +298,21 @@ const BulkMessage = () => {
     staleTime: 300000,
     cacheTime: 900000,
     refetchOnWindowFocus: false,
+  });
+
+  const {
+    data: bulkJobs = [],
+    isLoading: isLoadingBulkJobs,
+    refetch: refetchBulkJobs,
+  } = useQuery({
+    queryKey: ['bulk-message-jobs'],
+    queryFn: async () => {
+      const {data} = await api.listBulkMessageJobs({limit: 12});
+      return data?.results || [];
+    },
+    refetchInterval: activeJobId ? 3000 : 15000,
+    refetchOnWindowFocus: false,
+    staleTime: 0,
   });
 
   const {mutateAsync, isPending} = useMutation({
@@ -307,6 +395,20 @@ const BulkMessage = () => {
 
   // Cancel handler
   const handleCancel = () => {
+    if (activeJobIdRef.current) {
+      if (['queued', 'waiting'].includes(sendProgress.stage)) {
+        cancelJobMutation.mutate(activeJobIdRef.current);
+        return;
+      }
+      toast({
+        title: 'İşlem başladı',
+        description:
+          'Başlamış bulk mesaj işi güvenli şekilde yarıda kesilmiyor.',
+        status: 'info',
+        position: 'top',
+      });
+      return;
+    }
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
       setIsCancelled(true);
@@ -321,6 +423,187 @@ const BulkMessage = () => {
       });
     }
   };
+
+  const clearPolling = () => {
+    if (pollTimeoutRef.current) {
+      clearTimeout(pollTimeoutRef.current);
+      pollTimeoutRef.current = null;
+    }
+  };
+
+  const resetComposer = () => {
+    reset();
+    imageInput.reset();
+    videoInput.reset();
+    audioInput.reset();
+    fileInput.reset();
+  };
+
+  const pollBulkMessageJob = async (jobId, fallbackTotal) => {
+    try {
+      const {data: status} = await api.getBulkMessageJobStatus(jobId);
+      const progress = status?.progress || {};
+      const total =
+        progress.total || status?.result?.totalChannels || fallbackTotal || 0;
+
+      setSendProgress({
+        current: progress.current || 0,
+        total,
+        successCount: progress.successCount || 0,
+        failCount: progress.failCount || 0,
+        stage: progress.stage || status?.state || 'queued',
+      });
+
+      if (status?.state === 'completed' && status.result) {
+        clearPolling();
+        activeJobIdRef.current = null;
+        setActiveJobId(null);
+        setIsSending(false);
+        setSendResult({
+          ...status.result,
+          queued: false,
+          state: 'completed',
+        });
+        toast({
+          title: 'Toplu mesaj gönderildi!',
+          description: `${
+            status.result.successCount || 0
+          } kanala başarıyla gönderildi.`,
+          status: 'success',
+          position: 'top',
+          duration: 5000,
+        });
+        refetchBulkJobs();
+        return;
+      }
+
+      if (status?.state === 'cancelled' || status?.result?.cancelled) {
+        clearPolling();
+        activeJobIdRef.current = null;
+        setActiveJobId(null);
+        setIsSending(false);
+        setSendResult({
+          ...(status.result || {}),
+          cancelled: true,
+          state: 'cancelled',
+        });
+        toast({
+          title: 'Bulk mesaj işi iptal edildi',
+          description: 'Bekleyen bulk mesaj gönderimi sonlandırıldı.',
+          status: 'warning',
+          position: 'top',
+          duration: 5000,
+        });
+        refetchBulkJobs();
+        return;
+      }
+
+      if (status?.state === 'failed') {
+        clearPolling();
+        activeJobIdRef.current = null;
+        setActiveJobId(null);
+        setIsSending(false);
+        toast({
+          title: 'Toplu mesaj gönderimi başarısız oldu',
+          description: status.failedReason || 'Kuyruktaki işlem tamamlanamadı.',
+          status: 'error',
+          position: 'top',
+          duration: 5000,
+        });
+        refetchBulkJobs();
+        return;
+      }
+
+      pollTimeoutRef.current = setTimeout(
+        () => pollBulkMessageJob(jobId, total),
+        2000,
+      );
+    } catch (error) {
+      clearPolling();
+      activeJobIdRef.current = null;
+      setActiveJobId(null);
+      setIsSending(false);
+      toast({
+        title: getErrorMessage(error),
+        status: 'error',
+        position: 'top',
+      });
+    }
+  };
+
+  const retryJobMutation = useMutation({
+    mutationFn: jobId => api.retryBulkMessageJob(jobId),
+    onSuccess: ({data}) => {
+      const total = data?.progress?.total || data?.result?.totalChannels || 0;
+      activeJobIdRef.current = data?.jobId || null;
+      setActiveJobId(data?.jobId || null);
+      setSendResult(null);
+      setIsCancelled(false);
+      setIsSending(true);
+      setSendProgress({
+        current: data?.progress?.current || 0,
+        total,
+        successCount: data?.progress?.successCount || 0,
+        failCount: data?.progress?.failCount || 0,
+        stage: data?.progress?.stage || data?.state || 'queued',
+      });
+      toast({
+        title: 'Bulk mesaj işi yeniden kuyruğa alındı',
+        description: 'Arka planda tekrar işleniyor.',
+        status: 'info',
+        position: 'top',
+        duration: 4000,
+      });
+      refetchBulkJobs();
+      if (data?.jobId) {
+        pollBulkMessageJob(data.jobId, total);
+      }
+    },
+    onError: error => {
+      toast({
+        title: getErrorMessage(error),
+        status: 'error',
+        position: 'top',
+      });
+    },
+  });
+
+  const cancelJobMutation = useMutation({
+    mutationFn: jobId => api.cancelBulkMessageJob(jobId),
+    onSuccess: ({data}) => {
+      const total = data?.progress?.total || data?.result?.totalChannels || 0;
+      if (activeJobIdRef.current === data?.jobId) {
+        setSendProgress({
+          current: data?.progress?.current || 0,
+          total,
+          successCount: data?.progress?.successCount || 0,
+          failCount: data?.progress?.failCount || 0,
+          stage: data?.progress?.stage || data?.state || 'cancel_requested',
+        });
+      }
+      toast({
+        title:
+          data?.state === 'cancelled'
+            ? 'Bulk mesaj işi iptal edildi'
+            : 'Bulk mesaj işi için iptal istendi',
+        description:
+          data?.state === 'cancelled'
+            ? 'İşlem tamamlanmadan sonlandırıldı.'
+            : 'Worker işi aldığında iptal edilmiş olarak sonlandıracak.',
+        status: 'warning',
+        position: 'top',
+        duration: 4000,
+      });
+      refetchBulkJobs();
+    },
+    onError: error => {
+      toast({
+        title: getErrorMessage(error),
+        status: 'error',
+        position: 'top',
+      });
+    },
+  });
 
   // Calculate target channel count based on selection
   const getTargetChannelCount = () => {
@@ -372,6 +655,7 @@ const BulkMessage = () => {
         total: totalChannels,
         successCount: 0,
         failCount: 0,
+        stage: 'uploading',
       });
 
       // Upload media files if present
@@ -413,14 +697,40 @@ const BulkMessage = () => {
 
       const {data} = await mutateAsync(submissionValues);
 
-      setIsSending(false);
-
       if (data) {
+        if (data.queued && data.jobId) {
+          activeJobIdRef.current = data.jobId;
+          setActiveJobId(data.jobId);
+          resetComposer();
+          setSendProgress({
+            current: 0,
+            total: data.totalChannels || totalChannels,
+            successCount: 0,
+            failCount: 0,
+            stage: data.state || 'queued',
+          });
+          toast({
+            title: 'Toplu mesaj kuyruğa alındı',
+            description: `${
+              data.totalChannels || totalChannels
+            } kanal için arka planda işleniyor.`,
+            status: 'info',
+            position: 'top',
+            duration: 4000,
+          });
+          pollBulkMessageJob(data.jobId, data.totalChannels || totalChannels);
+          return;
+        }
+
+        activeJobIdRef.current = null;
+        setActiveJobId(null);
+        setIsSending(false);
         setSendProgress({
           current: totalChannels,
           total: totalChannels,
           successCount: data.successCount || 0,
           failCount: data.failCount || 0,
+          stage: 'completed',
         });
         setSendResult(data);
         toast({
@@ -430,15 +740,15 @@ const BulkMessage = () => {
           position: 'top',
           duration: 5000,
         });
-        reset();
-        imageInput.reset();
-        videoInput.reset();
-        audioInput.reset();
-        fileInput.reset();
+        resetComposer();
+        refetchBulkJobs();
       }
     } catch (error) {
       setIsUploading(false);
       setIsSending(false);
+      clearPolling();
+      activeJobIdRef.current = null;
+      setActiveJobId(null);
 
       // Don't show error toast if cancelled
       if (error.name === 'AbortError' || error.message === 'canceled') {
@@ -468,8 +778,12 @@ const BulkMessage = () => {
 
   // Group channels by type for display
   const stockChannels = mergedStockChannels.filter(c => !!(c.name || c.label));
-  const cryptoChannels = mergedCryptoChannels.filter(c => !!(c.name || c.label));
-  const vipChannels = (vipChannelsData || []).filter(c => !!(c.name || c.label));
+  const cryptoChannels = mergedCryptoChannels.filter(
+    c => !!(c.name || c.label),
+  );
+  const vipChannels = (vipChannelsData || []).filter(
+    c => !!(c.name || c.label),
+  );
   const fundChannels = mergedFundChannels.filter(c => !!(c.name || c.label));
   const viopChannels = mergedViopChannels.filter(c => !!(c.name || c.label));
 
@@ -483,6 +797,23 @@ const BulkMessage = () => {
         c => c.type !== 'market' && c.type !== 'vip' && c.type !== 'fund',
       ) || []
     ).filter(c => !!(c.name || c.label)) || [];
+
+  const filteredBulkJobs = React.useMemo(
+    () => bulkJobs.filter(job => matchesBulkJobFilter(job, bulkJobFilter)),
+    [bulkJobs, bulkJobFilter],
+  );
+
+  const bulkJobFilterCounts = React.useMemo(
+    () =>
+      Object.fromEntries(
+        bulkJobFilters.map(filter => [
+          filter.value,
+          bulkJobs.filter(job => matchesBulkJobFilter(job, filter.value))
+            .length,
+        ]),
+      ),
+    [bulkJobs],
+  );
 
   return (
     <Page>
@@ -603,7 +934,9 @@ const BulkMessage = () => {
       {/* Sending Progress */}
       {(isUploading || isSending) && (
         <Alert
-          status="info"
+          status={
+            sendProgress.stage === 'cancel_requested' ? 'warning' : 'info'
+          }
           variant="subtle"
           flexDirection="column"
           alignItems="flex-start"
@@ -624,6 +957,7 @@ const BulkMessage = () => {
               colorScheme="red"
               variant="outline"
               onClick={handleCancel}
+              isLoading={cancelJobMutation.isPending}
               leftIcon={<Icon as={FiX} />}>
               İptal Et
             </Button>
@@ -635,23 +969,38 @@ const BulkMessage = () => {
                 <Text fontSize="sm" color="gray.600">
                   Hedef: {sendProgress.total} kanal
                 </Text>
-                <Badge colorScheme="blue" fontSize="sm">
-                  Gönderiliyor...
-                </Badge>
+                <HStack spacing="2">
+                  <Badge colorScheme="purple" fontSize="sm">
+                    {formatBulkStage(sendProgress.stage)}
+                  </Badge>
+                  <Badge colorScheme="blue" fontSize="sm">
+                    {sendProgress.current > 0
+                      ? `${sendProgress.current}/${sendProgress.total}`
+                      : 'Gönderiliyor...'}
+                  </Badge>
+                </HStack>
               </HStack>
               <Progress
-                value={100}
+                value={
+                  sendProgress.current > 0 && sendProgress.total > 0
+                    ? (sendProgress.current / sendProgress.total) * 100
+                    : 100
+                }
                 size="sm"
                 colorScheme="blue"
                 borderRadius="full"
-                isIndeterminate
+                isIndeterminate={sendProgress.current === 0}
               />
               <HStack mt="3" spacing="4" fontSize="sm" justify="space-between">
                 <Text color="gray.500">
-                  ⏳ Lütfen bekleyin, mesajlar gönderiliyor...
+                  ⏳ Lütfen bekleyin, iş arka planda işleniyor...
                 </Text>
                 <Text color="orange.500" fontSize="xs">
-                  💡 İptal ederseniz, gönderilmiş mesajlar kalacaktır.
+                  {activeJobId
+                    ? ['queued', 'waiting'].includes(sendProgress.stage)
+                      ? '💡 Bekleyen kuyruğa alınmış işi iptal edebilirsiniz.'
+                      : '💡 Başlayan bulk işi güvenli şekilde yarıda kesilmiyor.'
+                    : '💡 İptal ederseniz, gönderilmiş mesajlar kalacaktır.'}
                 </Text>
               </HStack>
             </Box>
@@ -675,7 +1024,13 @@ const BulkMessage = () => {
       {/* Send Result */}
       {sendResult && !isSending && (
         <Alert
-          status={sendResult.failCount > 0 ? 'warning' : 'success'}
+          status={
+            sendResult.cancelled
+              ? 'warning'
+              : sendResult.failCount > 0
+              ? 'warning'
+              : 'success'
+          }
           variant="subtle"
           flexDirection="column"
           alignItems="flex-start"
@@ -683,12 +1038,20 @@ const BulkMessage = () => {
           mb="6"
           p="4">
           <AlertIcon />
-          <AlertTitle mt={2}>🎉 Gönderim Tamamlandı</AlertTitle>
+          <AlertTitle mt={2}>
+            {sendResult.cancelled
+              ? 'Bulk mesaj işi iptal edildi'
+              : '🎉 Gönderim Tamamlandı'}
+          </AlertTitle>
           <AlertDescription mt={2} width="100%">
             <VStack align="start" spacing="2" width="100%">
               <HStack spacing="6">
                 <HStack>
-                  <Badge colorScheme="green" fontSize="md" px="3" py="1">
+                  <Badge
+                    colorScheme={sendResult.cancelled ? 'gray' : 'green'}
+                    fontSize="md"
+                    px="3"
+                    py="1">
                     ✅ {sendResult.successCount}
                   </Badge>
                   <Text>Başarılı</Text>
@@ -705,9 +1068,11 @@ const BulkMessage = () => {
 
               <Progress
                 value={
-                  (sendResult.successCount /
-                    (sendResult.successCount + sendResult.failCount)) *
-                  100
+                  sendResult.successCount + sendResult.failCount > 0
+                    ? (sendResult.successCount /
+                        (sendResult.successCount + sendResult.failCount)) *
+                      100
+                    : 0
                 }
                 size="sm"
                 colorScheme={sendResult.failCount > 0 ? 'yellow' : 'green'}
@@ -723,18 +1088,219 @@ const BulkMessage = () => {
                 <Text>⏱️ Süre: {(sendResult.duration / 1000).toFixed(1)}s</Text>
                 <Text>
                   📈 Başarı:{' '}
-                  {Math.round(
-                    (sendResult.successCount /
-                      (sendResult.successCount + sendResult.failCount)) *
-                      100,
-                  )}
+                  {sendResult.successCount + sendResult.failCount > 0
+                    ? Math.round(
+                        (sendResult.successCount /
+                          (sendResult.successCount + sendResult.failCount)) *
+                          100,
+                      )
+                    : 0}
                   %
                 </Text>
               </HStack>
+              {sendResult.cancelled && (
+                <Text fontSize="sm" color="orange.600">
+                  İş worker tarafından alınmadan önce sonlandırıldı.
+                </Text>
+              )}
             </VStack>
           </AlertDescription>
         </Alert>
       )}
+
+      <Box bg="white" borderRadius="xl" boxShadow="md" p="6" mb="6">
+        <HStack justify="space-between" mb="4" align="center">
+          <Box>
+            <Text fontSize="lg" fontWeight="bold" color="gray.800">
+              Son Bulk İşleri
+            </Text>
+            <Text fontSize="sm" color="gray.500">
+              Son 12 toplu mesaj job kaydı, durum ve yeniden deneme işlemleri.
+            </Text>
+          </Box>
+          <Button
+            size="sm"
+            variant="outline"
+            leftIcon={<Icon as={FiRefreshCw} />}
+            onClick={() => refetchBulkJobs()}>
+            Yenile
+          </Button>
+        </HStack>
+
+        <Box
+          mb="4"
+          overflowX="auto"
+          overflowY="hidden"
+          whiteSpace="nowrap"
+          sx={{
+            '&::-webkit-scrollbar': {
+              height: '6px',
+            },
+          }}>
+          <HStack spacing="2" align="stretch" minW="max-content" pb="1">
+            {bulkJobFilters.map(filter => (
+              <Button
+                key={filter.value}
+                size="sm"
+                borderRadius="full"
+                flexShrink={0}
+                variant={bulkJobFilter === filter.value ? 'solid' : 'outline'}
+                colorScheme={bulkJobFilter === filter.value ? 'blue' : 'gray'}
+                onClick={() => setBulkJobFilter(filter.value)}>
+                <HStack spacing="2">
+                  <Text>{filter.label}</Text>
+                  <Badge
+                    borderRadius="full"
+                    px="2"
+                    colorScheme={
+                      bulkJobFilter === filter.value
+                        ? bulkJobFilterColors[filter.value] || 'blue'
+                        : bulkJobFilterColors[filter.value] || 'gray'
+                    }>
+                    {bulkJobFilterCounts[filter.value] || 0}
+                  </Badge>
+                </HStack>
+              </Button>
+            ))}
+          </HStack>
+        </Box>
+
+        {isLoadingBulkJobs ? (
+          <Flex justify="center" py="6">
+            <Spinner size="md" />
+          </Flex>
+        ) : bulkJobs.length === 0 ? (
+          <Alert status="info" borderRadius="md">
+            <AlertIcon />
+            <Text>Henüz bulk job kaydı yok.</Text>
+          </Alert>
+        ) : filteredBulkJobs.length === 0 ? (
+          <Alert status="info" borderRadius="md">
+            <AlertIcon />
+            <Text>Seçilen filtreye uygun bulk job bulunamadı.</Text>
+          </Alert>
+        ) : (
+          <VStack align="stretch" spacing="3">
+            {filteredBulkJobs.map(job => {
+              const total =
+                job.progress?.total || job.result?.totalChannels || 0;
+              const current = job.progress?.current || 0;
+              const stage = job.progress?.stage || job.state;
+              const successCount =
+                job.progress?.successCount || job.result?.successCount || 0;
+              const failCount =
+                job.progress?.failCount || job.result?.failCount || 0;
+              const isFailed = job.state === 'failed';
+              const isCancelled = job.state === 'cancelled';
+
+              return (
+                <Box
+                  key={job.jobId}
+                  borderWidth="1px"
+                  borderColor="gray.200"
+                  borderRadius="lg"
+                  p="4">
+                  <HStack justify="space-between" align="start" mb="2">
+                    <VStack align="start" spacing="1">
+                      <HStack>
+                        <Badge
+                          colorScheme={bulkStateColors[job.state] || 'gray'}>
+                          {formatBulkState(job.state)}
+                        </Badge>
+                        <Badge colorScheme="purple">
+                          {formatBulkStage(stage)}
+                        </Badge>
+                        <Badge colorScheme="blue">
+                          {job.targetType || 'bulk'}
+                        </Badge>
+                      </HStack>
+                      <Text fontSize="sm" color="gray.600">
+                        Job ID: {job.jobId}
+                      </Text>
+                      <Text fontSize="xs" color="gray.500">
+                        Kuyruğa alındı:{' '}
+                        {job.queuedAt
+                          ? new Date(job.queuedAt).toLocaleString('tr-TR')
+                          : '-'}
+                      </Text>
+                    </VStack>
+                    <HStack>
+                      {job.canCancel && (
+                        <Button
+                          size="sm"
+                          colorScheme="orange"
+                          variant="outline"
+                          onClick={() => cancelJobMutation.mutate(job.jobId)}
+                          isLoading={cancelJobMutation.isPending}>
+                          İptal Et
+                        </Button>
+                      )}
+                      {isFailed && (
+                        <Button
+                          size="sm"
+                          colorScheme="orange"
+                          variant="outline"
+                          leftIcon={<Icon as={FiRefreshCw} />}
+                          onClick={() => retryJobMutation.mutate(job.jobId)}
+                          isLoading={retryJobMutation.isPending}>
+                          Yeniden Dene
+                        </Button>
+                      )}
+                    </HStack>
+                  </HStack>
+
+                  <Progress
+                    value={
+                      current > 0 && total > 0
+                        ? (current / total) * 100
+                        : job.state === 'completed'
+                        ? 100
+                        : 10
+                    }
+                    size="sm"
+                    colorScheme={
+                      isFailed
+                        ? 'red'
+                        : isCancelled
+                        ? 'gray'
+                        : job.state === 'completed'
+                        ? 'green'
+                        : 'blue'
+                    }
+                    borderRadius="full"
+                    isIndeterminate={job.state === 'active' && current === 0}
+                    mb="3"
+                  />
+
+                  <HStack
+                    spacing="4"
+                    flexWrap="wrap"
+                    fontSize="sm"
+                    color="gray.600">
+                    <Text>
+                      Hedef: {total || job.selectedChannelsCount || 0}
+                    </Text>
+                    <Text>
+                      İlerleme: {current}/{total || '-'}
+                    </Text>
+                    <Text>Başarılı: {successCount}</Text>
+                    <Text>Başarısız: {failCount}</Text>
+                    {job.state === 'cancel_requested' && (
+                      <Text color="orange.500">İptal isteği bekliyor</Text>
+                    )}
+                    {isCancelled && (
+                      <Text color="gray.500">İşlem iptal edildi</Text>
+                    )}
+                    {job.failedReason && (
+                      <Text color="red.500">Hata: {job.failedReason}</Text>
+                    )}
+                  </HStack>
+                </Box>
+              );
+            })}
+          </VStack>
+        )}
+      </Box>
 
       <Box
         bg="white"
@@ -1136,15 +1702,15 @@ const BulkMessage = () => {
                         videoInput.validationError
                           ? 'red.300'
                           : videoInput.objectUrl
-                            ? 'green.300'
-                            : 'gray.300'
+                          ? 'green.300'
+                          : 'gray.300'
                       }
                       bg={
                         videoInput.validationError
                           ? 'red.50'
                           : videoInput.objectUrl
-                            ? 'green.50'
-                            : 'gray.50'
+                          ? 'green.50'
+                          : 'gray.50'
                       }
                       p="8"
                       minH="200px"
@@ -1159,8 +1725,8 @@ const BulkMessage = () => {
                         bg: videoInput.validationError
                           ? 'red.50'
                           : videoInput.objectUrl
-                            ? 'green.50'
-                            : 'blue.50',
+                          ? 'green.50'
+                          : 'blue.50',
                       }}
                       position="relative">
                       {videoInput.isProcessing ? (
@@ -1359,7 +1925,11 @@ const BulkMessage = () => {
                               </Text>
                               <Text fontSize="xs" color="gray.500">
                                 {fileInput.file?.size
-                                  ? `${(fileInput.file.size / 1024 / 1024).toFixed(2)} MB`
+                                  ? `${(
+                                      fileInput.file.size /
+                                      1024 /
+                                      1024
+                                    ).toFixed(2)} MB`
                                   : ''}
                               </Text>
                             </VStack>
