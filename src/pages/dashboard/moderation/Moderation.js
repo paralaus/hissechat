@@ -641,7 +641,7 @@ const fetchAll = async (apiFunc, params = {}) => {
   return allResults;
 };
 
-const BannedUserCard = ({blacklistEntry, onUnban, isUnbanning}) => {
+const BannedUserCard = ({blacklistEntry, onUnban, isUnbanning, viewMode}) => {
   const {data: user, isLoading} = useQuery({
     queryKey: ['user', blacklistEntry.value],
     queryFn: () => api.getUser(blacklistEntry.value).then(res => res.data),
@@ -668,6 +668,9 @@ const BannedUserCard = ({blacklistEntry, onUnban, isUnbanning}) => {
   const isExpired = expiresDate && expiresDate <= new Date();
 
   if (!user && !isLoading) {
+    if (viewMode === 'hide-missing') {
+      return null;
+    }
     return (
       <Card borderWidth="1px" borderColor="red.300" bg="red.50">
         <CardBody>
@@ -720,6 +723,9 @@ const BannedUserCard = ({blacklistEntry, onUnban, isUnbanning}) => {
   }
 
   if (!user) return null;
+  if (viewMode === 'only-missing') {
+    return null;
+  }
 
   return (
     <Card borderWidth="1px" borderColor="red.300" bg="red.50">
@@ -790,6 +796,7 @@ const Moderation = () => {
     const allowed = ['all', 'blocked', 'profanity', 'reports', 'channel_reports'];
     return allowed.includes(initial) ? initial : 'profanity';
   }); // 'all', 'blocked', 'profanity'
+  const [bannedUsersViewMode, setBannedUsersViewMode] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [bannedTextSearch, setBannedTextSearch] = useState('');
   const [bannedTextSearchDebounced, setBannedTextSearchDebounced] =
@@ -1750,9 +1757,19 @@ const Moderation = () => {
         {/* Banned Users Section */}
         {filterType === 'blocked' && (
           <Box>
-            <Heading size="md" mb={4} color="red.600">
-              Engellenen Kullanıcılar ({activeBannedUsers.length})
-            </Heading>
+            <HStack justify="space-between" align="center" mb={4}>
+              <Heading size="md" color="red.600">
+                Engellenen Kullanıcılar ({activeBannedUsers.length})
+              </Heading>
+              <Select
+                maxW="260px"
+                value={bannedUsersViewMode}
+                onChange={e => setBannedUsersViewMode(e.target.value)}>
+                <option value="all">Tümü</option>
+                <option value="only-missing">Sadece Users'da Yok</option>
+                <option value="hide-missing">Users'da Yokları Gizle</option>
+              </Select>
+            </HStack>
             {isBannedUsersLoading ? (
               <Flex justify="center" py={6}>
                 <Spinner size="lg" />
@@ -1770,6 +1787,7 @@ const Moderation = () => {
                     blacklistEntry={entry}
                     onUnban={handleUnbanUser}
                     isUnbanning={unbanUserMutation.isPending}
+                    viewMode={bannedUsersViewMode}
                   />
                 ))}
               </SimpleGrid>
