@@ -1492,9 +1492,9 @@ const SendPushNotification = () => {
                   </FormErrorMessage>
                 </FormControl>
               </HStack>
-              <FormHelperText>
+              <Text fontSize="sm" color="gray.500">
                 Yeni clientlerde en fazla iki aksiyon butonu render edilir.
-              </FormHelperText>
+              </Text>
             </Box>
             <Button
               isLoading={isPending}
