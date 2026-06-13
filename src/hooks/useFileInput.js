@@ -1,7 +1,9 @@
 import {useMemo, useRef, useState, useCallback} from 'react';
 import {useMutation} from '@tanstack/react-query';
 import {uploadFileWithProgress} from '../api/api';
-import {processVideoForUpload, VIDEO_LIMITS} from '../utils/video';
+import {processVideoForUpload} from '../utils/videoOptimizer';
+
+const VIDEO_EXTENSIONS = ['.mp4', '.mov', '.avi', '.mkv', '.webm'];
 
 const useFileInput = (options = {}) => {
   const {accept, validateOnSelect = true, maxSizeMB = 100} = options;
@@ -22,7 +24,7 @@ const useFileInput = (options = {}) => {
   const isVideoFile = file => {
     return (
       file?.type?.startsWith('video/') ||
-      VIDEO_LIMITS.allowedExtensions.some(ext =>
+      VIDEO_EXTENSIONS.some(ext =>
         file?.name?.toLowerCase().endsWith(ext),
       )
     );
@@ -54,20 +56,25 @@ const useFileInput = (options = {}) => {
           });
 
           if (!result.success) {
-            const error = result.errors.map(e => e.message).join('\n');
+            const errorMessages = Array.isArray(result?.validation?.errors)
+              ? result.validation.errors
+              : result?.error
+                ? [result.error]
+                : ['Video dogrulanamadi.'];
+            const error = errorMessages.join('\n');
             setValidationError(error);
             setIsProcessing(false);
             return { valid: false, error };
           }
 
-          setVideoMetadata(result.metadata);
+          setVideoMetadata(result?.validation?.info || null);
           if (result.thumbnail) {
             setThumbnail(result.thumbnail);
           }
           setIsProcessing(false);
           return { 
             valid: true, 
-            metadata: result.metadata, 
+            metadata: result?.validation?.info || null, 
             thumbnail: result.thumbnail,
             processedFile: result.processedFile // In case we want to use the processed file
           };
