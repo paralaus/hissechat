@@ -1,4 +1,4 @@
-import {useMemo, useRef, useState, useCallback} from 'react';
+import {useMemo, useRef, useState, useCallback, useEffect} from 'react';
 import {useMutation} from '@tanstack/react-query';
 import {uploadFileWithProgress} from '../api/api';
 import {processVideoForUpload} from '../utils/videoOptimizer';
@@ -9,11 +9,19 @@ const useFileInput = (options = {}) => {
   const {accept, validateOnSelect = true, maxSizeMB = 100} = options;
   const ref = useRef();
   const [selected, setSelected] = useState(null);
+  const [objectUrl, setObjectUrl] = useState(null);
   const [validationError, setValidationError] = useState(null);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [videoMetadata, setVideoMetadata] = useState(null);
   const [thumbnail, setThumbnail] = useState(null);
   const [isProcessing, setIsProcessing] = useState(false);
+
+  const selectedFile = useMemo(() => {
+    if (!selected) return null;
+    if (selected instanceof Blob) return selected;
+    if (selected[0] instanceof Blob) return selected[0];
+    return null;
+  }, [selected]);
 
   const {mutateAsync, isPending: isUploading} = useMutation({
     mutationFn: ({file, onProgress}) =>
@@ -167,8 +175,23 @@ const useFileInput = (options = {}) => {
     ref.current?.click?.();
   };
 
+  useEffect(() => {
+    if (!selectedFile) {
+      setObjectUrl(null);
+      return undefined;
+    }
+
+    const nextObjectUrl = URL.createObjectURL(selectedFile);
+    setObjectUrl(nextObjectUrl);
+
+    return () => {
+      URL.revokeObjectURL(nextObjectUrl);
+    };
+  }, [selectedFile]);
+
   const reset = () => {
     setSelected(null);
+    setObjectUrl(null);
     setValidationError(null);
     setVideoMetadata(null);
     setThumbnail(null);
@@ -183,19 +206,19 @@ const useFileInput = (options = {}) => {
   return {
     input,
     open,
-    file: selected?.[0],
+    file: selectedFile,
     files: selected,
     upload,
     isUploading,
     isProcessing,
     uploadProgress,
-    objectUrl: selected ? URL.createObjectURL(selected[0]) : null,
+    objectUrl,
     reset,
     // Validation
     validationError,
     isValid: !validationError,
     // Video specific
-    isVideo: selected ? isVideoFile(selected[0]) : false,
+    isVideo: selectedFile ? isVideoFile(selectedFile) : false,
     videoMetadata,
     thumbnail,
     // Helpers

@@ -286,6 +286,8 @@ const EditSuggestion = ({id}) => {
           });
           return;
         }
+        submissionValues.videoUrl = '';
+        submissionValues.audioUrl = '';
         const mimeType = mediaFile.type || '';
         const fileName = mediaFile.name ? mediaFile.name.toLowerCase() : '';
         const videoExtensions = ['.mp4', '.mov', '.avi', '.mkv', '.webm'];
@@ -472,6 +474,7 @@ const EditSuggestion = ({id}) => {
                 Manşet Görseli (opsiyonel)
               </FormLabel>
               <Button
+                type="button"
                 onClick={openImage}
                 isLoading={isUploadingImage}
                 loadingText="Yükleniyor"
@@ -505,6 +508,7 @@ const EditSuggestion = ({id}) => {
                 Video / Ses (opsiyonel)
               </FormLabel>
               <Button
+                type="button"
                 onClick={openMedia}
                 isLoading={isUploadingMedia}
                 loadingText="Yükleniyor"
@@ -592,6 +596,7 @@ const EditSuggestion = ({id}) => {
                 Manşet Medya Galerisi (çoklu)
               </FormLabel>
               <Button
+                type="button"
                 onClick={openGalleryMedia}
                 variant="outline"
                 mb="2"
@@ -624,6 +629,7 @@ const EditSuggestion = ({id}) => {
                     />
                   )}
                   <Button
+                    type="button"
                     mt="2"
                     size="sm"
                     colorScheme="blue"
@@ -681,6 +687,7 @@ const EditSuggestion = ({id}) => {
                         </Text>
                       </HStack>
                       <Button
+                        type="button"
                         size="xs"
                         colorScheme="red"
                         variant="ghost"
