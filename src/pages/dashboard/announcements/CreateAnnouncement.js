@@ -15,6 +15,7 @@ import {
   useToast,
   FormHelperText,
   VStack,
+  Text,
 } from '@chakra-ui/react';
 import {useFieldArray, useForm} from 'react-hook-form';
 import {yupResolver} from '@hookform/resolvers/yup';
@@ -229,7 +230,9 @@ const CreateAnnouncement = () => {
             <Box borderWidth="1px" borderColor="gray.200" borderRadius="md" p="4">
               <Flex justify="space-between" align="center" mb="3">
                 <Box>
-                  <FormLabel mb="0">CTA Butonları</FormLabel>
+                  <Text fontSize="sm" fontWeight="medium" mb="0">
+                    CTA Butonları
+                  </Text>
                   <FormHelperText mt="1">
                     Birden fazla CTA ekleyebilirsin. Deep link varsa URL yerine onu açar.
                   </FormHelperText>
@@ -243,7 +246,9 @@ const CreateAnnouncement = () => {
                 {ctaFields.map((field, index) => (
                   <Box key={field.id} borderWidth="1px" borderColor="gray.100" borderRadius="md" p="3">
                     <Flex justify="space-between" align="center" mb="3">
-                      <FormLabel mb="0">Buton {index + 1}</FormLabel>
+                      <Text fontSize="sm" fontWeight="medium" mb="0">
+                        Buton {index + 1}
+                      </Text>
                       {ctaFields.length > 1 && (
                         <Button
                           type="button"
