@@ -14,8 +14,9 @@ import {
   HStack,
   useToast,
   FormHelperText,
+  VStack,
 } from '@chakra-ui/react';
-import {useForm} from 'react-hook-form';
+import {useFieldArray, useForm} from 'react-hook-form';
 import {yupResolver} from '@hookform/resolvers/yup';
 import {useMutation, useQuery} from '@tanstack/react-query';
 import * as yup from 'yup';
@@ -33,9 +34,13 @@ const schema = yup
       .url('Geçerli bir URL girin (https://...)')
       .nullable()
       .transform(v => (v === '' ? null : v)),
-    ctaLabel: yup.string(),
-    ctaUrl: yup.string(),
-    deepLink: yup.string(),
+    ctas: yup.array().of(
+      yup.object({
+        label: yup.string(),
+        url: yup.string(),
+        deepLink: yup.string(),
+      }),
+    ),
     type: yup.string().oneOf(['modal', 'banner', 'card']).default('modal'),
     priority: yup.number().integer().default(0),
     audienceType: yup
@@ -57,6 +62,33 @@ const toLocalInput = iso => {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 };
 
+const emptyCta = () => ({
+  label: '',
+  url: '',
+  deepLink: '',
+});
+
+const mapAnnouncementCtasToForm = announcement => {
+  const rawCtas =
+    Array.isArray(announcement?.ctas) && announcement.ctas.length > 0
+      ? announcement.ctas
+      : announcement?.ctaLabel || announcement?.ctaUrl || announcement?.deepLink
+      ? [
+          {
+            label: announcement.ctaLabel || '',
+            url: announcement.ctaUrl || '',
+            deepLink: announcement.deepLink || '',
+          },
+        ]
+      : [];
+
+  return rawCtas.map(item => ({
+    label: item?.label || '',
+    url: item?.url || '',
+    deepLink: item?.deepLink || '',
+  }));
+};
+
 const CreateAnnouncement = () => {
   const navigate = useNavigate();
   const toast = useToast();
@@ -74,10 +106,12 @@ const CreateAnnouncement = () => {
     handleSubmit,
     reset,
     watch,
+    control,
     formState: {errors},
   } = useForm({
     resolver: yupResolver(schema),
     defaultValues: {
+      ctas: [emptyCta()],
       type: 'modal',
       priority: 0,
       audienceType: 'all',
@@ -86,15 +120,20 @@ const CreateAnnouncement = () => {
     },
   });
 
+  const {fields: ctaFields, append: appendCta, remove: removeCta} = useFieldArray({
+    control,
+    name: 'ctas',
+  });
+
   useEffect(() => {
     if (!existing) return;
     reset({
       title: existing.title || '',
       body: existing.body || '',
       imageUrl: existing.imageUrl || '',
-      ctaLabel: existing.ctaLabel || '',
-      ctaUrl: existing.ctaUrl || '',
-      deepLink: existing.deepLink || '',
+      ctas: mapAnnouncementCtasToForm(existing).length
+        ? mapAnnouncementCtasToForm(existing)
+        : [emptyCta()],
       type: existing.type || 'modal',
       priority: existing.priority ?? 0,
       audienceType: existing.audience?.type || 'all',
@@ -117,13 +156,24 @@ const CreateAnnouncement = () => {
 
   const onSubmit = async values => {
     try {
+      const ctas = (values.ctas || [])
+        .map(item => ({
+          label: String(item?.label || '').trim(),
+          url: String(item?.url || '').trim(),
+          deepLink: String(item?.deepLink || '').trim(),
+        }))
+        .filter(item => item.label || item.url || item.deepLink)
+        .map(item => ({
+          label: item.label || 'Detay',
+          ...(item.url ? {url: item.url} : {}),
+          ...(item.deepLink ? {deepLink: item.deepLink} : {}),
+        }));
+
       const payload = {
         title: values.title,
         body: values.body,
         imageUrl: values.imageUrl || undefined,
-        ctaLabel: values.ctaLabel || undefined,
-        ctaUrl: values.ctaUrl || undefined,
-        deepLink: values.deepLink || undefined,
+        ctas,
         type: values.type,
         priority: Number(values.priority) || 0,
         audience: {
@@ -176,24 +226,71 @@ const CreateAnnouncement = () => {
               <FormErrorMessage>{errors.imageUrl?.message}</FormErrorMessage>
             </FormControl>
 
-            <HStack>
-              <FormControl>
-                <FormLabel>CTA Buton Yazısı</FormLabel>
-                <Input {...register('ctaLabel')} placeholder="Devam" />
-              </FormControl>
-              <FormControl>
-                <FormLabel>CTA URL</FormLabel>
-                <Input {...register('ctaUrl')} placeholder="https://..." />
-              </FormControl>
-            </HStack>
+            <Box borderWidth="1px" borderColor="gray.200" borderRadius="md" p="4">
+              <Flex justify="space-between" align="center" mb="3">
+                <Box>
+                  <FormLabel mb="0">CTA Butonları</FormLabel>
+                  <FormHelperText mt="1">
+                    Birden fazla CTA ekleyebilirsin. Deep link varsa URL yerine onu açar.
+                  </FormHelperText>
+                </Box>
+                <Button type="button" size="sm" onClick={() => appendCta(emptyCta())}>
+                  CTA Ekle
+                </Button>
+              </Flex>
 
-            <FormControl>
-              <FormLabel>Deep Link (opsiyonel)</FormLabel>
-              <Input {...register('deepLink')} placeholder="myapp://..." />
-              <FormHelperText>
-                Belirtilirse CTA tıklamasında açılır (CTA URL üzerine yazar).
-              </FormHelperText>
-            </FormControl>
+              <VStack spacing="3" align="stretch">
+                {ctaFields.map((field, index) => (
+                  <Box key={field.id} borderWidth="1px" borderColor="gray.100" borderRadius="md" p="3">
+                    <Flex justify="space-between" align="center" mb="3">
+                      <FormLabel mb="0">Buton {index + 1}</FormLabel>
+                      {ctaFields.length > 1 && (
+                        <Button
+                          type="button"
+                          size="xs"
+                          colorScheme="red"
+                          variant="ghost"
+                          onClick={() => removeCta(index)}>
+                          Sil
+                        </Button>
+                      )}
+                    </Flex>
+
+                    <VStack spacing="3">
+                      <FormControl isInvalid={!!errors.ctas?.[index]?.label}>
+                        <FormLabel>CTA Buton Yazısı</FormLabel>
+                        <Input
+                          {...register(`ctas.${index}.label`)}
+                          placeholder="Devam"
+                        />
+                        <FormErrorMessage>{errors.ctas?.[index]?.label?.message}</FormErrorMessage>
+                      </FormControl>
+
+                      <FormControl isInvalid={!!errors.ctas?.[index]?.url}>
+                        <FormLabel>CTA URL</FormLabel>
+                        <Input
+                          {...register(`ctas.${index}.url`)}
+                          placeholder="https://..."
+                        />
+                        <FormErrorMessage>{errors.ctas?.[index]?.url?.message}</FormErrorMessage>
+                      </FormControl>
+
+                      <FormControl isInvalid={!!errors.ctas?.[index]?.deepLink}>
+                        <FormLabel>Deep Link (opsiyonel)</FormLabel>
+                        <Input
+                          {...register(`ctas.${index}.deepLink`)}
+                          placeholder="myapp://..."
+                        />
+                        <FormHelperText>
+                          Belirtilirse CTA tıklamasında URL yerine deep link açılır.
+                        </FormHelperText>
+                        <FormErrorMessage>{errors.ctas?.[index]?.deepLink?.message}</FormErrorMessage>
+                      </FormControl>
+                    </VStack>
+                  </Box>
+                ))}
+              </VStack>
+            </Box>
 
             <HStack>
               <FormControl>

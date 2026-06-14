@@ -70,21 +70,13 @@ const EmojiPickerLazy = React.lazy(() => import('emoji-picker-react'));
 
 const schema = yup
   .object({
-    message: yup.string().when(['image', 'video', 'audio', 'file'], {
-      is: (image, video, audio, file) => !image && !video && !audio && !file,
-      then: schema => schema.required('Mesaj veya medya eklemelisiniz.').min(1),
-      otherwise: schema => schema.notRequired(),
-    }),
+    message: yup.string().notRequired(),
     targetType: yup.string().required('Hedef kitle seçimi zorunludur.'),
     selectedChannels: yup.array().when('targetType', {
       is: 'selected',
       then: schema => schema.min(1, 'En az bir kanal seçmelisiniz.'),
       otherwise: schema => schema.notRequired(),
     }),
-    image: yup.string().notRequired(),
-    video: yup.string().notRequired(),
-    audio: yup.string().notRequired(),
-    file: yup.string().notRequired(),
   })
   .required();
 
@@ -218,6 +210,29 @@ const getBulkJobTypeColor = jobName => {
   return 'blue';
 };
 
+const mediaTypeMeta = {
+  image: {
+    label: 'Gorsel',
+    icon: '🖼️',
+    colorScheme: 'green',
+  },
+  video: {
+    label: 'Video',
+    icon: '🎬',
+    colorScheme: 'purple',
+  },
+  audio: {
+    label: 'Ses',
+    icon: '🎵',
+    colorScheme: 'orange',
+  },
+  file: {
+    label: 'Dosya',
+    icon: '📄',
+    colorScheme: 'blue',
+  },
+};
+
 const BulkMessage = () => {
   const toast = useToast();
   const [sendResult, setSendResult] = useState(null);
@@ -241,11 +256,25 @@ const BulkMessage = () => {
   const [activeJobId, setActiveJobId] = useState(null);
 
   // File inputs for different media types
-  const imageInput = useFileInput({accept: 'image/*'});
-  const videoInput = useFileInput({accept: 'video/*'});
-  const audioInput = useFileInput({accept: 'audio/*'});
+  const imageInput = useFileInput({
+    accept: 'image/*',
+    multiple: true,
+    validateOnSelect: false,
+  });
+  const videoInput = useFileInput({
+    accept: 'video/*',
+    multiple: true,
+    validateOnSelect: false,
+  });
+  const audioInput = useFileInput({
+    accept: 'audio/*',
+    multiple: true,
+    validateOnSelect: false,
+  });
   const fileInput = useFileInput({
     accept: '.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.zip,.rar',
+    multiple: true,
+    validateOnSelect: false,
   });
 
   const {
@@ -261,10 +290,6 @@ const BulkMessage = () => {
       targetType: 'all_channels',
       selectedChannels: [],
       message: '',
-      image: '',
-      video: '',
-      audio: '',
-      file: '',
     },
   });
 
@@ -458,8 +483,7 @@ const BulkMessage = () => {
       }
       toast({
         title: 'İşlem başladı',
-        description:
-          'Başlamış bulk işi güvenli şekilde yarıda kesilmiyor.',
+        description: 'Başlamış bulk işi güvenli şekilde yarıda kesilmiyor.',
         status: 'info',
         position: 'top',
       });
@@ -498,6 +522,54 @@ const BulkMessage = () => {
     fileInput.reset();
   };
 
+  const getSelectedMediaItems = React.useCallback(() => {
+    const collect = (input, type) =>
+      (input.selectedFiles || []).map(file => ({
+        type,
+        file,
+      }));
+
+    return [
+      ...collect(imageInput, 'image'),
+      ...collect(videoInput, 'video'),
+      ...collect(audioInput, 'audio'),
+      ...collect(fileInput, 'file'),
+    ];
+  }, [audioInput, fileInput, imageInput, videoInput]);
+
+  const uploadBulkMediaItems = React.useCallback(async () => {
+    const mediaFiles = getSelectedMediaItems();
+    const uploadedItems = [];
+
+    for (const media of mediaFiles) {
+      // eslint-disable-next-line no-await-in-loop
+      const url = await (media.type === 'image'
+        ? imageInput.upload({file: media.file})
+        : media.type === 'video'
+        ? videoInput.upload({file: media.file})
+        : media.type === 'audio'
+        ? audioInput.upload({file: media.file})
+        : fileInput.upload({file: media.file}));
+
+      if (!url) {
+        throw new Error(
+          `${
+            mediaTypeMeta[media.type]?.label || 'Medya'
+          } yuklenemedi. Lutfen tekrar deneyin.`,
+        );
+      }
+
+      uploadedItems.push({
+        type: media.type,
+        url,
+        ...(media.type === 'video' ? {videoStatus: 'uploaded'} : {}),
+        ...(media.type === 'audio' ? {audioStatus: 'uploaded'} : {}),
+      });
+    }
+
+    return uploadedItems;
+  }, [audioInput, fileInput, getSelectedMediaItems, imageInput, videoInput]);
+
   const pollBulkMessageJob = async (jobId, fallbackTotal) => {
     try {
       const {data: status} = await api.getBulkMessageJobStatus(jobId);
@@ -533,7 +605,9 @@ const BulkMessage = () => {
           description:
             jobType === 'delete'
               ? `${status.result.successCount || 0} mesaj silindi.`
-              : `${status.result.successCount || 0} kanala başarıyla gönderildi.`,
+              : `${
+                  status.result.successCount || 0
+                } kanala başarıyla gönderildi.`,
           status: 'success',
           position: 'top',
           duration: 5000,
@@ -724,6 +798,18 @@ const BulkMessage = () => {
 
   const onSubmit = async values => {
     try {
+      const trimmedMessage = String(values.message || '').trim();
+      const selectedMediaItems = getSelectedMediaItems();
+
+      if (!trimmedMessage && selectedMediaItems.length === 0) {
+        toast({
+          title: 'Mesaj veya medya eklemelisiniz.',
+          status: 'error',
+          position: 'top',
+        });
+        return;
+      }
+
       setSendResult(null);
       setIsCancelled(false);
       setIsDeleting(false);
@@ -741,42 +827,19 @@ const BulkMessage = () => {
         stage: 'uploading',
       });
 
-      // Upload media files if present
-      if (imageInput.objectUrl) {
-        const url = await imageInput.upload();
-        if (!url) {
-          throw new Error('Görsel yüklenemedi. Lütfen tekrar deneyin.');
-        }
-        values.image = url;
-      }
-      if (videoInput.objectUrl) {
-        const url = await videoInput.upload();
-        if (!url) {
-          throw new Error('Video yüklenemedi. Lütfen tekrar deneyin.');
-        }
-        values.video = url;
-      }
-      if (audioInput.objectUrl) {
-        const url = await audioInput.upload();
-        if (!url) {
-          throw new Error('Ses dosyası yüklenemedi. Lütfen tekrar deneyin.');
-        }
-        values.audio = url;
-      }
-      if (fileInput.objectUrl) {
-        const url = await fileInput.upload();
-        if (!url) {
-          throw new Error('Dosya yüklenemedi. Lütfen tekrar deneyin.');
-        }
-        values.file = url;
-      }
+      const uploadedMediaItems =
+        selectedMediaItems.length > 0 ? await uploadBulkMediaItems() : [];
 
       setIsUploading(false);
       setIsSending(true);
 
       // Transform all_funds and all_viop to selected list if backend doesn't support them natively
       // We assume backend might only know about market/vip/all.
-      let submissionValues = {...values};
+      let submissionValues = {
+        ...values,
+        message: trimmedMessage,
+        mediaItems: uploadedMediaItems,
+      };
 
       if (values.targetType === 'all_funds') {
         submissionValues.targetType = 'selected';
@@ -918,7 +981,9 @@ const BulkMessage = () => {
           total: data.successCount + data.failCount,
           successCount: data.successCount || 0,
           failCount: data.failCount || 0,
-          stage: data.state || (data.failCount > 0 ? 'completed_with_errors' : 'completed'),
+          stage:
+            data.state ||
+            (data.failCount > 0 ? 'completed_with_errors' : 'completed'),
         });
         setSendResult(data);
         toast({
@@ -954,11 +1019,49 @@ const BulkMessage = () => {
   const getTargetCount = getTargetChannelCount;
 
   // Check if any media is selected
-  const hasMedia =
-    imageInput.objectUrl ||
-    videoInput.objectUrl ||
-    audioInput.objectUrl ||
-    fileInput.objectUrl;
+  const hasMedia = getSelectedMediaItems().length > 0;
+  const selectedMediaSummary = React.useMemo(
+    () => [
+      ...((imageInput.selectedFiles || []).map((file, index) => ({
+        id: `image-${index}-${file.name}`,
+        type: 'image',
+        name: file.name,
+        size: file.size,
+        previewUrl: imageInput.objectUrls?.[index],
+      })) || []),
+      ...((videoInput.selectedFiles || []).map((file, index) => ({
+        id: `video-${index}-${file.name}`,
+        type: 'video',
+        name: file.name,
+        size: file.size,
+        previewUrl: videoInput.objectUrls?.[index],
+      })) || []),
+      ...((audioInput.selectedFiles || []).map((file, index) => ({
+        id: `audio-${index}-${file.name}`,
+        type: 'audio',
+        name: file.name,
+        size: file.size,
+        previewUrl: audioInput.objectUrls?.[index],
+      })) || []),
+      ...((fileInput.selectedFiles || []).map((file, index) => ({
+        id: `file-${index}-${file.name}`,
+        type: 'file',
+        name: file.name,
+        size: file.size,
+        previewUrl: fileInput.objectUrls?.[index],
+      })) || []),
+    ],
+    [
+      audioInput.objectUrls,
+      audioInput.selectedFiles,
+      fileInput.objectUrls,
+      fileInput.selectedFiles,
+      imageInput.objectUrls,
+      imageInput.selectedFiles,
+      videoInput.objectUrls,
+      videoInput.selectedFiles,
+    ],
+  );
 
   // Group channels by type for display
   const stockChannels = mergedStockChannels.filter(c => !!(c.name || c.label));
@@ -1006,7 +1109,8 @@ const BulkMessage = () => {
           Toplu Mesaj
         </Text>
         <Text color="gray.500" mt="1">
-          Tüm kanallara veya seçili kanallara toplu mesaj gönderin; isterseniz metne göre toplu silin.
+          Tüm kanallara veya seçili kanallara toplu mesaj gönderin; isterseniz
+          metne göre toplu silin.
         </Text>
       </Box>
 
@@ -1384,6 +1488,17 @@ const BulkMessage = () => {
                 job.progress?.failCount || job.result?.failCount || 0;
               const isFailed = job.state === 'failed';
               const isCancelled = job.state === 'cancelled';
+              const jobMediaTypeCounts =
+                job.mediaTypeCounts &&
+                typeof job.mediaTypeCounts === 'object' &&
+                !Array.isArray(job.mediaTypeCounts)
+                  ? job.mediaTypeCounts
+                  : {};
+              const jobMediaTypes = Object.keys(jobMediaTypeCounts).length
+                ? Object.keys(jobMediaTypeCounts)
+                : Array.isArray(job.mediaTypes)
+                ? job.mediaTypes
+                : [];
 
               return (
                 <Box
@@ -1408,6 +1523,24 @@ const BulkMessage = () => {
                         <Badge colorScheme="blue">
                           {job.targetType || 'bulk'}
                         </Badge>
+                        {job.mediaCount > 0 && (
+                          <Badge colorScheme="cyan">
+                            {job.mediaCount} medya
+                          </Badge>
+                        )}
+                        {jobMediaTypes.map(type => (
+                          <Badge
+                            key={`${job.jobId}-${type}`}
+                            colorScheme={
+                              mediaTypeMeta[type]?.colorScheme || 'gray'
+                            }>
+                            {mediaTypeMeta[type]?.icon}{' '}
+                            {mediaTypeMeta[type]?.label || type}
+                            {jobMediaTypeCounts[type]
+                              ? ` x${jobMediaTypeCounts[type]}`
+                              : ''}
+                          </Badge>
+                        ))}
                       </HStack>
                       <Text fontSize="sm" color="gray.600">
                         Job ID: {job.jobId}
@@ -1480,6 +1613,22 @@ const BulkMessage = () => {
                     </Text>
                     <Text>Başarılı: {successCount}</Text>
                     <Text>Başarısız: {failCount}</Text>
+                    {job.mediaCount > 0 && <Text>Medya: {job.mediaCount}</Text>}
+                    {jobMediaTypes.length > 0 && (
+                      <Text>
+                        Tipler:{' '}
+                        {jobMediaTypes
+                          .map(
+                            type =>
+                              `${mediaTypeMeta[type]?.label || type}${
+                                jobMediaTypeCounts[type]
+                                  ? ` x${jobMediaTypeCounts[type]}`
+                                  : ''
+                              }`,
+                          )
+                          .join(', ')}
+                      </Text>
+                    )}
                     {job.state === 'cancel_requested' && (
                       <Text color="orange.500">İptal isteği bekliyor</Text>
                     )}
@@ -1541,21 +1690,35 @@ const BulkMessage = () => {
             </FormControl>
 
             <HStack spacing="4" align="start" flexWrap="wrap" mb="6">
-              <FormControl isInvalid={!!deleteErrors.since} flex="1" minW="240px">
+              <FormControl
+                isInvalid={!!deleteErrors.since}
+                flex="1"
+                minW="240px">
                 <FormLabel fontWeight="600" fontSize="sm">
                   Başlangıç (Opsiyonel)
                 </FormLabel>
-                <Input type="datetime-local" size="lg" {...registerDelete('since')} />
+                <Input
+                  type="datetime-local"
+                  size="lg"
+                  {...registerDelete('since')}
+                />
                 <FormErrorMessage>
                   {deleteErrors.since?.message}
                 </FormErrorMessage>
               </FormControl>
 
-              <FormControl isInvalid={!!deleteErrors.until} flex="1" minW="240px">
+              <FormControl
+                isInvalid={!!deleteErrors.until}
+                flex="1"
+                minW="240px">
                 <FormLabel fontWeight="600" fontSize="sm">
                   Bitiş (Opsiyonel)
                 </FormLabel>
-                <Input type="datetime-local" size="lg" {...registerDelete('until')} />
+                <Input
+                  type="datetime-local"
+                  size="lg"
+                  {...registerDelete('until')}
+                />
                 <FormErrorMessage>
                   {deleteErrors.until?.message}
                 </FormErrorMessage>
@@ -1921,7 +2084,6 @@ const BulkMessage = () => {
                 </TabList>
 
                 <TabPanels>
-                  {/* Image Upload */}
                   <TabPanel p="0">
                     <Box
                       onClick={() => imageInput.open()}
@@ -1929,89 +2091,12 @@ const BulkMessage = () => {
                       borderRadius="xl"
                       border="2px dashed"
                       borderColor={
-                        imageInput.objectUrl ? 'green.300' : 'gray.300'
-                      }
-                      bg={imageInput.objectUrl ? 'green.50' : 'gray.50'}
-                      p={imageInput.objectUrl ? '0' : '8'}
-                      minH="200px"
-                      display="flex"
-                      alignItems="center"
-                      justifyContent="center"
-                      transition="all 0.2s"
-                      _hover={{
-                        borderColor: 'blue.400',
-                        bg: imageInput.objectUrl ? 'green.50' : 'blue.50',
-                      }}
-                      position="relative"
-                      overflow="hidden">
-                      {imageInput.objectUrl ? (
-                        <Box position="relative" w="100%">
-                          <ChakraImage
-                            src={imageInput.objectUrl}
-                            alt="Yüklenecek görsel"
-                            maxH="300px"
-                            objectFit="contain"
-                            borderRadius="lg"
-                            mx="auto"
-                            display="block"
-                          />
-                          <IconButton
-                            icon={<FiX />}
-                            size="sm"
-                            colorScheme="red"
-                            position="absolute"
-                            top="2"
-                            right="2"
-                            onClick={e => {
-                              e.stopPropagation();
-                              imageInput.reset();
-                            }}
-                            aria-label="Görseli kaldır"
-                          />
-                        </Box>
-                      ) : (
-                        <VStack spacing="3">
-                          <Box p="4" bg="gray.100" borderRadius="full">
-                            <Icon as={FiImage} boxSize="8" color="gray.400" />
-                          </Box>
-                          <VStack spacing="1">
-                            <Text
-                              fontSize="sm"
-                              fontWeight="medium"
-                              color="gray.600">
-                              Görsel Yükle
-                            </Text>
-                            <Text fontSize="xs" color="gray.400">
-                              PNG, JPG, GIF - Max 10MB
-                            </Text>
-                          </VStack>
-                          <Icon as={FiUpload} boxSize="4" color="gray.400" />
-                        </VStack>
-                      )}
-                    </Box>
-                    {imageInput.input}
-                  </TabPanel>
-
-                  {/* Video Upload */}
-                  <TabPanel p="0">
-                    <Box
-                      onClick={() =>
-                        !videoInput.isProcessing && videoInput.open()
-                      }
-                      cursor={videoInput.isProcessing ? 'wait' : 'pointer'}
-                      borderRadius="xl"
-                      border="2px dashed"
-                      borderColor={
-                        videoInput.validationError
-                          ? 'red.300'
-                          : videoInput.objectUrl
+                        imageInput.selectedFiles?.length
                           ? 'green.300'
                           : 'gray.300'
                       }
                       bg={
-                        videoInput.validationError
-                          ? 'red.50'
-                          : videoInput.objectUrl
+                        imageInput.selectedFiles?.length
                           ? 'green.50'
                           : 'gray.50'
                       }
@@ -2022,110 +2107,87 @@ const BulkMessage = () => {
                       justifyContent="center"
                       transition="all 0.2s"
                       _hover={{
-                        borderColor: videoInput.validationError
-                          ? 'red.400'
-                          : 'blue.400',
-                        bg: videoInput.validationError
-                          ? 'red.50'
-                          : videoInput.objectUrl
+                        borderColor: 'blue.400',
+                        bg: imageInput.selectedFiles?.length
                           ? 'green.50'
                           : 'blue.50',
-                      }}
-                      position="relative">
-                      {videoInput.isProcessing ? (
-                        <VStack spacing="3">
-                          <Spinner size="lg" color="blue.500" />
-                          <Text fontSize="sm" color="gray.600">
-                            Video işleniyor...
+                      }}>
+                      <VStack spacing="3">
+                        <Box p="4" bg="gray.100" borderRadius="full">
+                          <Icon as={FiImage} boxSize="8" color="gray.400" />
+                        </Box>
+                        <VStack spacing="1">
+                          <Text
+                            fontSize="sm"
+                            fontWeight="medium"
+                            color="gray.600">
+                            {imageInput.selectedFiles?.length
+                              ? `${imageInput.selectedFiles.length} görsel seçildi`
+                              : 'Görsel Yükle'}
+                          </Text>
+                          <Text fontSize="xs" color="gray.400">
+                            PNG, JPG, GIF - Birden fazla dosya seçebilirsiniz
                           </Text>
                         </VStack>
-                      ) : videoInput.objectUrl ? (
-                        <Box position="relative" w="100%">
-                          <video
-                            src={videoInput.objectUrl}
-                            controls
-                            preload="metadata"
-                            playsInline
-                            style={{
-                              maxHeight: '300px',
-                              width: '100%',
-                              borderRadius: '8px',
-                            }}
-                          />
-                          {videoInput.videoMetadata && (
-                            <HStack
-                              position="absolute"
-                              bottom="2"
-                              left="2"
-                              bg="blackAlpha.700"
-                              px="2"
-                              py="1"
-                              borderRadius="md"
-                              spacing="2">
-                              <Text fontSize="xs" color="white">
-                                {videoInput.formatSize(
-                                  videoInput.file?.size || 0,
-                                )}
-                              </Text>
-                              {videoInput.videoMetadata.duration && (
-                                <Text fontSize="xs" color="white">
-                                  {Math.floor(
-                                    videoInput.videoMetadata.duration / 60,
-                                  )}
-                                  :
-                                  {String(
-                                    Math.floor(
-                                      videoInput.videoMetadata.duration % 60,
-                                    ),
-                                  ).padStart(2, '0')}
-                                </Text>
-                              )}
-                            </HStack>
-                          )}
-                          <IconButton
-                            icon={<FiX />}
-                            size="sm"
-                            colorScheme="red"
-                            position="absolute"
-                            top="2"
-                            right="2"
-                            onClick={e => {
-                              e.stopPropagation();
-                              videoInput.reset();
-                            }}
-                            aria-label="Videoyu kaldır"
-                          />
-                        </Box>
-                      ) : (
-                        <VStack spacing="3">
-                          <Box p="4" bg="gray.100" borderRadius="full">
-                            <Icon as={FiVideo} boxSize="8" color="gray.400" />
-                          </Box>
-                          <VStack spacing="1">
-                            <Text
-                              fontSize="sm"
-                              fontWeight="medium"
-                              color="gray.600">
-                              Video Yükle
-                            </Text>
-                            <Text fontSize="xs" color="gray.400">
-                              MP4, MOV, AVI - Max 100MB, Max 5 dakika
-                            </Text>
-                          </VStack>
-                          <Icon as={FiUpload} boxSize="4" color="gray.400" />
-                        </VStack>
-                      )}
+                        <Icon as={FiUpload} boxSize="4" color="gray.400" />
+                      </VStack>
                     </Box>
-                    {videoInput.validationError && (
-                      <Alert status="error" mt="2" borderRadius="md">
-                        <AlertIcon />
-                        <Text fontSize="sm">{videoInput.validationError}</Text>
-                      </Alert>
-                    )}
+                    {imageInput.input}
+                  </TabPanel>
+
+                  <TabPanel p="0">
+                    <Box
+                      onClick={() =>
+                        !videoInput.isProcessing && videoInput.open()
+                      }
+                      cursor={videoInput.isProcessing ? 'wait' : 'pointer'}
+                      borderRadius="xl"
+                      border="2px dashed"
+                      borderColor={
+                        videoInput.selectedFiles?.length
+                          ? 'green.300'
+                          : 'gray.300'
+                      }
+                      bg={
+                        videoInput.selectedFiles?.length
+                          ? 'green.50'
+                          : 'gray.50'
+                      }
+                      p="8"
+                      minH="200px"
+                      display="flex"
+                      alignItems="center"
+                      justifyContent="center"
+                      transition="all 0.2s"
+                      _hover={{
+                        borderColor: 'blue.400',
+                        bg: videoInput.selectedFiles?.length
+                          ? 'green.50'
+                          : 'blue.50',
+                      }}>
+                      <VStack spacing="3">
+                        <Box p="4" bg="gray.100" borderRadius="full">
+                          <Icon as={FiVideo} boxSize="8" color="gray.400" />
+                        </Box>
+                        <VStack spacing="1">
+                          <Text
+                            fontSize="sm"
+                            fontWeight="medium"
+                            color="gray.600">
+                            {videoInput.selectedFiles?.length
+                              ? `${videoInput.selectedFiles.length} video seçildi`
+                              : 'Video Yükle'}
+                          </Text>
+                          <Text fontSize="xs" color="gray.400">
+                            MP4, MOV, AVI - Birden fazla dosya seçebilirsiniz
+                          </Text>
+                        </VStack>
+                        <Icon as={FiUpload} boxSize="4" color="gray.400" />
+                      </VStack>
+                    </Box>
                     {videoInput.input}
                   </TabPanel>
 
-                  {/* Audio Upload */}
                   <TabPanel p="0">
                     <Box
                       onClick={() => audioInput.open()}
@@ -2133,9 +2195,15 @@ const BulkMessage = () => {
                       borderRadius="xl"
                       border="2px dashed"
                       borderColor={
-                        audioInput.objectUrl ? 'green.300' : 'gray.300'
+                        audioInput.selectedFiles?.length
+                          ? 'green.300'
+                          : 'gray.300'
                       }
-                      bg={audioInput.objectUrl ? 'green.50' : 'gray.50'}
+                      bg={
+                        audioInput.selectedFiles?.length
+                          ? 'green.50'
+                          : 'gray.50'
+                      }
                       p="8"
                       minH="200px"
                       display="flex"
@@ -2144,54 +2212,33 @@ const BulkMessage = () => {
                       transition="all 0.2s"
                       _hover={{
                         borderColor: 'blue.400',
-                        bg: audioInput.objectUrl ? 'green.50' : 'blue.50',
-                      }}
-                      position="relative">
-                      {audioInput.objectUrl ? (
-                        <Box position="relative" w="100%">
-                          <audio
-                            src={audioInput.objectUrl}
-                            controls
-                            style={{width: '100%'}}
-                          />
-                          <IconButton
-                            icon={<FiX />}
-                            size="sm"
-                            colorScheme="red"
-                            position="absolute"
-                            top="-10"
-                            right="0"
-                            onClick={e => {
-                              e.stopPropagation();
-                              audioInput.reset();
-                            }}
-                            aria-label="Sesi kaldır"
-                          />
+                        bg: audioInput.selectedFiles?.length
+                          ? 'green.50'
+                          : 'blue.50',
+                      }}>
+                      <VStack spacing="3">
+                        <Box p="4" bg="gray.100" borderRadius="full">
+                          <Icon as={FiMusic} boxSize="8" color="gray.400" />
                         </Box>
-                      ) : (
-                        <VStack spacing="3">
-                          <Box p="4" bg="gray.100" borderRadius="full">
-                            <Icon as={FiMusic} boxSize="8" color="gray.400" />
-                          </Box>
-                          <VStack spacing="1">
-                            <Text
-                              fontSize="sm"
-                              fontWeight="medium"
-                              color="gray.600">
-                              Ses Dosyası Yükle
-                            </Text>
-                            <Text fontSize="xs" color="gray.400">
-                              MP3, WAV, OGG - Max 20MB
-                            </Text>
-                          </VStack>
-                          <Icon as={FiUpload} boxSize="4" color="gray.400" />
+                        <VStack spacing="1">
+                          <Text
+                            fontSize="sm"
+                            fontWeight="medium"
+                            color="gray.600">
+                            {audioInput.selectedFiles?.length
+                              ? `${audioInput.selectedFiles.length} ses dosyası seçildi`
+                              : 'Ses Dosyası Yükle'}
+                          </Text>
+                          <Text fontSize="xs" color="gray.400">
+                            MP3, WAV, OGG - Birden fazla dosya seçebilirsiniz
+                          </Text>
                         </VStack>
-                      )}
+                        <Icon as={FiUpload} boxSize="4" color="gray.400" />
+                      </VStack>
                     </Box>
                     {audioInput.input}
                   </TabPanel>
 
-                  {/* File Upload */}
                   <TabPanel p="0">
                     <Box
                       onClick={() => fileInput.open()}
@@ -2199,9 +2246,13 @@ const BulkMessage = () => {
                       borderRadius="xl"
                       border="2px dashed"
                       borderColor={
-                        fileInput.objectUrl ? 'green.300' : 'gray.300'
+                        fileInput.selectedFiles?.length
+                          ? 'green.300'
+                          : 'gray.300'
                       }
-                      bg={fileInput.objectUrl ? 'green.50' : 'gray.50'}
+                      bg={
+                        fileInput.selectedFiles?.length ? 'green.50' : 'gray.50'
+                      }
                       p="8"
                       minH="200px"
                       display="flex"
@@ -2210,66 +2261,30 @@ const BulkMessage = () => {
                       transition="all 0.2s"
                       _hover={{
                         borderColor: 'blue.400',
-                        bg: fileInput.objectUrl ? 'green.50' : 'blue.50',
-                      }}
-                      position="relative">
-                      {fileInput.objectUrl ? (
-                        <Box position="relative" w="100%" textAlign="center">
-                          <VStack spacing="3">
-                            <Box p="4" bg="green.100" borderRadius="full">
-                              <Icon as={FiFile} boxSize="8" color="green.500" />
-                            </Box>
-                            <VStack spacing="1">
-                              <Text
-                                fontSize="sm"
-                                fontWeight="medium"
-                                color="gray.700">
-                                {fileInput.file?.name || 'Dosya seçildi'}
-                              </Text>
-                              <Text fontSize="xs" color="gray.500">
-                                {fileInput.file?.size
-                                  ? `${(
-                                      fileInput.file.size /
-                                      1024 /
-                                      1024
-                                    ).toFixed(2)} MB`
-                                  : ''}
-                              </Text>
-                            </VStack>
-                          </VStack>
-                          <IconButton
-                            icon={<FiX />}
-                            size="sm"
-                            colorScheme="red"
-                            position="absolute"
-                            top="0"
-                            right="0"
-                            onClick={e => {
-                              e.stopPropagation();
-                              fileInput.reset();
-                            }}
-                            aria-label="Dosyayı kaldır"
-                          />
+                        bg: fileInput.selectedFiles?.length
+                          ? 'green.50'
+                          : 'blue.50',
+                      }}>
+                      <VStack spacing="3">
+                        <Box p="4" bg="gray.100" borderRadius="full">
+                          <Icon as={FiFile} boxSize="8" color="gray.400" />
                         </Box>
-                      ) : (
-                        <VStack spacing="3">
-                          <Box p="4" bg="gray.100" borderRadius="full">
-                            <Icon as={FiFile} boxSize="8" color="gray.400" />
-                          </Box>
-                          <VStack spacing="1">
-                            <Text
-                              fontSize="sm"
-                              fontWeight="medium"
-                              color="gray.600">
-                              Dosya Yükle
-                            </Text>
-                            <Text fontSize="xs" color="gray.400">
-                              PDF, DOC, XLS, PPT, TXT, ZIP - Max 50MB
-                            </Text>
-                          </VStack>
-                          <Icon as={FiUpload} boxSize="4" color="gray.400" />
+                        <VStack spacing="1">
+                          <Text
+                            fontSize="sm"
+                            fontWeight="medium"
+                            color="gray.600">
+                            {fileInput.selectedFiles?.length
+                              ? `${fileInput.selectedFiles.length} dosya seçildi`
+                              : 'Dosya Yükle'}
+                          </Text>
+                          <Text fontSize="xs" color="gray.400">
+                            PDF, DOC, XLS, PPT, TXT, ZIP - Birden fazla dosya
+                            seçebilirsiniz
+                          </Text>
                         </VStack>
-                      )}
+                        <Icon as={FiUpload} boxSize="4" color="gray.400" />
+                      </VStack>
                     </Box>
                     {fileInput.input}
                   </TabPanel>
@@ -2278,15 +2293,103 @@ const BulkMessage = () => {
 
               {/* Selected Media Summary */}
               {hasMedia && (
-                <Box mt="4" p="3" bg="blue.50" borderRadius="lg">
-                  <Text fontSize="sm" fontWeight="medium" color="blue.700">
-                    📎 Ekli Medya:
-                    {imageInput.objectUrl && ' 🖼️ Görsel'}
-                    {videoInput.objectUrl && ' 🎬 Video'}
-                    {audioInput.objectUrl && ' 🎵 Ses'}
-                    {fileInput.objectUrl && ' 📄 Dosya'}
-                  </Text>
-                </Box>
+                <VStack mt="4" align="stretch" spacing="3">
+                  <Box p="3" bg="blue.50" borderRadius="lg">
+                    <Text fontSize="sm" fontWeight="medium" color="blue.700">
+                      📎 Ekli Medya: {selectedMediaSummary.length} dosya
+                    </Text>
+                  </Box>
+                  <VStack align="stretch" spacing="2">
+                    {selectedMediaSummary.map(item => (
+                      <HStack
+                        key={item.id}
+                        justify="space-between"
+                        borderWidth="1px"
+                        borderColor="gray.200"
+                        borderRadius="lg"
+                        p="3"
+                        bg="gray.50">
+                        <HStack spacing="3">
+                          {item.type === 'image' && item.previewUrl ? (
+                            <ChakraImage
+                              src={item.previewUrl}
+                              alt={item.name}
+                              boxSize="40px"
+                              borderRadius="md"
+                              objectFit="cover"
+                            />
+                          ) : (
+                            <Box
+                              boxSize="40px"
+                              borderRadius="md"
+                              bg="white"
+                              display="flex"
+                              alignItems="center"
+                              justifyContent="center"
+                              fontSize="lg">
+                              {mediaTypeMeta[item.type]?.icon}
+                            </Box>
+                          )}
+                          <Box>
+                            <Text
+                              fontSize="sm"
+                              fontWeight="medium"
+                              color="gray.700"
+                              noOfLines={1}>
+                              {item.name}
+                            </Text>
+                            <Text fontSize="xs" color="gray.500">
+                              {mediaTypeMeta[item.type]?.label} •{' '}
+                              {imageInput.formatSize(item.size || 0)}
+                            </Text>
+                          </Box>
+                        </HStack>
+                        <IconButton
+                          icon={<FiX />}
+                          size="sm"
+                          colorScheme="red"
+                          variant="ghost"
+                          aria-label={`${item.name} kaldir`}
+                          onClick={() => {
+                            if (item.type === 'image') {
+                              imageInput.removeFile(
+                                imageInput.selectedFiles.findIndex(
+                                  file =>
+                                    file.name === item.name &&
+                                    file.size === item.size,
+                                ),
+                              );
+                            } else if (item.type === 'video') {
+                              videoInput.removeFile(
+                                videoInput.selectedFiles.findIndex(
+                                  file =>
+                                    file.name === item.name &&
+                                    file.size === item.size,
+                                ),
+                              );
+                            } else if (item.type === 'audio') {
+                              audioInput.removeFile(
+                                audioInput.selectedFiles.findIndex(
+                                  file =>
+                                    file.name === item.name &&
+                                    file.size === item.size,
+                                ),
+                              );
+                            } else {
+                              fileInput.removeFile(
+                                fileInput.selectedFiles.findIndex(
+                                  file =>
+                                    file.name === item.name &&
+                                    file.size === item.size,
+                                ),
+                              );
+                            }
+                          }}
+                        />
+                      </HStack>
+                    ))}
+                  </VStack>
+                </VStack>
               )}
             </FormControl>
 

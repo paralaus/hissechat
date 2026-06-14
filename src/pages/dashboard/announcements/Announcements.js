@@ -1,5 +1,5 @@
 import React from 'react';
-import {Text, Badge, Button, useToast} from '@chakra-ui/react';
+import {Text, Badge, Button, HStack, useToast} from '@chakra-ui/react';
 import {useNavigate} from 'react-router-dom';
 import {format} from 'date-fns';
 import {tr} from 'date-fns/locale';
@@ -17,6 +17,29 @@ const audienceLabels = {
   free: 'Ücretsiz',
   vip: 'VIP',
   specific: 'Belirli kullanıcılar',
+};
+
+const getCtaCount = announcement => {
+  if (Array.isArray(announcement?.ctas)) {
+    return announcement.ctas.filter(
+      item => item && (item.label || item.url || item.deepLink)
+    ).length;
+  }
+
+  return announcement?.ctaLabel || announcement?.ctaUrl || announcement?.deepLink
+    ? 1
+    : 0;
+};
+
+const getFirstCtaLabel = announcement => {
+  if (Array.isArray(announcement?.ctas)) {
+    const firstCta = announcement.ctas.find(
+      item => item && (item.label || item.url || item.deepLink)
+    );
+    return firstCta?.label || '';
+  }
+
+  return String(announcement?.ctaLabel || '').trim();
 };
 
 const Announcements = () => {
@@ -74,6 +97,27 @@ const Announcements = () => {
           {
             header: 'Öncelik',
             accessorKey: 'priority',
+          },
+          {
+            header: 'CTA',
+            accessorKey: 'ctas',
+            cell: ({row}) => {
+              const count = getCtaCount(row.original);
+              const firstLabel = getFirstCtaLabel(row.original);
+
+              return (
+                <HStack spacing="2">
+                  <Badge colorScheme={count > 0 ? 'blue' : 'gray'}>
+                    {count} buton
+                  </Badge>
+                  {firstLabel ? (
+                    <Text fontSize="sm" color="gray.600" noOfLines={1}>
+                      {firstLabel}
+                    </Text>
+                  ) : null}
+                </HStack>
+              );
+            },
           },
           {
             header: 'Aktif',

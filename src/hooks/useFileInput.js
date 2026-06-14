@@ -6,22 +6,32 @@ import {processVideoForUpload} from '../utils/videoOptimizer';
 const VIDEO_EXTENSIONS = ['.mp4', '.mov', '.avi', '.mkv', '.webm'];
 
 const useFileInput = (options = {}) => {
-  const {accept, validateOnSelect = true, maxSizeMB = 100} = options;
+  const {
+    accept,
+    validateOnSelect = true,
+    maxSizeMB = 100,
+    multiple = false,
+  } = options;
   const ref = useRef();
   const [selected, setSelected] = useState(null);
   const [objectUrl, setObjectUrl] = useState(null);
+  const [objectUrls, setObjectUrls] = useState([]);
   const [validationError, setValidationError] = useState(null);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [videoMetadata, setVideoMetadata] = useState(null);
   const [thumbnail, setThumbnail] = useState(null);
   const [isProcessing, setIsProcessing] = useState(false);
 
-  const selectedFile = useMemo(() => {
-    if (!selected) return null;
-    if (selected instanceof Blob) return selected;
-    if (selected[0] instanceof Blob) return selected[0];
-    return null;
+  const selectedFiles = useMemo(() => {
+    if (!selected) return [];
+    if (selected instanceof Blob) return [selected];
+    if (Array.isArray(selected)) return selected.filter(Boolean);
+    return Array.from(selected).filter(Boolean);
   }, [selected]);
+
+  const selectedFile = useMemo(() => {
+    return selectedFiles[0] || null;
+  }, [selectedFiles]);
 
   const {mutateAsync, isPending: isUploading} = useMutation({
     mutationFn: ({file, onProgress}) =>
@@ -32,9 +42,7 @@ const useFileInput = (options = {}) => {
   const isVideoFile = file => {
     return (
       file?.type?.startsWith('video/') ||
-      VIDEO_EXTENSIONS.some(ext =>
-        file?.name?.toLowerCase().endsWith(ext),
-      )
+      VIDEO_EXTENSIONS.some(ext => file?.name?.toLowerCase().endsWith(ext))
     );
   };
 
@@ -45,14 +53,16 @@ const useFileInput = (options = {}) => {
       setVideoMetadata(null);
       setThumbnail(null);
 
-      if (!file) return { valid: true };
+      if (!file) return {valid: true};
 
       // Check general file size
       const sizeMB = file.size / (1024 * 1024);
       if (sizeMB > maxSizeMB) {
-        const error = `Dosya boyutu çok büyük (${sizeMB.toFixed(1)}MB). Maksimum: ${maxSizeMB}MB`;
+        const error = `Dosya boyutu çok büyük (${sizeMB.toFixed(
+          1,
+        )}MB). Maksimum: ${maxSizeMB}MB`;
         setValidationError(error);
-        return { valid: false, error };
+        return {valid: false, error};
       }
 
       // If it's a video file, do additional validation
@@ -67,12 +77,12 @@ const useFileInput = (options = {}) => {
             const errorMessages = Array.isArray(result?.validation?.errors)
               ? result.validation.errors
               : result?.error
-                ? [result.error]
-                : ['Video dogrulanamadi.'];
+              ? [result.error]
+              : ['Video dogrulanamadi.'];
             const error = errorMessages.join('\n');
             setValidationError(error);
             setIsProcessing(false);
-            return { valid: false, error };
+            return {valid: false, error};
           }
 
           setVideoMetadata(result?.validation?.info || null);
@@ -80,11 +90,11 @@ const useFileInput = (options = {}) => {
             setThumbnail(result.thumbnail);
           }
           setIsProcessing(false);
-          return { 
-            valid: true, 
-            metadata: result?.validation?.info || null, 
+          return {
+            valid: true,
+            metadata: result?.validation?.info || null,
             thumbnail: result.thumbnail,
-            processedFile: result.processedFile // In case we want to use the processed file
+            processedFile: result.processedFile, // In case we want to use the processed file
           };
         } catch (err) {
           console.warn('Video validation error:', err);
@@ -93,7 +103,7 @@ const useFileInput = (options = {}) => {
         }
       }
 
-      return { valid: true };
+      return {valid: true};
     },
     [maxSizeMB],
   );
@@ -101,7 +111,7 @@ const useFileInput = (options = {}) => {
   // Handle file selection
   const handleFileChange = useCallback(
     async event => {
-      const files = event.target.files;
+      const files = Array.from(event.target.files || []);
 
       if (!files || files.length === 0) {
         setSelected(null);
@@ -114,20 +124,32 @@ const useFileInput = (options = {}) => {
         const result = await validateFile(file);
         if (!result.valid) {
           // Still allow selection but show error
-          setSelected(files);
+          setSelected(multiple ? files : files.slice(0, 1));
           return;
         }
       }
 
-      setSelected(files);
+      setSelected(prevSelected => {
+        if (!multiple) {
+          return files.slice(0, 1);
+        }
+
+        const previousFiles = Array.isArray(prevSelected)
+          ? prevSelected
+          : prevSelected
+          ? Array.from(prevSelected)
+          : [];
+
+        return [...previousFiles, ...files];
+      });
       setValidationError(null);
     },
-    [validateOnSelect, validateFile],
+    [multiple, validateOnSelect, validateFile],
   );
 
   const upload = async (options = {}) => {
     const file = options.file || selected?.[0];
-    
+
     if (!file) return false;
 
     // Don't upload if there's a validation error (only if using selected file)
@@ -165,33 +187,37 @@ const useFileInput = (options = {}) => {
         type="file"
         name="file"
         accept={accept}
+        multiple={multiple}
         hidden
         onChange={handleFileChange}
       />
     );
-  }, [accept, handleFileChange]);
+  }, [accept, handleFileChange, multiple]);
 
   const open = () => {
     ref.current?.click?.();
   };
 
   useEffect(() => {
-    if (!selectedFile) {
+    if (!selectedFiles.length) {
+      setObjectUrls([]);
       setObjectUrl(null);
       return undefined;
     }
 
-    const nextObjectUrl = URL.createObjectURL(selectedFile);
-    setObjectUrl(nextObjectUrl);
+    const nextObjectUrls = selectedFiles.map(file => URL.createObjectURL(file));
+    setObjectUrls(nextObjectUrls);
+    setObjectUrl(nextObjectUrls[0] || null);
 
     return () => {
-      URL.revokeObjectURL(nextObjectUrl);
+      nextObjectUrls.forEach(url => URL.revokeObjectURL(url));
     };
-  }, [selectedFile]);
+  }, [selectedFiles]);
 
   const reset = () => {
     setSelected(null);
     setObjectUrl(null);
+    setObjectUrls([]);
     setValidationError(null);
     setVideoMetadata(null);
     setThumbnail(null);
@@ -200,6 +226,24 @@ const useFileInput = (options = {}) => {
     // Reset the input value to allow selecting the same file again
     if (ref.current) {
       ref.current.value = '';
+    }
+  };
+
+  const removeFile = index => {
+    if (!selectedFiles.length) return;
+    const nextFiles = selectedFiles.filter(
+      (_, fileIndex) => fileIndex !== index,
+    );
+    setSelected(nextFiles.length ? nextFiles : null);
+    if (ref.current) {
+      ref.current.value = '';
+    }
+    if (!nextFiles.length) {
+      setValidationError(null);
+      setVideoMetadata(null);
+      setThumbnail(null);
+      setUploadProgress(0);
+      setIsProcessing(false);
     }
   };
 
@@ -213,7 +257,9 @@ const useFileInput = (options = {}) => {
     isProcessing,
     uploadProgress,
     objectUrl,
+    objectUrls,
     reset,
+    removeFile,
     // Validation
     validationError,
     isValid: !validationError,
@@ -221,6 +267,7 @@ const useFileInput = (options = {}) => {
     isVideo: selectedFile ? isVideoFile(selectedFile) : false,
     videoMetadata,
     thumbnail,
+    selectedFiles,
     // Helpers
     formatSize: bytes => {
       if (bytes < 1024) return bytes + ' B';
