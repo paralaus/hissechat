@@ -233,9 +233,9 @@ const CreateAnnouncement = () => {
                   <Text fontSize="sm" fontWeight="medium" mb="0">
                     CTA Butonları
                   </Text>
-                  <FormHelperText mt="1">
+                  <Text fontSize="sm" color="gray.500" mt="1">
                     Birden fazla CTA ekleyebilirsin. Deep link varsa URL yerine onu açar.
-                  </FormHelperText>
+                  </Text>
                 </Box>
                 <Button type="button" size="sm" onClick={() => appendCta(emptyCta())}>
                   CTA Ekle
