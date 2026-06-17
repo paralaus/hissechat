@@ -1158,8 +1158,7 @@ const BulkMessage = () => {
           Toplu Mesaj
         </Text>
         <Text color="gray.500" mt="1">
-          Tüm kanallara veya seçili kanallara toplu mesaj gönderin; isterseniz
-          metne göre toplu silin.
+          Toplu gonderim ve toplu silme islemlerini ayri sekmelerden yonetin.
         </Text>
       </Box>
 
@@ -1695,158 +1694,38 @@ const BulkMessage = () => {
         )}
       </Box>
 
-      <Box bg="white" borderRadius="xl" boxShadow="md" p="6" mb="6">
-        <HStack justify="space-between" mb="4" align="center">
-          <Box>
-            <Text fontSize="lg" fontWeight="bold" color="gray.800">
-              Toplu Mesaj Sil
-            </Text>
-            <Text fontSize="sm" color="gray.500">
-              Daha once gonderdiginiz mesajlari metne veya medya linkine gore
-              topluca siler.
-            </Text>
-          </Box>
-        </HStack>
-
-        <Alert status="warning" borderRadius="lg" mb="6">
-          <AlertIcon />
-          <Box>
-            <AlertTitle fontSize="sm">Dikkat!</AlertTitle>
-            <AlertDescription fontSize="sm">
-              Bu islem geri alinamaz. Mesaj metni birebir eslesir; medya linki
-              de tam URL olarak aranir. Guvenlik icin onay alanina DELETE
-              yazmalisiniz.
-            </AlertDescription>
-          </Box>
-        </Alert>
-
-        <form onSubmit={handleSubmitDelete(onDeleteSubmit)}>
-          <Flex direction="column" maxW="100%">
-            <FormControl isInvalid={!!deleteErrors.text} mb="6">
-              <FormLabel fontWeight="600" fontSize="sm">
-                Mesaj Metni (Opsiyonel)
-              </FormLabel>
-              <Textarea
-                placeholder="Silmek istediginiz mesaj metnini birebir yapistirin..."
-                size="lg"
-                rows={4}
-                {...registerDelete('text')}
-              />
-              <FormHelperText>
-                Metin eslesmesi birebir yapilir. Sadece medya linkine gore
-                silmek istiyorsaniz bu alani bos birakabilirsiniz.
-              </FormHelperText>
-              <FormErrorMessage>{deleteErrors.text?.message}</FormErrorMessage>
-            </FormControl>
-
-            <FormControl isInvalid={!!deleteErrors.mediaUrl} mb="6">
-              <FormLabel fontWeight="600" fontSize="sm">
-                Medya Linki (Opsiyonel)
-              </FormLabel>
-              <Input
-                placeholder="https://.../dosya.jpg"
-                size="lg"
-                autoComplete="off"
-                {...registerDelete('mediaUrl')}
-              />
-              <FormHelperText>
-                Gorsel, video, ses veya dosya linkine gore tam eslesme ile
-                siler. Mesaj metni ile birlikte girerseniz sonuc daralir.
-              </FormHelperText>
-              <FormErrorMessage>
-                {deleteErrors.mediaUrl?.message}
-              </FormErrorMessage>
-            </FormControl>
-
-            <HStack spacing="4" align="start" flexWrap="wrap" mb="6">
-              <FormControl
-                isInvalid={!!deleteErrors.since}
-                flex="1"
-                minW="240px">
-                <FormLabel fontWeight="600" fontSize="sm">
-                  Başlangıç (Opsiyonel)
-                </FormLabel>
-                <Input
-                  type="datetime-local"
-                  size="lg"
-                  {...registerDelete('since')}
-                />
-                <FormErrorMessage>
-                  {deleteErrors.since?.message}
-                </FormErrorMessage>
-              </FormControl>
-
-              <FormControl
-                isInvalid={!!deleteErrors.until}
-                flex="1"
-                minW="240px">
-                <FormLabel fontWeight="600" fontSize="sm">
-                  Bitiş (Opsiyonel)
-                </FormLabel>
-                <Input
-                  type="datetime-local"
-                  size="lg"
-                  {...registerDelete('until')}
-                />
-                <FormErrorMessage>
-                  {deleteErrors.until?.message}
-                </FormErrorMessage>
-              </FormControl>
+      <Tabs colorScheme="blue" variant="enclosed" mb="6">
+        <TabList mb="4">
+          <Tab>Toplu Gonder</Tab>
+          <Tab color="red.500">
+            <HStack spacing="2">
+              <Icon as={FiX} color="red.500" />
+              <Text>Toplu Sil</Text>
             </HStack>
+          </Tab>
+        </TabList>
 
-            <FormControl isInvalid={!!deleteErrors.confirm} mb="6">
-              <FormLabel fontWeight="600" fontSize="sm">
-                Onay
-              </FormLabel>
-              <Input
-                placeholder="DELETE"
-                size="lg"
-                autoComplete="off"
-                {...registerDelete('confirm')}
-              />
-              <FormErrorMessage>
-                {deleteErrors.confirm?.message}
-              </FormErrorMessage>
-            </FormControl>
-
-            {(isDeletePending || isDeleting) && (
-              <Box mb="4">
-                <Text mb="2" fontSize="sm" color="gray.500">
-                  Silme işlemi başlatılıyor...
-                </Text>
-                <Progress
-                  size="sm"
-                  isIndeterminate
-                  colorScheme="red"
-                  borderRadius="full"
-                />
-              </Box>
-            )}
-
-            <Button
-              isLoading={isDeletePending || isDeleting}
-              loadingText="Siliniyor..."
-              colorScheme="red"
-              size="lg"
-              type="submit"
-              leftIcon={<Icon as={FiX} />}
-              isDisabled={isUploading || isSending}>
-              Toplu Sil
-            </Button>
-          </Flex>
-        </form>
-      </Box>
-
-      <Box
-        bg="white"
-        overflow="visible"
-        borderRadius="xl"
-        display="flex"
-        flexDirection="column"
-        boxShadow="md"
-        p="6">
-        <form onSubmit={handleSubmit(onSubmit)}>
-          <Flex direction="column" maxW="100%">
+        <TabPanels>
+          <TabPanel p="0">
+            <Box
+              bg="white"
+              overflow="visible"
+              borderRadius="xl"
+              display="flex"
+              flexDirection="column"
+              boxShadow="md"
+              p="6">
+              <Alert status="info" variant="left-accent" borderRadius="lg" mb="6">
+                <AlertIcon />
+                <Box>
+                  <AlertTitle fontSize="sm">Guvenli Alan</AlertTitle>
+                  <AlertDescription fontSize="sm">
+                    Bu sekme toplu gonderim icindir. Mesaj, medya veya ikisini birlikte secilen kanallara yollar.
+                  </AlertDescription>
+                </Box>
+              </Alert>
+              <form onSubmit={handleSubmit(onSubmit)}>
+                <Flex direction="column" maxW="100%">
             {/* Target Type */}
             <FormControl isInvalid={!!errors.targetType} mb="6">
               <FormLabel fontWeight="600" fontSize="sm">
@@ -2492,19 +2371,175 @@ const BulkMessage = () => {
             )}
 
             {/* Submit Button */}
-            <Button
-              isLoading={isPending || isUploading}
-              loadingText={isUploading ? 'Yükleniyor...' : 'Gönderiliyor...'}
-              colorScheme="blue"
-              size="lg"
-              type="submit"
-              leftIcon={<FiSend />}
-              isDisabled={isPending || isUploading || !targetType}>
-              {getTargetCount()} Kanala Mesaj Gönder
-            </Button>
-          </Flex>
-        </form>
-      </Box>
+                  <Button
+                    isLoading={isPending || isUploading}
+                    loadingText={isUploading ? 'Yükleniyor...' : 'Gönderiliyor...'}
+                    colorScheme="blue"
+                    size="lg"
+                    type="submit"
+                    leftIcon={<FiSend />}
+                    isDisabled={isPending || isUploading || !targetType}>
+                    {getTargetCount()} Kanala Mesaj Gönder
+                  </Button>
+                </Flex>
+              </form>
+            </Box>
+          </TabPanel>
+
+          <TabPanel p="0">
+            <Box bg="white" borderRadius="xl" boxShadow="md" p="6">
+              <Alert status="error" variant="left-accent" borderRadius="lg" mb="6">
+                <AlertIcon />
+                <Box>
+                  <AlertTitle fontSize="sm">Danger Zone</AlertTitle>
+                  <AlertDescription fontSize="sm">
+                    Bu sekme kalici silme islemi yapar. Gonderim sekmesi ile karistirmadan ilerleyin.
+                  </AlertDescription>
+                </Box>
+              </Alert>
+              <HStack justify="space-between" mb="4" align="center">
+                <Box>
+                  <Text fontSize="lg" fontWeight="bold" color="gray.800">
+                    Toplu Mesaj Sil
+                  </Text>
+                  <Text fontSize="sm" color="gray.500">
+                    Daha once gonderdiginiz mesajlari metne veya medya linkine gore
+                    topluca siler.
+                  </Text>
+                </Box>
+              </HStack>
+
+              <Alert status="warning" borderRadius="lg" mb="6">
+                <AlertIcon />
+                <Box>
+                  <AlertTitle fontSize="sm">Dikkat!</AlertTitle>
+                  <AlertDescription fontSize="sm">
+                    Bu islem geri alinamaz. Mesaj metni birebir eslesir; medya linki
+                    de tam URL olarak aranir. Guvenlik icin onay alanina DELETE
+                    yazmalisiniz.
+                  </AlertDescription>
+                </Box>
+              </Alert>
+
+              <form onSubmit={handleSubmitDelete(onDeleteSubmit)}>
+                <Flex direction="column" maxW="100%">
+                  <FormControl isInvalid={!!deleteErrors.text} mb="6">
+                    <FormLabel fontWeight="600" fontSize="sm">
+                      Mesaj Metni (Opsiyonel)
+                    </FormLabel>
+                    <Textarea
+                      placeholder="Silmek istediginiz mesaj metnini birebir yapistirin..."
+                      size="lg"
+                      rows={4}
+                      {...registerDelete('text')}
+                    />
+                    <FormHelperText>
+                      Metin eslesmesi birebir yapilir. Sadece medya linkine gore
+                      silmek istiyorsaniz bu alani bos birakabilirsiniz.
+                    </FormHelperText>
+                    <FormErrorMessage>{deleteErrors.text?.message}</FormErrorMessage>
+                  </FormControl>
+
+                  <FormControl isInvalid={!!deleteErrors.mediaUrl} mb="6">
+                    <FormLabel fontWeight="600" fontSize="sm">
+                      Medya Linki (Opsiyonel)
+                    </FormLabel>
+                    <Input
+                      placeholder="https://.../dosya.jpg"
+                      size="lg"
+                      autoComplete="off"
+                      {...registerDelete('mediaUrl')}
+                    />
+                    <FormHelperText>
+                      Gorsel, video, ses veya dosya linkine gore tam eslesme ile
+                      siler. Mesaj metni ile birlikte girerseniz sonuc daralir.
+                    </FormHelperText>
+                    <FormErrorMessage>
+                      {deleteErrors.mediaUrl?.message}
+                    </FormErrorMessage>
+                  </FormControl>
+
+                  <HStack spacing="4" align="start" flexWrap="wrap" mb="6">
+                    <FormControl
+                      isInvalid={!!deleteErrors.since}
+                      flex="1"
+                      minW="240px">
+                      <FormLabel fontWeight="600" fontSize="sm">
+                        Başlangıç (Opsiyonel)
+                      </FormLabel>
+                      <Input
+                        type="datetime-local"
+                        size="lg"
+                        {...registerDelete('since')}
+                      />
+                      <FormErrorMessage>
+                        {deleteErrors.since?.message}
+                      </FormErrorMessage>
+                    </FormControl>
+
+                    <FormControl
+                      isInvalid={!!deleteErrors.until}
+                      flex="1"
+                      minW="240px">
+                      <FormLabel fontWeight="600" fontSize="sm">
+                        Bitiş (Opsiyonel)
+                      </FormLabel>
+                      <Input
+                        type="datetime-local"
+                        size="lg"
+                        {...registerDelete('until')}
+                      />
+                      <FormErrorMessage>
+                        {deleteErrors.until?.message}
+                      </FormErrorMessage>
+                    </FormControl>
+                  </HStack>
+
+                  <FormControl isInvalid={!!deleteErrors.confirm} mb="6">
+                    <FormLabel fontWeight="600" fontSize="sm">
+                      Onay
+                    </FormLabel>
+                    <Input
+                      placeholder="DELETE"
+                      size="lg"
+                      autoComplete="off"
+                      {...registerDelete('confirm')}
+                    />
+                    <FormErrorMessage>
+                      {deleteErrors.confirm?.message}
+                    </FormErrorMessage>
+                  </FormControl>
+
+                  {(isDeletePending || isDeleting) && (
+                    <Box mb="4">
+                      <Text mb="2" fontSize="sm" color="gray.500">
+                        Silme işlemi başlatılıyor...
+                      </Text>
+                      <Progress
+                        size="sm"
+                        isIndeterminate
+                        colorScheme="red"
+                        borderRadius="full"
+                      />
+                    </Box>
+                  )}
+
+                  <Button
+                    isLoading={isDeletePending || isDeleting}
+                    loadingText="Siliniyor..."
+                    colorScheme="red"
+                    size="lg"
+                    type="submit"
+                    leftIcon={<Icon as={FiX} />}
+                    isDisabled={isUploading || isSending}>
+                    Toplu Sil
+                  </Button>
+                </Flex>
+              </form>
+            </Box>
+          </TabPanel>
+        </TabPanels>
+      </Tabs>
     </Page>
   );
 };
