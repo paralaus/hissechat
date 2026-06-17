@@ -2053,12 +2053,12 @@ const BulkMessage = () => {
             {/* Message Content */}
             <FormControl isInvalid={!!errors.message} mb="6">
               <FormLabel fontWeight="600" fontSize="sm">
-                Mesaj İçeriği {hasMedia && '(Opsiyonel)'}
+                Mesaj İçeriği (Opsiyonel)
               </FormLabel>
               <Box position="relative">
                 <Textarea
                   ref={textareaRef}
-                  placeholder="Tüm kanallara gönderilecek mesajı yazın..."
+                  placeholder="Isterseniz mesaj yazin, isterseniz sadece medya gonderin..."
                   size="lg"
                   rows={4}
                   pr="12"
@@ -2109,7 +2109,7 @@ const BulkMessage = () => {
                 </Popover>
               </Box>
               <FormHelperText>
-                Bu mesaj seçilen tüm kanallara admin olarak gönderilecektir.
+                Mesaj alani bos birakilabilir. Yalnizca medya gonderebilirsiniz; ancak mesaj veya medya alanlarindan en az biri dolu olmalidir.
               </FormHelperText>
               <FormErrorMessage>{errors.message?.message}</FormErrorMessage>
             </FormControl>
