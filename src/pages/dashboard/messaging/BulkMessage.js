@@ -986,9 +986,13 @@ const BulkMessage = () => {
         stage: 'preparing',
       });
 
+      const trimmedText = typeof values.text === 'string' ? values.text.trim() : '';
+      const trimmedMediaUrl =
+        typeof values.mediaUrl === 'string' ? values.mediaUrl.trim() : '';
       const payload = {
-        text: values.text,
         confirm: values.confirm,
+        ...(trimmedText ? {text: trimmedText} : {}),
+        ...(trimmedMediaUrl ? {mediaUrl: trimmedMediaUrl} : {}),
         ...(values.since ? {since: values.since} : {}),
         ...(values.until ? {until: values.until} : {}),
       };
