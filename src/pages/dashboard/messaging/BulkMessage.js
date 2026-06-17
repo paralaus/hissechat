@@ -82,7 +82,13 @@ const schema = yup
 
 const deleteSchema = yup
   .object({
-    text: yup.string().required('Silinecek mesaj metni zorunludur.').min(1),
+    text: yup.string().notRequired(),
+    mediaUrl: yup
+      .string()
+      .trim()
+      .url('Geçerli bir medya linki girin.')
+      .nullable()
+      .transform(value => (value === '' ? null : value)),
     confirm: yup
       .string()
       .oneOf(['DELETE'], 'Onay için DELETE yazmalısınız.')
@@ -90,6 +96,22 @@ const deleteSchema = yup
     since: yup.string().notRequired(),
     until: yup.string().notRequired(),
   })
+  .test(
+    'delete-filter-required',
+    'Silmek için mesaj metni veya medya linki girmelisiniz.',
+    function validateDeleteFilters(values) {
+      const hasText = typeof values?.text === 'string' && values.text.trim().length > 0;
+      const hasMediaUrl =
+        typeof values?.mediaUrl === 'string' && values.mediaUrl.trim().length > 0;
+      if (hasText || hasMediaUrl) {
+        return true;
+      }
+      return this.createError({
+        path: 'text',
+        message: 'Silmek için mesaj metni veya medya linki girmelisiniz.',
+      });
+    },
+  )
   .required();
 
 const targetTypes = [
@@ -302,6 +324,7 @@ const BulkMessage = () => {
     resolver: yupResolver(deleteSchema),
     defaultValues: {
       text: '',
+      mediaUrl: '',
       since: '',
       until: '',
       confirm: '',
@@ -1650,10 +1673,10 @@ const BulkMessage = () => {
         <HStack justify="space-between" mb="4" align="center">
           <Box>
             <Text fontSize="lg" fontWeight="bold" color="gray.800">
-              Toplu Mesaj Sil (Metne Göre)
+              Toplu Mesaj Sil
             </Text>
             <Text fontSize="sm" color="gray.500">
-              Daha önce “tüm kanallara” gönderdiğiniz aynı metindeki mesajları
+              Daha once gonderdiginiz mesajlari metne veya medya linkine gore
               topluca siler.
             </Text>
           </Box>
@@ -1664,8 +1687,9 @@ const BulkMessage = () => {
           <Box>
             <AlertTitle fontSize="sm">Dikkat!</AlertTitle>
             <AlertDescription fontSize="sm">
-              Bu işlem geri alınamaz. Metin birebir aynı olmalıdır. Güvenlik
-              için onay alanına DELETE yazmalısınız.
+              Bu islem geri alinamaz. Mesaj metni birebir eslesir; medya linki
+              de tam URL olarak aranir. Guvenlik icin onay alanina DELETE
+              yazmalisiniz.
             </AlertDescription>
           </Box>
         </Alert>
@@ -1674,19 +1698,38 @@ const BulkMessage = () => {
           <Flex direction="column" maxW="100%">
             <FormControl isInvalid={!!deleteErrors.text} mb="6">
               <FormLabel fontWeight="600" fontSize="sm">
-                Mesaj Metni
+                Mesaj Metni (Opsiyonel)
               </FormLabel>
               <Textarea
-                placeholder="Silmek istediğiniz mesaj metnini birebir yapıştırın..."
+                placeholder="Silmek istediginiz mesaj metnini birebir yapistirin..."
                 size="lg"
                 rows={4}
                 {...registerDelete('text')}
               />
               <FormHelperText>
-                Metin eşleşmesi birebir yapılır. Gerekirse tarih aralığı ile
-                daraltın.
+                Metin eslesmesi birebir yapilir. Sadece medya linkine gore
+                silmek istiyorsaniz bu alani bos birakabilirsiniz.
               </FormHelperText>
               <FormErrorMessage>{deleteErrors.text?.message}</FormErrorMessage>
+            </FormControl>
+
+            <FormControl isInvalid={!!deleteErrors.mediaUrl} mb="6">
+              <FormLabel fontWeight="600" fontSize="sm">
+                Medya Linki (Opsiyonel)
+              </FormLabel>
+              <Input
+                placeholder="https://.../dosya.jpg"
+                size="lg"
+                autoComplete="off"
+                {...registerDelete('mediaUrl')}
+              />
+              <FormHelperText>
+                Gorsel, video, ses veya dosya linkine gore tam eslesme ile
+                siler. Mesaj metni ile birlikte girerseniz sonuc daralir.
+              </FormHelperText>
+              <FormErrorMessage>
+                {deleteErrors.mediaUrl?.message}
+              </FormErrorMessage>
             </FormControl>
 
             <HStack spacing="4" align="start" flexWrap="wrap" mb="6">
@@ -1762,7 +1805,7 @@ const BulkMessage = () => {
               type="submit"
               leftIcon={<Icon as={FiX} />}
               isDisabled={isUploading || isSending}>
-              Metne Göre Toplu Sil
+              Toplu Sil
             </Button>
           </Flex>
         </form>
