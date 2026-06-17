@@ -59,6 +59,7 @@ const object = {
   about: yup.string().required('Bu alan zorunludur.'),
   admins: yup.array().required('Bu alan zorunludur.'),
   marketCode: yup.string().notRequired(),
+  hashtagAliases: yup.string().notRequired(),
   isActive: yup.boolean().notRequired(),
   isFixed: yup.boolean().notRequired(),
   rank: yup.number('Bu alana bir sayı girin.').notRequired(),
@@ -67,6 +68,16 @@ const object = {
 };
 
 const schema = yup.object().shape(object);
+
+const parseHashtagAliases = value =>
+  Array.from(
+    new Set(
+      String(value || '')
+        .split(/\r?\n|,/)
+        .map(item => item.trim().replace(/^#/, ''))
+        .filter(Boolean),
+    ),
+  );
 
 const escapeHtml = value =>
   String(value || '')
@@ -697,6 +708,9 @@ const EditVipChannel = ({id}) => {
         .then(values => {
           const data = pick(values, Object.keys(object));
           data.admins = values?.admins?.map(item => item?.id);
+          data.hashtagAliases = Array.isArray(values?.hashtagAliases)
+            ? values.hashtagAliases.join('\n')
+            : '';
           reset(data);
           return values;
         }),
@@ -704,12 +718,17 @@ const EditVipChannel = ({id}) => {
 
   const onSubmit = async values => {
     try {
+      const payload = {
+        ...values,
+        hashtagAliases: parseHashtagAliases(values?.hashtagAliases),
+      };
+
       if (objectUrl) {
         const url = await upload();
-        if (url) values.thumbnail = url;
+        if (url) payload.thumbnail = url;
       }
 
-      const {data} = await mutateAsync(values);
+      const {data} = await mutateAsync(payload);
       if (data) {
         toast({
           title: 'Bilgiler kaydedildi.',
@@ -972,6 +991,29 @@ const EditVipChannel = ({id}) => {
                 {...register('marketCode')}
               />
               <FormErrorMessage>{errors.marketCode?.message}</FormErrorMessage>
+            </FormControl>
+            <FormControl isInvalid={!!errors.hashtagAliases} mb="4">
+              <FormLabel
+                display="flex"
+                ms="4px"
+                fontSize="sm"
+                fontWeight="500"
+                mb="8px">
+                Hashtag Aliaslari
+              </FormLabel>
+              <Textarea
+                fontSize="sm"
+                fontWeight="500"
+                size="md"
+                rows={4}
+                placeholder={'odas\nhissechat\n#gokhanbilik1'}
+                defaultValue={Array.isArray(data?.hashtagAliases) ? data.hashtagAliases.join('\n') : ''}
+                {...register('hashtagAliases')}
+              />
+              <FormHelperText>
+                Her satira bir alias yazin. `#` ile ya da `#` olmadan girebilirsiniz.
+              </FormHelperText>
+              <FormErrorMessage>{errors.hashtagAliases?.message}</FormErrorMessage>
             </FormControl>
             <FormControl isInvalid={!!errors.rank} mb="4">
               <FormLabel
