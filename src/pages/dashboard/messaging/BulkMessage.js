@@ -85,10 +85,32 @@ const deleteSchema = yup
     text: yup.string().notRequired(),
     mediaUrl: yup
       .string()
-      .trim()
-      .url('Geçerli bir medya linki girin.')
       .nullable()
-      .transform(value => (value === '' ? null : value)),
+      .transform(value => {
+        if (typeof value !== 'string') return value;
+        const cleaned = value.replace(/`+/g, '').replace(/\s+/g, ' ').trim();
+        if (!cleaned) return null;
+        try {
+          return new URL(encodeURI(cleaned)).toString();
+        } catch {
+          return cleaned;
+        }
+      })
+      .test(
+        'valid-media-url',
+        'Geçerli bir medya linki girin.',
+        value => {
+          if (!value) return true;
+          if (typeof value !== 'string') return false;
+          if (!/^https?:\/\//i.test(value)) return false;
+          try {
+            new URL(value);
+            return true;
+          } catch {
+            return false;
+          }
+        },
+      ),
     confirm: yup
       .string()
       .oneOf(['DELETE'], 'Onay için DELETE yazmalısınız.')
