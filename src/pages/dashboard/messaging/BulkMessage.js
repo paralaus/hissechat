@@ -72,6 +72,8 @@ const schema = yup
   .object({
     message: yup.string().notRequired(),
     targetType: yup.string().required('Hedef kitle seçimi zorunludur.'),
+    membersOnlyAtSend: yup.boolean().notRequired(),
+    skipUnreadForInactiveUsers: yup.boolean().notRequired(),
     selectedChannels: yup.array().when('targetType', {
       is: 'selected',
       then: schema => schema.min(1, 'En az bir kanal seçmelisiniz.'),
@@ -332,6 +334,8 @@ const BulkMessage = () => {
     resolver: yupResolver(schema),
     defaultValues: {
       targetType: 'all_channels',
+      membersOnlyAtSend: true,
+      skipUnreadForInactiveUsers: true,
       selectedChannels: [],
       message: '',
     },
@@ -1571,6 +1575,22 @@ const BulkMessage = () => {
                         <Badge colorScheme="blue">
                           {job.targetType || 'bulk'}
                         </Badge>
+                        <Badge
+                          colorScheme={
+                            job.membersOnlyAtSend ? 'green' : 'gray'
+                          }>
+                          {job.membersOnlyAtSend
+                            ? 'Uye aninda gorunur'
+                            : 'Herkese gorunur'}
+                        </Badge>
+                        <Badge
+                          colorScheme={
+                            job.skipUnreadForInactiveUsers ? 'orange' : 'gray'
+                          }>
+                          {job.skipUnreadForInactiveUsers
+                            ? 'Son 7 gun aktiflere unread verildi'
+                            : 'Pasife unread var'}
+                        </Badge>
                         {job.mediaCount > 0 && (
                           <Badge colorScheme="cyan">
                             {job.mediaCount} medya
@@ -1657,6 +1677,18 @@ const BulkMessage = () => {
                       Hedef: {total || job.selectedChannelsCount || 0}
                     </Text>
                     <Text>
+                      Gorunurluk:{' '}
+                      {job.membersOnlyAtSend
+                        ? 'Sadece gonderim anindaki uyeler'
+                        : 'Kanala sonradan katilanlar da gorebilir'}
+                    </Text>
+                    <Text>
+                      Pasif kullanici unread:{' '}
+                      {job.skipUnreadForInactiveUsers
+                        ? 'Son 7 gunde aktif olanlar hedeflendi'
+                        : 'Kapali, tum uyelere verilir'}
+                    </Text>
+                    <Text>
                       İlerleme: {current}/{total || '-'}
                     </Text>
                     <Text>Başarılı: {successCount}</Text>
@@ -1726,651 +1758,680 @@ const BulkMessage = () => {
               </Alert>
               <form onSubmit={handleSubmit(onSubmit)}>
                 <Flex direction="column" maxW="100%">
-            {/* Target Type */}
-            <FormControl isInvalid={!!errors.targetType} mb="6">
-              <FormLabel fontWeight="600" fontSize="sm">
-                Hedef Kitle
-              </FormLabel>
-              <Select
-                placeholder="Hedef kitle seçin"
-                size="lg"
-                {...register('targetType')}>
-                {targetTypes.map(item => (
-                  <option key={item.value} value={item.value}>
-                    {item.label}
-                  </option>
-                ))}
-              </Select>
-              <FormHelperText>
-                Mesajın gönderileceği kanalları seçin.
-              </FormHelperText>
-              <FormErrorMessage>{errors.targetType?.message}</FormErrorMessage>
-            </FormControl>
-
-            {/* Target Count Badge */}
-            {targetType && (
-              <Box mb="6">
-                <Badge
-                  colorScheme="blue"
-                  fontSize="md"
-                  px="3"
-                  py="1"
-                  borderRadius="full">
-                  {getTargetCount()} kanala gönderilecek
-                </Badge>
-              </Box>
-            )}
-
-            {/* Channel Selection for 'selected' type */}
-            {targetType === 'selected' && (
-              <FormControl isInvalid={!!errors.selectedChannels} mb="6">
-                <FormLabel fontWeight="600" fontSize="sm">
-                  Kanalları Seçin
-                </FormLabel>
-                <Box
-                  maxH="300px"
-                  overflowY="auto"
-                  border="1px solid"
-                  borderColor="gray.200"
-                  borderRadius="lg"
-                  p="4">
-                  {isLoadingChannels ? (
-                    <Text>Kanallar yükleniyor...</Text>
-                  ) : (
-                    <CheckboxGroup
-                      value={selectedChannels}
-                      onChange={values => setValue('selectedChannels', values)}>
-                      <VStack align="start" spacing="4">
-                        {/* Market Channels */}
-                        {marketChannels.length > 0 && (
-                          <Box w="100%">
-                            <Text fontWeight="bold" mb="2" color="gray.600">
-                              📈 Piyasa Kanalları ({marketChannels.length})
-                            </Text>
-                            <VStack align="start" pl="4" spacing="2">
-                              {marketChannels.map(channel => (
-                                <Checkbox
-                                  key={
-                                    channel.id ||
-                                    channel.marketCode ||
-                                    channel.name
-                                  }
-                                  value={channel.id}
-                                  isDisabled={!channel.id}>
-                                  <HStack>
-                                    <Text>{channel.name}</Text>
-                                    <Badge size="sm" colorScheme="green">
-                                      Market
-                                    </Badge>
-                                    {!channel.id && (
-                                      <Badge size="sm" colorScheme="gray">
-                                        Başlatılmadı
-                                      </Badge>
-                                    )}
-                                  </HStack>
-                                </Checkbox>
-                              ))}
-                            </VStack>
-                          </Box>
-                        )}
-
-                        <Divider />
-
-                        {/* VIP Channels */}
-                        {vipChannels.length > 0 && (
-                          <Box w="100%">
-                            <Text fontWeight="bold" mb="2" color="gray.600">
-                              ⭐ VIP Kanallar ({vipChannels.length})
-                            </Text>
-                            <VStack align="start" pl="4" spacing="2">
-                              {vipChannels.map(channel => (
-                                <Checkbox key={channel.id} value={channel.id}>
-                                  <HStack>
-                                    <Text>{channel.name}</Text>
-                                    <Badge size="sm" colorScheme="purple">
-                                      VIP
-                                    </Badge>
-                                  </HStack>
-                                </Checkbox>
-                              ))}
-                            </VStack>
-                          </Box>
-                        )}
-
-                        <Divider />
-
-                        {/* VIOP Channels */}
-                        {viopChannels.length > 0 && (
-                          <Box w="100%">
-                            <Text fontWeight="bold" mb="2" color="gray.600">
-                              📉 VİOP Kanalları ({viopChannels.length})
-                            </Text>
-                            <VStack align="start" pl="4" spacing="2">
-                              {viopChannels.map(channel => (
-                                <Checkbox
-                                  key={
-                                    channel.id ||
-                                    channel.marketCode ||
-                                    channel.name
-                                  }
-                                  value={channel.id}
-                                  isDisabled={!channel.id}>
-                                  <HStack>
-                                    <Text>{channel.name}</Text>
-                                    <Badge size="sm" colorScheme="orange">
-                                      VİOP
-                                    </Badge>
-                                    {!channel.id && (
-                                      <Badge size="sm" colorScheme="gray">
-                                        Başlatılmadı
-                                      </Badge>
-                                    )}
-                                  </HStack>
-                                </Checkbox>
-                              ))}
-                            </VStack>
-                          </Box>
-                        )}
-
-                        <Divider />
-
-                        {fundChannels.length > 0 && (
-                          <Box w="100%">
-                            <Text fontWeight="bold" mb="2" color="gray.600">
-                              🪙 Fon Kanalları ({fundChannels.length})
-                            </Text>
-                            <VStack align="start" pl="4" spacing="2">
-                              {fundChannels.map(channel => (
-                                <Checkbox
-                                  key={
-                                    channel.id ||
-                                    channel.fundCode ||
-                                    channel.name
-                                  }
-                                  value={channel.id}
-                                  isDisabled={!channel.id}>
-                                  <HStack>
-                                    <Text>{channel.name}</Text>
-                                    <Badge size="sm" colorScheme="blue">
-                                      Fon
-                                    </Badge>
-                                    {!channel.id && (
-                                      <Badge size="sm" colorScheme="gray">
-                                        Başlatılmadı
-                                      </Badge>
-                                    )}
-                                  </HStack>
-                                </Checkbox>
-                              ))}
-                            </VStack>
-                          </Box>
-                        )}
-
-                        <Divider />
-
-                        {/* Other Channels */}
-                        {otherChannels.length > 0 && (
-                          <Box w="100%">
-                            <Text fontWeight="bold" mb="2" color="gray.600">
-                              💬 Diğer Kanallar ({otherChannels.length})
-                            </Text>
-                            <VStack align="start" pl="4" spacing="2">
-                              {otherChannels.map(channel => (
-                                <Checkbox key={channel.id} value={channel.id}>
-                                  <Text>{channel.name}</Text>
-                                </Checkbox>
-                              ))}
-                            </VStack>
-                          </Box>
-                        )}
-                      </VStack>
-                    </CheckboxGroup>
-                  )}
-                </Box>
-                <FormErrorMessage>
-                  {errors.selectedChannels?.message}
-                </FormErrorMessage>
-              </FormControl>
-            )}
-
-            {/* Message Content */}
-            <FormControl isInvalid={!!errors.message} mb="6">
-              <FormLabel fontWeight="600" fontSize="sm">
-                Mesaj İçeriği (Opsiyonel)
-              </FormLabel>
-              <Box position="relative">
-                <Textarea
-                  ref={textareaRef}
-                  placeholder="Isterseniz mesaj yazin, isterseniz sadece medya gonderin..."
-                  size="lg"
-                  rows={4}
-                  pr="12"
-                  {...register('message')}
-                />
-                {/* Emoji Button */}
-                <Popover
-                  isOpen={showEmojiPicker}
-                  onClose={() => setShowEmojiPicker(false)}
-                  placement="top-end">
-                  <PopoverTrigger>
-                    <IconButton
-                      icon={<FiSmile />}
-                      size="sm"
-                      variant="ghost"
-                      position="absolute"
-                      top="2"
-                      right="2"
-                      zIndex="1"
-                      aria-label="Emoji ekle"
-                      onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-                      color={showEmojiPicker ? 'blue.500' : 'gray.400'}
-                      _hover={{color: 'blue.500'}}
-                    />
-                  </PopoverTrigger>
-                  <PopoverContent width="350px" border="none" boxShadow="xl">
-                    <PopoverBody p="0">
-                      <React.Suspense
-                        fallback={
-                          <Box p="4">
-                            <Spinner size="sm" />
-                          </Box>
-                        }>
-                        <EmojiPickerLazy
-                          onEmojiClick={emojiData => {
-                            const currentValue = watch('message') || '';
-                            setValue('message', currentValue + emojiData.emoji);
-                            setShowEmojiPicker(false);
-                          }}
-                          width="100%"
-                          height="350px"
-                          searchPlaceholder="Emoji ara..."
-                          previewConfig={{showPreview: false}}
-                        />
-                      </React.Suspense>
-                    </PopoverBody>
-                  </PopoverContent>
-                </Popover>
-              </Box>
-              <FormHelperText>
-                Mesaj alani bos birakilabilir. Yalnizca medya gonderebilirsiniz; ancak mesaj veya medya alanlarindan en az biri dolu olmalidir.
-              </FormHelperText>
-              <FormErrorMessage>{errors.message?.message}</FormErrorMessage>
-            </FormControl>
-
-            {/* Media Upload Section */}
-            <FormControl mb="6">
-              <FormLabel fontWeight="600" fontSize="sm">
-                Medya Ekle (Opsiyonel)
-              </FormLabel>
-
-              <Tabs variant="soft-rounded" colorScheme="blue">
-                <TabList mb="4" flexWrap="wrap">
-                  <Tab>
-                    <HStack spacing="2">
-                      <Icon as={FiImage} />
-                      <Text>Görsel</Text>
-                    </HStack>
-                  </Tab>
-                  <Tab>
-                    <HStack spacing="2">
-                      <Icon as={FiVideo} />
-                      <Text>Video</Text>
-                    </HStack>
-                  </Tab>
-                  <Tab>
-                    <HStack spacing="2">
-                      <Icon as={FiMusic} />
-                      <Text>Ses</Text>
-                    </HStack>
-                  </Tab>
-                  <Tab>
-                    <HStack spacing="2">
-                      <Icon as={FiFile} />
-                      <Text>Dosya</Text>
-                    </HStack>
-                  </Tab>
-                </TabList>
-
-                <TabPanels>
-                  <TabPanel p="0">
-                    <Box
-                      onClick={() => imageInput.open()}
-                      cursor="pointer"
-                      borderRadius="xl"
-                      border="2px dashed"
-                      borderColor={
-                        imageInput.selectedFiles?.length
-                          ? 'green.300'
-                          : 'gray.300'
-                      }
-                      bg={
-                        imageInput.selectedFiles?.length
-                          ? 'green.50'
-                          : 'gray.50'
-                      }
-                      p="8"
-                      minH="200px"
-                      display="flex"
-                      alignItems="center"
-                      justifyContent="center"
-                      transition="all 0.2s"
-                      _hover={{
-                        borderColor: 'blue.400',
-                        bg: imageInput.selectedFiles?.length
-                          ? 'green.50'
-                          : 'blue.50',
-                      }}>
-                      <VStack spacing="3">
-                        <Box p="4" bg="gray.100" borderRadius="full">
-                          <Icon as={FiImage} boxSize="8" color="gray.400" />
-                        </Box>
-                        <VStack spacing="1">
-                          <Text
-                            fontSize="sm"
-                            fontWeight="medium"
-                            color="gray.600">
-                            {imageInput.selectedFiles?.length
-                              ? `${imageInput.selectedFiles.length} görsel seçildi`
-                              : 'Görsel Yükle'}
-                          </Text>
-                          <Text fontSize="xs" color="gray.400">
-                            PNG, JPG, GIF - Birden fazla dosya seçebilirsiniz
-                          </Text>
-                        </VStack>
-                        <Icon as={FiUpload} boxSize="4" color="gray.400" />
-                      </VStack>
-                    </Box>
-                    {imageInput.input}
-                  </TabPanel>
-
-                  <TabPanel p="0">
-                    <Box
-                      onClick={() =>
-                        !videoInput.isProcessing && videoInput.open()
-                      }
-                      cursor={videoInput.isProcessing ? 'wait' : 'pointer'}
-                      borderRadius="xl"
-                      border="2px dashed"
-                      borderColor={
-                        videoInput.selectedFiles?.length
-                          ? 'green.300'
-                          : 'gray.300'
-                      }
-                      bg={
-                        videoInput.selectedFiles?.length
-                          ? 'green.50'
-                          : 'gray.50'
-                      }
-                      p="8"
-                      minH="200px"
-                      display="flex"
-                      alignItems="center"
-                      justifyContent="center"
-                      transition="all 0.2s"
-                      _hover={{
-                        borderColor: 'blue.400',
-                        bg: videoInput.selectedFiles?.length
-                          ? 'green.50'
-                          : 'blue.50',
-                      }}>
-                      <VStack spacing="3">
-                        <Box p="4" bg="gray.100" borderRadius="full">
-                          <Icon as={FiVideo} boxSize="8" color="gray.400" />
-                        </Box>
-                        <VStack spacing="1">
-                          <Text
-                            fontSize="sm"
-                            fontWeight="medium"
-                            color="gray.600">
-                            {videoInput.selectedFiles?.length
-                              ? `${videoInput.selectedFiles.length} video seçildi`
-                              : 'Video Yükle'}
-                          </Text>
-                          <Text fontSize="xs" color="gray.400">
-                            MP4, MOV, AVI - Birden fazla dosya seçebilirsiniz
-                          </Text>
-                        </VStack>
-                        <Icon as={FiUpload} boxSize="4" color="gray.400" />
-                      </VStack>
-                    </Box>
-                    {videoInput.input}
-                  </TabPanel>
-
-                  <TabPanel p="0">
-                    <Box
-                      onClick={() => audioInput.open()}
-                      cursor="pointer"
-                      borderRadius="xl"
-                      border="2px dashed"
-                      borderColor={
-                        audioInput.selectedFiles?.length
-                          ? 'green.300'
-                          : 'gray.300'
-                      }
-                      bg={
-                        audioInput.selectedFiles?.length
-                          ? 'green.50'
-                          : 'gray.50'
-                      }
-                      p="8"
-                      minH="200px"
-                      display="flex"
-                      alignItems="center"
-                      justifyContent="center"
-                      transition="all 0.2s"
-                      _hover={{
-                        borderColor: 'blue.400',
-                        bg: audioInput.selectedFiles?.length
-                          ? 'green.50'
-                          : 'blue.50',
-                      }}>
-                      <VStack spacing="3">
-                        <Box p="4" bg="gray.100" borderRadius="full">
-                          <Icon as={FiMusic} boxSize="8" color="gray.400" />
-                        </Box>
-                        <VStack spacing="1">
-                          <Text
-                            fontSize="sm"
-                            fontWeight="medium"
-                            color="gray.600">
-                            {audioInput.selectedFiles?.length
-                              ? `${audioInput.selectedFiles.length} ses dosyası seçildi`
-                              : 'Ses Dosyası Yükle'}
-                          </Text>
-                          <Text fontSize="xs" color="gray.400">
-                            MP3, WAV, OGG - Birden fazla dosya seçebilirsiniz
-                          </Text>
-                        </VStack>
-                        <Icon as={FiUpload} boxSize="4" color="gray.400" />
-                      </VStack>
-                    </Box>
-                    {audioInput.input}
-                  </TabPanel>
-
-                  <TabPanel p="0">
-                    <Box
-                      onClick={() => fileInput.open()}
-                      cursor="pointer"
-                      borderRadius="xl"
-                      border="2px dashed"
-                      borderColor={
-                        fileInput.selectedFiles?.length
-                          ? 'green.300'
-                          : 'gray.300'
-                      }
-                      bg={
-                        fileInput.selectedFiles?.length ? 'green.50' : 'gray.50'
-                      }
-                      p="8"
-                      minH="200px"
-                      display="flex"
-                      alignItems="center"
-                      justifyContent="center"
-                      transition="all 0.2s"
-                      _hover={{
-                        borderColor: 'blue.400',
-                        bg: fileInput.selectedFiles?.length
-                          ? 'green.50'
-                          : 'blue.50',
-                      }}>
-                      <VStack spacing="3">
-                        <Box p="4" bg="gray.100" borderRadius="full">
-                          <Icon as={FiFile} boxSize="8" color="gray.400" />
-                        </Box>
-                        <VStack spacing="1">
-                          <Text
-                            fontSize="sm"
-                            fontWeight="medium"
-                            color="gray.600">
-                            {fileInput.selectedFiles?.length
-                              ? `${fileInput.selectedFiles.length} dosya seçildi`
-                              : 'Dosya Yükle'}
-                          </Text>
-                          <Text fontSize="xs" color="gray.400">
-                            PDF, DOC, XLS, PPT, TXT, ZIP - Birden fazla dosya
-                            seçebilirsiniz
-                          </Text>
-                        </VStack>
-                        <Icon as={FiUpload} boxSize="4" color="gray.400" />
-                      </VStack>
-                    </Box>
-                    {fileInput.input}
-                  </TabPanel>
-                </TabPanels>
-              </Tabs>
-
-              {/* Selected Media Summary */}
-              {hasMedia && (
-                <VStack mt="4" align="stretch" spacing="3">
-                  <Box p="3" bg="blue.50" borderRadius="lg">
-                    <Text fontSize="sm" fontWeight="medium" color="blue.700">
-                      📎 Ekli Medya: {selectedMediaSummary.length} dosya
-                    </Text>
-                  </Box>
-                  <VStack align="stretch" spacing="2">
-                    {selectedMediaSummary.map(item => (
-                      <HStack
-                        key={item.id}
-                        justify="space-between"
-                        borderWidth="1px"
-                        borderColor="gray.200"
-                        borderRadius="lg"
-                        p="3"
-                        bg="gray.50">
-                        <HStack spacing="3">
-                          {item.type === 'image' && item.previewUrl ? (
-                            <ChakraImage
-                              src={item.previewUrl}
-                              alt={item.name}
-                              boxSize="40px"
-                              borderRadius="md"
-                              objectFit="cover"
+                  <Tabs variant="soft-rounded" colorScheme="blue" mb="6" isFitted>
+                    <TabList mb="6">
+                      <Tab>Icerik ve Medya</Tab>
+                      <Tab>Dagitim Ayarlari</Tab>
+                    </TabList>
+                    <TabPanels>
+                      <TabPanel p="0">
+                        <FormControl isInvalid={!!errors.message} mb="6">
+                          <FormLabel fontWeight="600" fontSize="sm">
+                            Mesaj İçeriği (Opsiyonel)
+                          </FormLabel>
+                          <Box position="relative">
+                            <Textarea
+                              ref={textareaRef}
+                              placeholder="Isterseniz mesaj yazin, isterseniz sadece medya gonderin..."
+                              size="lg"
+                              rows={4}
+                              pr="12"
+                              {...register('message')}
                             />
-                          ) : (
-                            <Box
-                              boxSize="40px"
-                              borderRadius="md"
-                              bg="white"
-                              display="flex"
-                              alignItems="center"
-                              justifyContent="center"
-                              fontSize="lg">
-                              {mediaTypeMeta[item.type]?.icon}
-                            </Box>
-                          )}
-                          <Box>
-                            <Text
-                              fontSize="sm"
-                              fontWeight="medium"
-                              color="gray.700"
-                              noOfLines={1}>
-                              {item.name}
-                            </Text>
-                            <Text fontSize="xs" color="gray.500">
-                              {mediaTypeMeta[item.type]?.label} •{' '}
-                              {imageInput.formatSize(item.size || 0)}
-                            </Text>
+                            <Popover
+                              isOpen={showEmojiPicker}
+                              onClose={() => setShowEmojiPicker(false)}
+                              placement="top-end">
+                              <PopoverTrigger>
+                                <IconButton
+                                  icon={<FiSmile />}
+                                  size="sm"
+                                  variant="ghost"
+                                  position="absolute"
+                                  top="2"
+                                  right="2"
+                                  zIndex="1"
+                                  aria-label="Emoji ekle"
+                                  onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+                                  color={showEmojiPicker ? 'blue.500' : 'gray.400'}
+                                  _hover={{color: 'blue.500'}}
+                                />
+                              </PopoverTrigger>
+                              <PopoverContent width="350px" border="none" boxShadow="xl">
+                                <PopoverBody p="0">
+                                  <React.Suspense
+                                    fallback={
+                                      <Box p="4">
+                                        <Spinner size="sm" />
+                                      </Box>
+                                    }>
+                                    <EmojiPickerLazy
+                                      onEmojiClick={emojiData => {
+                                        const currentValue = watch('message') || '';
+                                        setValue('message', currentValue + emojiData.emoji);
+                                        setShowEmojiPicker(false);
+                                      }}
+                                      width="100%"
+                                      height="350px"
+                                      searchPlaceholder="Emoji ara..."
+                                      previewConfig={{showPreview: false}}
+                                    />
+                                  </React.Suspense>
+                                </PopoverBody>
+                              </PopoverContent>
+                            </Popover>
                           </Box>
-                        </HStack>
-                        <IconButton
-                          icon={<FiX />}
-                          size="sm"
-                          colorScheme="red"
-                          variant="ghost"
-                          aria-label={`${item.name} kaldir`}
-                          onClick={() => {
-                            if (item.type === 'image') {
-                              imageInput.removeFile(
-                                imageInput.selectedFiles.findIndex(
-                                  file =>
-                                    file.name === item.name &&
-                                    file.size === item.size,
-                                ),
-                              );
-                            } else if (item.type === 'video') {
-                              videoInput.removeFile(
-                                videoInput.selectedFiles.findIndex(
-                                  file =>
-                                    file.name === item.name &&
-                                    file.size === item.size,
-                                ),
-                              );
-                            } else if (item.type === 'audio') {
-                              audioInput.removeFile(
-                                audioInput.selectedFiles.findIndex(
-                                  file =>
-                                    file.name === item.name &&
-                                    file.size === item.size,
-                                ),
-                              );
-                            } else {
-                              fileInput.removeFile(
-                                fileInput.selectedFiles.findIndex(
-                                  file =>
-                                    file.name === item.name &&
-                                    file.size === item.size,
-                                ),
-                              );
-                            }
-                          }}
-                        />
-                      </HStack>
-                    ))}
-                  </VStack>
-                </VStack>
-              )}
-            </FormControl>
+                          <FormHelperText>
+                            Mesaj alani bos birakilabilir. Yalnizca medya gonderebilirsiniz; ancak mesaj veya medya alanlarindan en az biri dolu olmalidir.
+                          </FormHelperText>
+                          <FormErrorMessage>{errors.message?.message}</FormErrorMessage>
+                        </FormControl>
 
-            {/* Warning */}
-            <Alert status="warning" borderRadius="lg" mb="6">
-              <AlertIcon />
-              <Box>
-                <AlertTitle fontSize="sm">Dikkat!</AlertTitle>
-                <AlertDescription fontSize="sm">
-                  Bu işlem geri alınamaz. Mesaj ve medya seçilen tüm kanallara
-                  anında gönderilecektir.
-                </AlertDescription>
-              </Box>
-            </Alert>
+                        <FormControl mb="6">
+                          <FormLabel fontWeight="600" fontSize="sm">
+                            Medya Ekle (Opsiyonel)
+                          </FormLabel>
 
-            {/* Progress during sending */}
-            {(isPending || isUploading) && (
-              <Box mb="4">
-                <Text mb="2" fontSize="sm" color="gray.500">
-                  {isUploading
-                    ? 'Medya yükleniyor...'
-                    : 'Mesajlar gönderiliyor...'}
-                </Text>
-                <Progress
-                  size="sm"
-                  isIndeterminate
-                  colorScheme="blue"
-                  borderRadius="full"
-                />
-              </Box>
-            )}
+                          <Tabs variant="soft-rounded" colorScheme="blue">
+                            <TabList mb="4" flexWrap="wrap">
+                              <Tab>
+                                <HStack spacing="2">
+                                  <Icon as={FiImage} />
+                                  <Text>Görsel</Text>
+                                </HStack>
+                              </Tab>
+                              <Tab>
+                                <HStack spacing="2">
+                                  <Icon as={FiVideo} />
+                                  <Text>Video</Text>
+                                </HStack>
+                              </Tab>
+                              <Tab>
+                                <HStack spacing="2">
+                                  <Icon as={FiMusic} />
+                                  <Text>Ses</Text>
+                                </HStack>
+                              </Tab>
+                              <Tab>
+                                <HStack spacing="2">
+                                  <Icon as={FiFile} />
+                                  <Text>Dosya</Text>
+                                </HStack>
+                              </Tab>
+                            </TabList>
 
-            {/* Submit Button */}
+                            <TabPanels>
+                              <TabPanel p="0">
+                                <Box
+                                  onClick={() => imageInput.open()}
+                                  cursor="pointer"
+                                  borderRadius="xl"
+                                  border="2px dashed"
+                                  borderColor={
+                                    imageInput.selectedFiles?.length
+                                      ? 'green.300'
+                                      : 'gray.300'
+                                  }
+                                  bg={
+                                    imageInput.selectedFiles?.length
+                                      ? 'green.50'
+                                      : 'gray.50'
+                                  }
+                                  p="8"
+                                  minH="200px"
+                                  display="flex"
+                                  alignItems="center"
+                                  justifyContent="center"
+                                  transition="all 0.2s"
+                                  _hover={{
+                                    borderColor: 'blue.400',
+                                    bg: imageInput.selectedFiles?.length
+                                      ? 'green.50'
+                                      : 'blue.50',
+                                  }}>
+                                  <VStack spacing="3">
+                                    <Box p="4" bg="gray.100" borderRadius="full">
+                                      <Icon as={FiImage} boxSize="8" color="gray.400" />
+                                    </Box>
+                                    <VStack spacing="1">
+                                      <Text
+                                        fontSize="sm"
+                                        fontWeight="medium"
+                                        color="gray.600">
+                                        {imageInput.selectedFiles?.length
+                                          ? `${imageInput.selectedFiles.length} görsel seçildi`
+                                          : 'Görsel Yükle'}
+                                      </Text>
+                                      <Text fontSize="xs" color="gray.400">
+                                        PNG, JPG, GIF - Birden fazla dosya seçebilirsiniz
+                                      </Text>
+                                    </VStack>
+                                    <Icon as={FiUpload} boxSize="4" color="gray.400" />
+                                  </VStack>
+                                </Box>
+                                {imageInput.input}
+                              </TabPanel>
+
+                              <TabPanel p="0">
+                                <Box
+                                  onClick={() =>
+                                    !videoInput.isProcessing && videoInput.open()
+                                  }
+                                  cursor={videoInput.isProcessing ? 'wait' : 'pointer'}
+                                  borderRadius="xl"
+                                  border="2px dashed"
+                                  borderColor={
+                                    videoInput.selectedFiles?.length
+                                      ? 'green.300'
+                                      : 'gray.300'
+                                  }
+                                  bg={
+                                    videoInput.selectedFiles?.length
+                                      ? 'green.50'
+                                      : 'gray.50'
+                                  }
+                                  p="8"
+                                  minH="200px"
+                                  display="flex"
+                                  alignItems="center"
+                                  justifyContent="center"
+                                  transition="all 0.2s"
+                                  _hover={{
+                                    borderColor: 'blue.400',
+                                    bg: videoInput.selectedFiles?.length
+                                      ? 'green.50'
+                                      : 'blue.50',
+                                  }}>
+                                  <VStack spacing="3">
+                                    <Box p="4" bg="gray.100" borderRadius="full">
+                                      <Icon as={FiVideo} boxSize="8" color="gray.400" />
+                                    </Box>
+                                    <VStack spacing="1">
+                                      <Text
+                                        fontSize="sm"
+                                        fontWeight="medium"
+                                        color="gray.600">
+                                        {videoInput.selectedFiles?.length
+                                          ? `${videoInput.selectedFiles.length} video seçildi`
+                                          : 'Video Yükle'}
+                                      </Text>
+                                      <Text fontSize="xs" color="gray.400">
+                                        MP4, MOV, AVI - Birden fazla dosya seçebilirsiniz
+                                      </Text>
+                                    </VStack>
+                                    <Icon as={FiUpload} boxSize="4" color="gray.400" />
+                                  </VStack>
+                                </Box>
+                                {videoInput.input}
+                              </TabPanel>
+
+                              <TabPanel p="0">
+                                <Box
+                                  onClick={() => audioInput.open()}
+                                  cursor="pointer"
+                                  borderRadius="xl"
+                                  border="2px dashed"
+                                  borderColor={
+                                    audioInput.selectedFiles?.length
+                                      ? 'green.300'
+                                      : 'gray.300'
+                                  }
+                                  bg={
+                                    audioInput.selectedFiles?.length
+                                      ? 'green.50'
+                                      : 'gray.50'
+                                  }
+                                  p="8"
+                                  minH="200px"
+                                  display="flex"
+                                  alignItems="center"
+                                  justifyContent="center"
+                                  transition="all 0.2s"
+                                  _hover={{
+                                    borderColor: 'blue.400',
+                                    bg: audioInput.selectedFiles?.length
+                                      ? 'green.50'
+                                      : 'blue.50',
+                                  }}>
+                                  <VStack spacing="3">
+                                    <Box p="4" bg="gray.100" borderRadius="full">
+                                      <Icon as={FiMusic} boxSize="8" color="gray.400" />
+                                    </Box>
+                                    <VStack spacing="1">
+                                      <Text
+                                        fontSize="sm"
+                                        fontWeight="medium"
+                                        color="gray.600">
+                                        {audioInput.selectedFiles?.length
+                                          ? `${audioInput.selectedFiles.length} ses dosyası seçildi`
+                                          : 'Ses Dosyası Yükle'}
+                                      </Text>
+                                      <Text fontSize="xs" color="gray.400">
+                                        MP3, WAV, OGG - Birden fazla dosya seçebilirsiniz
+                                      </Text>
+                                    </VStack>
+                                    <Icon as={FiUpload} boxSize="4" color="gray.400" />
+                                  </VStack>
+                                </Box>
+                                {audioInput.input}
+                              </TabPanel>
+
+                              <TabPanel p="0">
+                                <Box
+                                  onClick={() => fileInput.open()}
+                                  cursor="pointer"
+                                  borderRadius="xl"
+                                  border="2px dashed"
+                                  borderColor={
+                                    fileInput.selectedFiles?.length
+                                      ? 'green.300'
+                                      : 'gray.300'
+                                  }
+                                  bg={
+                                    fileInput.selectedFiles?.length ? 'green.50' : 'gray.50'
+                                  }
+                                  p="8"
+                                  minH="200px"
+                                  display="flex"
+                                  alignItems="center"
+                                  justifyContent="center"
+                                  transition="all 0.2s"
+                                  _hover={{
+                                    borderColor: 'blue.400',
+                                    bg: fileInput.selectedFiles?.length
+                                      ? 'green.50'
+                                      : 'blue.50',
+                                  }}>
+                                  <VStack spacing="3">
+                                    <Box p="4" bg="gray.100" borderRadius="full">
+                                      <Icon as={FiFile} boxSize="8" color="gray.400" />
+                                    </Box>
+                                    <VStack spacing="1">
+                                      <Text
+                                        fontSize="sm"
+                                        fontWeight="medium"
+                                        color="gray.600">
+                                        {fileInput.selectedFiles?.length
+                                          ? `${fileInput.selectedFiles.length} dosya seçildi`
+                                          : 'Dosya Yükle'}
+                                      </Text>
+                                      <Text fontSize="xs" color="gray.400">
+                                        PDF, DOC, XLS, PPT, TXT, ZIP - Birden fazla dosya
+                                        seçebilirsiniz
+                                      </Text>
+                                    </VStack>
+                                    <Icon as={FiUpload} boxSize="4" color="gray.400" />
+                                  </VStack>
+                                </Box>
+                                {fileInput.input}
+                              </TabPanel>
+                            </TabPanels>
+                          </Tabs>
+
+                          {hasMedia && (
+                            <VStack mt="4" align="stretch" spacing="3">
+                              <Box p="3" bg="blue.50" borderRadius="lg">
+                                <Text fontSize="sm" fontWeight="medium" color="blue.700">
+                                  📎 Ekli Medya: {selectedMediaSummary.length} dosya
+                                </Text>
+                              </Box>
+                              <VStack align="stretch" spacing="2">
+                                {selectedMediaSummary.map(item => (
+                                  <HStack
+                                    key={item.id}
+                                    justify="space-between"
+                                    borderWidth="1px"
+                                    borderColor="gray.200"
+                                    borderRadius="lg"
+                                    p="3"
+                                    bg="gray.50">
+                                    <HStack spacing="3">
+                                      {item.type === 'image' && item.previewUrl ? (
+                                        <ChakraImage
+                                          src={item.previewUrl}
+                                          alt={item.name}
+                                          boxSize="40px"
+                                          borderRadius="md"
+                                          objectFit="cover"
+                                        />
+                                      ) : (
+                                        <Box
+                                          boxSize="40px"
+                                          borderRadius="md"
+                                          bg="white"
+                                          display="flex"
+                                          alignItems="center"
+                                          justifyContent="center"
+                                          fontSize="lg">
+                                          {mediaTypeMeta[item.type]?.icon}
+                                        </Box>
+                                      )}
+                                      <Box>
+                                        <Text
+                                          fontSize="sm"
+                                          fontWeight="medium"
+                                          color="gray.700"
+                                          noOfLines={1}>
+                                          {item.name}
+                                        </Text>
+                                        <Text fontSize="xs" color="gray.500">
+                                          {mediaTypeMeta[item.type]?.label} •{' '}
+                                          {imageInput.formatSize(item.size || 0)}
+                                        </Text>
+                                      </Box>
+                                    </HStack>
+                                    <IconButton
+                                      icon={<FiX />}
+                                      size="sm"
+                                      colorScheme="red"
+                                      variant="ghost"
+                                      aria-label={`${item.name} kaldir`}
+                                      onClick={() => {
+                                        if (item.type === 'image') {
+                                          imageInput.removeFile(
+                                            imageInput.selectedFiles.findIndex(
+                                              file =>
+                                                file.name === item.name &&
+                                                file.size === item.size,
+                                            ),
+                                          );
+                                        } else if (item.type === 'video') {
+                                          videoInput.removeFile(
+                                            videoInput.selectedFiles.findIndex(
+                                              file =>
+                                                file.name === item.name &&
+                                                file.size === item.size,
+                                            ),
+                                          );
+                                        } else if (item.type === 'audio') {
+                                          audioInput.removeFile(
+                                            audioInput.selectedFiles.findIndex(
+                                              file =>
+                                                file.name === item.name &&
+                                                file.size === item.size,
+                                            ),
+                                          );
+                                        } else {
+                                          fileInput.removeFile(
+                                            fileInput.selectedFiles.findIndex(
+                                              file =>
+                                                file.name === item.name &&
+                                                file.size === item.size,
+                                            ),
+                                          );
+                                        }
+                                      }}
+                                    />
+                                  </HStack>
+                                ))}
+                              </VStack>
+                            </VStack>
+                          )}
+                        </FormControl>
+                      </TabPanel>
+
+                      <TabPanel p="0">
+                        <Alert status="info" borderRadius="lg" mb="6">
+                          <AlertIcon />
+                          <Box>
+                            <AlertTitle fontSize="sm">Dagitim Kurallari</AlertTitle>
+                            <AlertDescription fontSize="sm">
+                              Hedef kanal secimi ve bulk mesajin gorunurluk kurallari bu sekmeden yonetilir.
+                            </AlertDescription>
+                          </Box>
+                        </Alert>
+
+                        <FormControl isInvalid={!!errors.targetType} mb="6">
+                          <FormLabel fontWeight="600" fontSize="sm">
+                            Hedef Kitle
+                          </FormLabel>
+                          <Select
+                            placeholder="Hedef kitle seçin"
+                            size="lg"
+                            {...register('targetType')}>
+                            {targetTypes.map(item => (
+                              <option key={item.value} value={item.value}>
+                                {item.label}
+                              </option>
+                            ))}
+                          </Select>
+                          <FormHelperText>
+                            Mesajın gönderileceği kanalları seçin.
+                          </FormHelperText>
+                          <FormErrorMessage>{errors.targetType?.message}</FormErrorMessage>
+                        </FormControl>
+
+                        {targetType && (
+                          <Box mb="6">
+                            <Badge
+                              colorScheme="blue"
+                              fontSize="md"
+                              px="3"
+                              py="1"
+                              borderRadius="full">
+                              {getTargetCount()} kanala gönderilecek
+                            </Badge>
+                          </Box>
+                        )}
+
+                        <FormControl mb="6">
+                          <Checkbox {...register('membersOnlyAtSend')}>
+                            Sadece gonderim aninda uye olanlar gorsun
+                          </Checkbox>
+                          <FormHelperText>
+                            Aciksa bu toplu mesaj, kanala sonradan katilan kullanicilara gecmiste gosterilmez.
+                          </FormHelperText>
+                        </FormControl>
+
+                        <FormControl mb="6">
+                          <Checkbox {...register('skipUnreadForInactiveUsers')}>
+                            7 gunden pasif kullanicilara unread verme
+                          </Checkbox>
+                          <FormHelperText>
+                            Aciksa son 7 gunde aktif olmayan kullanicilarin unread sayaci artmaz.
+                          </FormHelperText>
+                        </FormControl>
+
+                        {targetType === 'selected' && (
+                          <FormControl isInvalid={!!errors.selectedChannels} mb="6">
+                            <FormLabel fontWeight="600" fontSize="sm">
+                              Kanalları Seçin
+                            </FormLabel>
+                            <Box
+                              maxH="300px"
+                              overflowY="auto"
+                              border="1px solid"
+                              borderColor="gray.200"
+                              borderRadius="lg"
+                              p="4">
+                              {isLoadingChannels ? (
+                                <Text>Kanallar yükleniyor...</Text>
+                              ) : (
+                                <CheckboxGroup
+                                  value={selectedChannels}
+                                  onChange={values => setValue('selectedChannels', values)}>
+                                  <VStack align="start" spacing="4">
+                                    {marketChannels.length > 0 && (
+                                      <Box w="100%">
+                                        <Text fontWeight="bold" mb="2" color="gray.600">
+                                          📈 Piyasa Kanalları ({marketChannels.length})
+                                        </Text>
+                                        <VStack align="start" pl="4" spacing="2">
+                                          {marketChannels.map(channel => (
+                                            <Checkbox
+                                              key={
+                                                channel.id ||
+                                                channel.marketCode ||
+                                                channel.name
+                                              }
+                                              value={channel.id}
+                                              isDisabled={!channel.id}>
+                                              <HStack>
+                                                <Text>{channel.name}</Text>
+                                                <Badge size="sm" colorScheme="green">
+                                                  Market
+                                                </Badge>
+                                                {!channel.id && (
+                                                  <Badge size="sm" colorScheme="gray">
+                                                    Başlatılmadı
+                                                  </Badge>
+                                                )}
+                                              </HStack>
+                                            </Checkbox>
+                                          ))}
+                                        </VStack>
+                                      </Box>
+                                    )}
+
+                                    <Divider />
+
+                                    {vipChannels.length > 0 && (
+                                      <Box w="100%">
+                                        <Text fontWeight="bold" mb="2" color="gray.600">
+                                          ⭐ VIP Kanallar ({vipChannels.length})
+                                        </Text>
+                                        <VStack align="start" pl="4" spacing="2">
+                                          {vipChannels.map(channel => (
+                                            <Checkbox key={channel.id} value={channel.id}>
+                                              <HStack>
+                                                <Text>{channel.name}</Text>
+                                                <Badge size="sm" colorScheme="purple">
+                                                  VIP
+                                                </Badge>
+                                              </HStack>
+                                            </Checkbox>
+                                          ))}
+                                        </VStack>
+                                      </Box>
+                                    )}
+
+                                    <Divider />
+
+                                    {viopChannels.length > 0 && (
+                                      <Box w="100%">
+                                        <Text fontWeight="bold" mb="2" color="gray.600">
+                                          📉 VİOP Kanalları ({viopChannels.length})
+                                        </Text>
+                                        <VStack align="start" pl="4" spacing="2">
+                                          {viopChannels.map(channel => (
+                                            <Checkbox
+                                              key={
+                                                channel.id ||
+                                                channel.marketCode ||
+                                                channel.name
+                                              }
+                                              value={channel.id}
+                                              isDisabled={!channel.id}>
+                                              <HStack>
+                                                <Text>{channel.name}</Text>
+                                                <Badge size="sm" colorScheme="orange">
+                                                  VİOP
+                                                </Badge>
+                                                {!channel.id && (
+                                                  <Badge size="sm" colorScheme="gray">
+                                                    Başlatılmadı
+                                                  </Badge>
+                                                )}
+                                              </HStack>
+                                            </Checkbox>
+                                          ))}
+                                        </VStack>
+                                      </Box>
+                                    )}
+
+                                    <Divider />
+
+                                    {fundChannels.length > 0 && (
+                                      <Box w="100%">
+                                        <Text fontWeight="bold" mb="2" color="gray.600">
+                                          🪙 Fon Kanalları ({fundChannels.length})
+                                        </Text>
+                                        <VStack align="start" pl="4" spacing="2">
+                                          {fundChannels.map(channel => (
+                                            <Checkbox
+                                              key={
+                                                channel.id ||
+                                                channel.fundCode ||
+                                                channel.name
+                                              }
+                                              value={channel.id}
+                                              isDisabled={!channel.id}>
+                                              <HStack>
+                                                <Text>{channel.name}</Text>
+                                                <Badge size="sm" colorScheme="blue">
+                                                  Fon
+                                                </Badge>
+                                                {!channel.id && (
+                                                  <Badge size="sm" colorScheme="gray">
+                                                    Başlatılmadı
+                                                  </Badge>
+                                                )}
+                                              </HStack>
+                                            </Checkbox>
+                                          ))}
+                                        </VStack>
+                                      </Box>
+                                    )}
+
+                                    <Divider />
+
+                                    {otherChannels.length > 0 && (
+                                      <Box w="100%">
+                                        <Text fontWeight="bold" mb="2" color="gray.600">
+                                          💬 Diğer Kanallar ({otherChannels.length})
+                                        </Text>
+                                        <VStack align="start" pl="4" spacing="2">
+                                          {otherChannels.map(channel => (
+                                            <Checkbox key={channel.id} value={channel.id}>
+                                              <Text>{channel.name}</Text>
+                                            </Checkbox>
+                                          ))}
+                                        </VStack>
+                                      </Box>
+                                    )}
+                                  </VStack>
+                                </CheckboxGroup>
+                              )}
+                            </Box>
+                            <FormErrorMessage>
+                              {errors.selectedChannels?.message}
+                            </FormErrorMessage>
+                          </FormControl>
+                        )}
+                      </TabPanel>
+                    </TabPanels>
+                  </Tabs>
+
+                  {/* Warning */}
+                  <Alert status="warning" borderRadius="lg" mb="6">
+                    <AlertIcon />
+                    <Box>
+                      <AlertTitle fontSize="sm">Dikkat!</AlertTitle>
+                      <AlertDescription fontSize="sm">
+                        Bu işlem geri alınamaz. Mesaj ve medya seçilen tüm kanallara
+                        anında gönderilecektir.
+                      </AlertDescription>
+                    </Box>
+                  </Alert>
+
+                  {/* Progress during sending */}
+                  {(isPending || isUploading) && (
+                    <Box mb="4">
+                      <Text mb="2" fontSize="sm" color="gray.500">
+                        {isUploading
+                          ? 'Medya yükleniyor...'
+                          : 'Mesajlar gönderiliyor...'}
+                      </Text>
+                      <Progress
+                        size="sm"
+                        isIndeterminate
+                        colorScheme="blue"
+                        borderRadius="full"
+                      />
+                    </Box>
+                  )}
+
+                  {/* Submit Button */}
                   <Button
                     isLoading={isPending || isUploading}
                     loadingText={isUploading ? 'Yükleniyor...' : 'Gönderiliyor...'}

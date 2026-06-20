@@ -45,6 +45,7 @@ const schema = yup
     subject: yup.string(),
     subjectType: yup.string().required('Bu alan zorunludur.'),
     shouldCreateNotification: yup.boolean(),
+    skipInactiveUsers: yup.boolean(),
     isImportant: yup.boolean(),
     receiverType: yup.string().required('Bu alan zorunludur.'),
     channel: yup.string(),
@@ -185,6 +186,9 @@ const SendPushNotification = () => {
     watch,
   } = useForm({
     resolver: yupResolver(schema),
+    defaultValues: {
+      skipInactiveUsers: true,
+    },
   });
 
   const {
@@ -715,10 +719,28 @@ const SendPushNotification = () => {
                     ? 'Kalici bildirim kaydedildi'
                     : 'Kalici kayit yok'}
                 </Badge>
+                {sendResult.operation !== 'delete' && (
+                  <Badge
+                    colorScheme={
+                      sendResult.skipInactiveUsers ? 'orange' : 'gray'
+                    }>
+                    {sendResult.skipInactiveUsers
+                      ? 'Son 7 gun aktiflere gitti'
+                      : 'Tum kullanicilar'}
+                  </Badge>
+                )}
               </HStack>
               <Text fontSize="sm" color="gray.600">
                 Sure: {((sendResult.duration || 0) / 1000).toFixed(1)}s
               </Text>
+              {sendResult.operation !== 'delete' && (
+                <Text fontSize="sm" color="gray.600">
+                  Pasif filtre:{' '}
+                  {sendResult.skipInactiveUsers
+                    ? 'Son 7 gunde aktif olan kullanicilar hedeflendi.'
+                    : 'Kapali, tum uygun kullanicilar hedeflendi.'}
+                </Text>
+              )}
               {sendResult.cancelled && (
                 <Text fontSize="sm" color="orange.600">
                   Is worker tarafindan alinmadan once sonlandirildi.
@@ -841,6 +863,16 @@ const SendPushNotification = () => {
                               'Hedef'}
                           </Badge>
                         )}
+                        {jobType === 'send' && (
+                          <Badge
+                            colorScheme={
+                              job.skipInactiveUsers ? 'orange' : 'gray'
+                            }>
+                            {job.skipInactiveUsers
+                              ? 'Son 7 gun aktiflere gitti'
+                              : 'Tum kullanicilar'}
+                          </Badge>
+                        )}
                       </HStack>
                       <Text fontSize="sm" color="gray.700">
                         {jobType === 'delete'
@@ -920,6 +952,14 @@ const SendPushNotification = () => {
                       <Text>
                         Kalici kayit:{' '}
                         {notificationCreated ? 'Olusturuldu' : 'Yok'}
+                      </Text>
+                    )}
+                    {jobType === 'send' && (
+                      <Text>
+                        Pasif filtre:{' '}
+                        {job.skipInactiveUsers
+                          ? 'Son 7 gunde aktif olanlar hedeflendi'
+                          : 'Kapali'}
                       </Text>
                     )}
                     {job.state === 'cancel_requested' && (
@@ -1367,6 +1407,30 @@ const SendPushNotification = () => {
               </FormHelperText>
               <FormErrorMessage>
                 {errors.shouldCreateNotification?.message}
+              </FormErrorMessage>
+            </FormControl>
+            <FormControl
+              display="flex"
+              alignItems="start"
+              flexDirection={'column'}
+              isInvalid={!!errors.skipInactiveUsers}
+              mb="4">
+              <Box display={'flex'} alignItems={'center'}>
+                <FormLabel htmlFor="skipInactiveUsers" mb={0}>
+                  7 gun pasif kullanicilara push gonderme
+                </FormLabel>
+                <Switch
+                  id="skipInactiveUsers"
+                  {...register('skipInactiveUsers')}
+                />
+              </Box>
+              <FormHelperText>
+                Aciksa son 7 gunde aktif olmayan kullanicilar bu admin
+                bildirimini almaz. Kalici bildirim olusturulursa onlar icin
+                kayit da yazilmaz.
+              </FormHelperText>
+              <FormErrorMessage>
+                {errors.skipInactiveUsers?.message}
               </FormErrorMessage>
             </FormControl>
             <FormControl
