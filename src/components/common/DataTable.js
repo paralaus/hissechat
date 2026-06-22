@@ -58,6 +58,8 @@ const DataTable = ({
   onRow = () => {},
   defaultSortBy = 'createdAt:desc',
   queryEnabled = false,
+  searchPlaceholder = 'Ara...',
+  onQueryChange,
   shadow = true,
   emptyMessage = 'Kayıt bulunamadı',
   filters = {},
@@ -146,9 +148,15 @@ const DataTable = ({
                 <FiSearch color="gray" />
               </InputLeftElement>
               <Input
-                placeholder="Ara..."
+                placeholder={searchPlaceholder}
                 value={value}
-                onChange={e => setValue(e.target.value)}
+                onChange={e => {
+                  const nextValue = e.target.value;
+                  setValue(nextValue);
+                  if (typeof onQueryChange === 'function') {
+                    onQueryChange(nextValue);
+                  }
+                }}
                 bg={useColorModeValue('gray.50', 'gray.900')}
                 border="none"
                 _focus={{
