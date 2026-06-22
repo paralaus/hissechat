@@ -144,6 +144,7 @@ const targetTypes = [
   {value: 'all_vip', label: 'Tüm VIP Kanallara'},
   {value: 'all_funds', label: 'Tüm Fon Kanallarına'},
   {value: 'all_viop', label: 'Tüm VİOP Kanallarına'},
+  {value: 'top_100', label: 'En Aktif 100 Kanal (VIP hariç)'},
   {value: 'selected', label: 'Seçili Kanallara'},
 ];
 
@@ -153,6 +154,18 @@ const isViopChannel = c =>
   (c.marketCode?.startsWith('F_') ||
     c.name?.toUpperCase().includes('VİOP') ||
     c.marketCode?.includes('VIOP'));
+
+const getChannelMessageCount = c => {
+  const raw =
+    c?.messageCount ??
+    c?.messagesCount ??
+    c?.totalMessages ??
+    c?.totalMessageCount ??
+    c?.message_count ??
+    0;
+  const asNumber = Number(raw);
+  return Number.isFinite(asNumber) ? asNumber : 0;
+};
 
 // Helper to fetch all items with pagination
 const fetchAll = async (apiFunc, params = {}) => {
@@ -523,6 +536,38 @@ const BulkMessage = () => {
     });
   }, [fundsData, channelsData]);
 
+  const topActiveChannels = React.useMemo(() => {
+    const map = new Map();
+    const add = c => {
+      const id = c?.id;
+      if (!id) return;
+      if (!map.has(id)) map.set(id, c);
+    };
+
+    (channelsData || []).forEach(add);
+    (mergedStockChannels || []).forEach(add);
+    (mergedCryptoChannels || []).forEach(add);
+    (mergedViopChannels || []).forEach(add);
+    (mergedFundChannels || []).forEach(add);
+
+    return Array.from(map.values())
+      .filter(c => c?.type !== 'vip' && !!(c?.name || c?.label))
+      .sort((a, b) => {
+        const diff = getChannelMessageCount(b) - getChannelMessageCount(a);
+        if (diff !== 0) return diff;
+        const memberDiff = Number(b?.memberCount || 0) - Number(a?.memberCount || 0);
+        if (memberDiff !== 0) return memberDiff;
+        return `${a?.name ?? a?.label ?? ''}`.localeCompare(`${b?.name ?? b?.label ?? ''}`, 'tr');
+      })
+      .slice(0, 100);
+  }, [
+    channelsData,
+    mergedCryptoChannels,
+    mergedFundChannels,
+    mergedStockChannels,
+    mergedViopChannels,
+  ]);
+
   // Cancel handler
   const handleCancel = () => {
     if (activeJobIdRef.current) {
@@ -838,6 +883,8 @@ const BulkMessage = () => {
         return mergedFundChannels.length;
       case 'all_viop':
         return mergedViopChannels.length;
+      case 'top_100':
+        return topActiveChannels.length;
       case 'selected':
         return selectedChannels.length;
       default:
@@ -900,6 +947,18 @@ const BulkMessage = () => {
         submissionValues.selectedChannels = channelsData
           .filter(isViopChannel)
           .map(c => c.id);
+      } else if (values.targetType === 'top_100') {
+        if (!topActiveChannels || topActiveChannels.length === 0) {
+          toast({
+            title: 'Aktif kanal listesi hazır değil',
+            description: 'Kanallar yüklenmeden gönderim başlatılamıyor.',
+            status: 'error',
+            position: 'top',
+          });
+          return;
+        }
+        submissionValues.targetType = 'selected';
+        submissionValues.selectedChannels = topActiveChannels.map(c => c.id);
       }
 
       const {data} = await mutateAsync(submissionValues);
@@ -2212,6 +2271,35 @@ const BulkMessage = () => {
                               {getTargetCount()} kanala gönderilecek
                             </Badge>
                           </Box>
+                        )}
+
+                        {targetType === 'top_100' && (
+                          <Alert status="info" borderRadius="lg" mb="6">
+                            <AlertIcon />
+                            <Box>
+                              <AlertTitle fontSize="sm">En Aktif 100 Kanal</AlertTitle>
+                              <AlertDescription fontSize="sm">
+                                VIP kanallar hariç tutulur. Şu an {topActiveChannels.length} kanal seçili.
+                              </AlertDescription>
+                              {topActiveChannels.length > 0 && (
+                                <Box mt="2">
+                                  <Text fontSize="xs" color="gray.600">
+                                    Örnek: {topActiveChannels
+                                      .slice(0, 10)
+                                      .map(c => {
+                                        const name = c?.name || c?.label || '';
+                                        const count = getChannelMessageCount(c);
+                                        if (!name) return '';
+                                        return `${name} (${count})`;
+                                      })
+                                      .filter(Boolean)
+                                      .join(', ')}
+                                    {topActiveChannels.length > 10 ? '…' : ''}
+                                  </Text>
+                                </Box>
+                              )}
+                            </Box>
+                          </Alert>
                         )}
 
                         <FormControl mb="6">
