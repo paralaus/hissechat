@@ -1174,30 +1174,14 @@ const BulkMessage = () => {
     }
   };
 
-  const selectedChannels = watch('selectedChannels') || [];
+  const watchedSelectedChannels = watch('selectedChannels');
+  const selectedChannels = React.useMemo(
+    () => watchedSelectedChannels || [],
+    [watchedSelectedChannels],
+  );
   const selectedChannelIdSet = React.useMemo(
     () => new Set(selectedChannels.map(id => String(id))),
     [selectedChannels],
-  );
-  const selectedVipCount = getSelectedCountForChannels(
-    vipChannelsData,
-    selectedChannelIdSet,
-  );
-  const selectedMarketCount = getSelectedCountForChannels(
-    marketChannels,
-    selectedChannelIdSet,
-  );
-  const selectedViopCount = getSelectedCountForChannels(
-    viopChannels,
-    selectedChannelIdSet,
-  );
-  const selectedFundCount = getSelectedCountForChannels(
-    fundChannels,
-    selectedChannelIdSet,
-  );
-  const selectedOtherCount = getSelectedCountForChannels(
-    otherChannels,
-    selectedChannelIdSet,
   );
 
   // Calculate target channel count
@@ -1286,6 +1270,26 @@ const BulkMessage = () => {
   const filteredOtherChannels = sortSelectedChannelsFirst(
     filterChannelsByQuery(otherChannels, channelSearch.other),
     selectedChannels,
+  );
+  const selectedVipCount = getSelectedCountForChannels(
+    vipChannelsData,
+    selectedChannelIdSet,
+  );
+  const selectedMarketCount = getSelectedCountForChannels(
+    marketChannels,
+    selectedChannelIdSet,
+  );
+  const selectedViopCount = getSelectedCountForChannels(
+    viopChannels,
+    selectedChannelIdSet,
+  );
+  const selectedFundCount = getSelectedCountForChannels(
+    fundChannels,
+    selectedChannelIdSet,
+  );
+  const selectedOtherCount = getSelectedCountForChannels(
+    otherChannels,
+    selectedChannelIdSet,
   );
   const selectChannels = channelIds => {
     const nextSelected = Array.from(
