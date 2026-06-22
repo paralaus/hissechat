@@ -110,6 +110,10 @@ const VipMemberManagement = ({channelId, channelName}) => {
   const [memberPage, setMemberPage] = useState(1);
   const [exportingType, setExportingType] = useState(null);
   const memberLimit = 20;
+  const [subscriberSearch, setSubscriberSearch] = useState('');
+  const [subscriberPage, setSubscriberPage] = useState(1);
+  const [isExportingSubscribersPdf, setIsExportingSubscribersPdf] = useState(false);
+  const subscriberLimit = 20;
 
   const loadUsers = async query => {
     const {data} = await api.getUsers({query});
@@ -131,6 +135,23 @@ const VipMemberManagement = ({channelId, channelName}) => {
           limit: memberLimit,
         })
         .then(res => res.data),
+  });
+
+  const {data: subscribers, isFetching: isSubscribersLoading} = useQuery({
+    queryKey: ['vipSubscribers', channelId, subscriberSearch, subscriberPage],
+    queryFn: () =>
+      api
+        .getPurchases({
+          hasChannel: true,
+          distinctUser: true,
+          activeOnly: true,
+          channel: channelId,
+          ...(subscriberSearch ? {search: subscriberSearch} : {}),
+          page: subscriberPage,
+          limit: subscriberLimit,
+        })
+        .then(res => res.data),
+    enabled: !!channelId,
   });
 
   const grantMutation = useMutation({
@@ -209,10 +230,57 @@ const VipMemberManagement = ({channelId, channelName}) => {
   const memberResults = members?.results || [];
   const totalResults = members?.totalResults || 0;
   const totalPages = members?.totalPages || 1;
+  const subscriberResults = subscribers?.results || [];
+  const totalSubscriberResults = subscribers?.totalResults || 0;
+  const totalSubscriberPages = subscribers?.totalPages || 1;
 
   React.useEffect(() => {
     setMemberPage(1);
   }, [memberSearch, channelId]);
+
+  React.useEffect(() => {
+    setSubscriberPage(1);
+  }, [subscriberSearch, channelId]);
+
+  const fetchAllSubscribersForExport = async () => {
+    const exportLimit = 100;
+    const firstResponse = await api
+      .getPurchases({
+        hasChannel: true,
+        distinctUser: true,
+        activeOnly: true,
+        channel: channelId,
+        ...(subscriberSearch ? {search: subscriberSearch} : {}),
+        page: 1,
+        limit: exportLimit,
+      })
+      .then(res => res.data);
+
+    const all = [...(firstResponse?.results || [])];
+    const totalPagesForExport = firstResponse?.totalPages || 1;
+
+    for (let page = 2; page <= totalPagesForExport; page += 1) {
+      const pageResponse = await api
+        .getPurchases({
+          hasChannel: true,
+          distinctUser: true,
+          activeOnly: true,
+          channel: channelId,
+          ...(subscriberSearch ? {search: subscriberSearch} : {}),
+          page,
+          limit: exportLimit,
+        })
+        .then(res => res.data);
+
+      all.push(...(pageResponse?.results || []));
+    }
+
+    if (all.length === 0) {
+      throw new Error('export_empty');
+    }
+
+    return all;
+  };
 
   const fetchAllMembersForExport = async () => {
     const exportLimit = 100;
@@ -271,6 +339,133 @@ const VipMemberManagement = ({channelId, channelName}) => {
       status: 'error',
       position: 'top',
     });
+  };
+
+  const exportSubscribersAsPdf = async () => {
+    const exportWindow = window.open('', '_blank', 'width=1200,height=900');
+
+    if (!exportWindow) {
+      toast({
+        title: 'PDF penceresi acilamadi',
+        description: 'Tarayiciniz popup engelliyor olabilir.',
+        status: 'warning',
+        position: 'top',
+      });
+      return;
+    }
+
+    setIsExportingSubscribersPdf(true);
+
+    try {
+      const rows = await fetchAllSubscribersForExport();
+
+      const exportedAt = new Date().toLocaleString('tr-TR');
+      const safeChannelName = escapeHtml(channelName || 'VIP Kanal');
+      const safeSearch = escapeHtml(subscriberSearch || '');
+      const tableRows = rows
+        .map((item, index) => {
+          const user = item?.user || {};
+          const userName = user?.fullname || 'İsimsiz';
+          const email = user?.email || '-';
+          const platform = item?.platform || '-';
+          const start = item?.createdAt || item?.purchaseTime || null;
+          const end = item?.expiryTime || null;
+          const expiryTime = end ? new Date(end).getTime() : 0;
+          const expired =
+            Boolean(item?.isExpired) || (expiryTime ? expiryTime < Date.now() : false);
+          const status = expired ? 'Süresi Dolmuş' : 'Aktif';
+
+          return `
+            <tr>
+              <td>${index + 1}</td>
+              <td>${escapeHtml(userName)}</td>
+              <td>${escapeHtml(email)}</td>
+              <td>${escapeHtml(platform)}</td>
+              <td>${escapeHtml(formatJoinDate(start))}</td>
+              <td>${escapeHtml(formatJoinDate(end))}</td>
+              <td>${escapeHtml(status)}</td>
+            </tr>
+          `;
+        })
+        .join('');
+
+      exportWindow.document.write(`
+        <!doctype html>
+        <html>
+          <head>
+            <meta charset="utf-8" />
+            <title>${safeChannelName} - Abonelik Üyeleri</title>
+            <style>
+              body {
+                font-family: Arial, sans-serif;
+                color: #111827;
+                margin: 24px;
+              }
+              h1 {
+                font-size: 22px;
+                margin: 0 0 8px 0;
+              }
+              .meta {
+                margin-bottom: 18px;
+                color: #4b5563;
+                font-size: 13px;
+              }
+              table {
+                width: 100%;
+                border-collapse: collapse;
+                table-layout: fixed;
+              }
+              th, td {
+                border: 1px solid #d1d5db;
+                padding: 8px 10px;
+                text-align: left;
+                font-size: 12px;
+                word-break: break-word;
+              }
+              th {
+                background: #f3f4f6;
+              }
+              @page {
+                size: A4 portrait;
+                margin: 14mm;
+              }
+            </style>
+          </head>
+          <body>
+            <h1>${safeChannelName} - Abonelik Üyeleri</h1>
+            <div class="meta">
+              Toplam uye: ${rows.length}<br />
+              Export tarihi: ${escapeHtml(exportedAt)}<br />
+              Arama: ${safeSearch ? safeSearch : '-'}
+            </div>
+            <table>
+              <thead>
+                <tr>
+                  <th style="width: 40px;">#</th>
+                  <th>Ad Soyad</th>
+                  <th>Email</th>
+                  <th style="width: 90px;">Platform</th>
+                  <th style="width: 160px;">Başlangıç</th>
+                  <th style="width: 160px;">Bitiş</th>
+                  <th style="width: 110px;">Durum</th>
+                </tr>
+              </thead>
+              <tbody>${tableRows}</tbody>
+            </table>
+          </body>
+        </html>
+      `);
+      exportWindow.document.close();
+      exportWindow.focus();
+      setTimeout(() => {
+        exportWindow.print();
+      }, 400);
+    } catch (error) {
+      exportWindow.close();
+      handleExportError(error);
+    } finally {
+      setIsExportingSubscribersPdf(false);
+    }
   };
 
   const exportMembersAsPdf = async () => {
@@ -485,8 +680,9 @@ const VipMemberManagement = ({channelId, channelName}) => {
         </Badge>
       </Flex>
       <Text fontSize="sm" color="gray.600" mb={4}>
-        Apple veya Google dışındaki kullanıcıları bu kanala manuel olarak
-        ekleyebilir ya da kaldırabilirsiniz.
+        Abonelikten gelen üyeler aşağıda ayrı listelenir. Apple veya Google
+        dışındaki kullanıcıları bu kanala manuel olarak ekleyebilir ya da
+        kaldırabilirsiniz.
       </Text>
 
       <Box bg="white" p={4} borderRadius="md" boxShadow="sm" mb={4}>
@@ -550,6 +746,124 @@ const VipMemberManagement = ({channelId, channelName}) => {
         </Text>
       </Box>
 
+      <Box bg="white" p={4} borderRadius="md" boxShadow="sm" mb={4}>
+        <Flex
+          justify="space-between"
+          align={{base: 'stretch', md: 'center'}}
+          direction={{base: 'column', md: 'row'}}
+          mb={4}
+          gap={3}>
+          <Text fontWeight="bold">
+            Abonelik VIP Üyeleri ({totalSubscriberResults})
+          </Text>
+          <Flex gap={3} direction={{base: 'column', md: 'row'}}>
+            <Input
+              maxW={{base: '100%', md: '280px'}}
+              placeholder="Abone ara"
+              value={subscriberSearch}
+              onChange={e => setSubscriberSearch(e.target.value)}
+            />
+            <Button
+              colorScheme="blue"
+              variant="outline"
+              onClick={exportSubscribersAsPdf}
+              isLoading={isExportingSubscribersPdf}
+              isDisabled={isExportingSubscribersPdf}>
+              PDF Export
+            </Button>
+          </Flex>
+        </Flex>
+
+        <VStack align="stretch" spacing={2} maxH="420px" overflowY="auto">
+          {!isSubscribersLoading && subscriberResults.length === 0 && (
+            <Text fontSize="sm" color="gray.500">
+              Abone bulunamadı.
+            </Text>
+          )}
+          {subscriberResults.map(item => {
+            const user = item?.user || {};
+            const id =
+              item?.id ||
+              item?._id ||
+              user?.id ||
+              user?._id ||
+              `${user?.email || ''}-${item?.productId || ''}`;
+            const platform = item?.platform || '-';
+            const expiryTime = item?.expiryTime ? new Date(item.expiryTime).getTime() : 0;
+            const expired =
+              Boolean(item?.isExpired) || (expiryTime ? expiryTime < Date.now() : false);
+            return (
+              <Flex
+                key={id}
+                align="center"
+                justify="space-between"
+                p={2}
+                borderBottom="1px solid #eee">
+                <Flex align="center">
+                  <Avatar
+                    src={getCombinedLogoUrl(user.thumbnail)}
+                    name={user.fullname}
+                    size="sm"
+                    mr={2}
+                  />
+                  <Box>
+                    <Text fontSize="sm" fontWeight="medium">
+                      {user.fullname || 'İsimsiz'}
+                    </Text>
+                    {!!user.email && (
+                      <Text fontSize="xs" color="gray.500">
+                        {user.email}
+                      </Text>
+                    )}
+                  </Box>
+                </Flex>
+                <Flex align="center" gap={2}>
+                  <Badge
+                    colorScheme={
+                      platform === 'google'
+                        ? 'green'
+                        : platform === 'apple'
+                          ? 'gray'
+                          : 'blue'
+                    }>
+                    {platform}
+                  </Badge>
+                  <Badge colorScheme={expired ? 'red' : 'green'}>
+                    {expired ? 'Süresi Dolmuş' : 'Aktif'}
+                  </Badge>
+                </Flex>
+              </Flex>
+            );
+          })}
+        </VStack>
+        <Flex
+          justify="space-between"
+          align="center"
+          mt={4}
+          gap={3}
+          direction={{base: 'column', md: 'row'}}>
+          <Text fontSize="sm" color="gray.500">
+            Sayfa {subscriberPage} / {totalSubscriberPages}
+          </Text>
+          <Flex gap={2}>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setSubscriberPage(prev => Math.max(1, prev - 1))}
+              isDisabled={subscriberPage <= 1 || isSubscribersLoading}>
+              Önceki
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setSubscriberPage(prev => prev + 1)}
+              isDisabled={subscriberPage >= totalSubscriberPages || isSubscribersLoading}>
+              Sonraki
+            </Button>
+          </Flex>
+        </Flex>
+      </Box>
+
       <Box bg="white" p={4} borderRadius="md" boxShadow="sm">
         <Flex
           justify="space-between"
@@ -557,7 +871,7 @@ const VipMemberManagement = ({channelId, channelName}) => {
           direction={{base: 'column', md: 'row'}}
           mb={4}
           gap={3}>
-          <Text fontWeight="bold">Mevcut VIP Üyeleri ({totalResults})</Text>
+          <Text fontWeight="bold">Manuel VIP Üyeleri ({totalResults})</Text>
           <Flex gap={3} direction={{base: 'column', md: 'row'}}>
             <Input
               maxW={{base: '100%', md: '280px'}}
