@@ -23,6 +23,7 @@ import {
   Switch,
   Select,
   VStack,
+  HStack,
   Icon,
   Text,
 } from '@chakra-ui/react';
