@@ -30,7 +30,7 @@ import {
 import {FiImage, FiUpload} from 'react-icons/fi';
 import {useForm} from 'react-hook-form';
 import {yupResolver} from '@hookform/resolvers/yup';
-import {useMutation, useQuery, useQueryClient} from '@tanstack/react-query';
+import {useMutation, useQuery} from '@tanstack/react-query';
 import * as yup from 'yup';
 import {getErrorMessage} from '../../../utils/string';
 import {formatDate} from '../../../utils/date';
@@ -88,33 +88,13 @@ const escapeHtml = value =>
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#39;');
 
-const sanitizeFileName = value =>
-  String(value || 'vip-uye-listesi')
-    .split('')
-    .filter(char => char.charCodeAt(0) >= 32)
-    .join('')
-    .replace(/[<>:"/\\|?*]/g, ' ')
-    .replace(/\s+/g, '-')
-    .replace(/-+/g, '-')
-    .replace(/^-|-$/g, '')
-    .toLowerCase();
-
 const formatJoinDate = value =>
   value ? new Date(value).toLocaleString('tr-TR') : '-';
 
 const VipMemberManagement = ({channelId, channelName}) => {
   const toast = useToast();
-  const queryClient = useQueryClient();
   const [selectedUser, setSelectedUser] = useState(null);
   const [emailToAdd, setEmailToAdd] = useState('');
-  const [memberSearch, setMemberSearch] = useState('');
-  const [memberPage, setMemberPage] = useState(1);
-  const [exportingType, setExportingType] = useState(null);
-  const memberLimit = 20;
-  const [subscriberSearch, setSubscriberSearch] = useState('');
-  const [subscriberPage, setSubscriberPage] = useState(1);
-  const [isExportingSubscribersPdf, setIsExportingSubscribersPdf] = useState(false);
-  const subscriberLimit = 20;
   const [unifiedSearch, setUnifiedSearch] = useState('');
   const [unifiedMembers, setUnifiedMembers] = useState([]);
   const [isUnifiedLoading, setIsUnifiedLoading] = useState(false);
@@ -130,42 +110,10 @@ const VipMemberManagement = ({channelId, channelName}) => {
     }));
   };
 
-  const {data: members, isFetching: isMembersLoading} = useQuery({
-    queryKey: ['vipMembers', channelId, memberSearch, memberPage],
-    queryFn: () =>
-      api
-        .getVipChannelMembers(channelId, {
-          search: memberSearch,
-          page: memberPage,
-          limit: memberLimit,
-        })
-        .then(res => res.data),
-    enabled: false,
-  });
-
-  const {data: subscribers, isFetching: isSubscribersLoading} = useQuery({
-    queryKey: ['vipSubscribers', channelId, subscriberSearch, subscriberPage],
-    queryFn: () =>
-      api
-        .getPurchases({
-          hasChannel: true,
-          distinctUser: true,
-          activeOnly: true,
-          channel: channelId,
-          ...(subscriberSearch ? {search: subscriberSearch} : {}),
-          page: subscriberPage,
-          limit: subscriberLimit,
-        })
-        .then(res => res.data),
-    enabled: false,
-  });
-
   const grantMutation = useMutation({
     mutationFn: userId => api.grantVipMemberAccess(channelId, userId),
     onSuccess: () => {
       setSelectedUser(null);
-      setMemberPage(1);
-      queryClient.invalidateQueries({queryKey: ['vipMembers', channelId]});
       loadUnifiedVipMembers();
       toast({
         title: 'Kullanıcı VIP kanala eklendi',
@@ -185,7 +133,6 @@ const VipMemberManagement = ({channelId, channelName}) => {
   const revokeMutation = useMutation({
     mutationFn: userId => api.revokeVipMemberAccess(channelId, userId),
     onSuccess: () => {
-      queryClient.invalidateQueries({queryKey: ['vipMembers', channelId]});
       loadUnifiedVipMembers();
       toast({
         title: 'Kullanıcının VIP kanal erişimi kaldırıldı',
@@ -235,26 +182,12 @@ const VipMemberManagement = ({channelId, channelName}) => {
     }
   };
 
-  const memberResults = members?.results || [];
-  const totalResults = members?.totalResults || 0;
-  const totalPages = members?.totalPages || 1;
-  const subscriberResults = subscribers?.results || [];
-  const totalSubscriberResults = subscribers?.totalResults || 0;
-  const totalSubscriberPages = subscribers?.totalPages || 1;
   const normalizedUnifiedSearch = String(unifiedSearch || '').trim().toLowerCase();
   const visibleUnifiedMembers = normalizedUnifiedSearch
     ? (unifiedMembers || []).filter(m =>
         `${m?.fullname || ''} ${m?.email || ''}`.toLowerCase().includes(normalizedUnifiedSearch),
       )
     : unifiedMembers || [];
-
-  React.useEffect(() => {
-    setMemberPage(1);
-  }, [memberSearch, channelId]);
-
-  React.useEffect(() => {
-    setSubscriberPage(1);
-  }, [subscriberSearch, channelId]);
 
   const fetchAllSubscribersForExport = async () => {
     const exportLimit = 100;
@@ -264,7 +197,6 @@ const VipMemberManagement = ({channelId, channelName}) => {
         distinctUser: true,
         activeOnly: true,
         channel: channelId,
-        ...(subscriberSearch ? {search: subscriberSearch} : {}),
         page: 1,
         limit: exportLimit,
       })
@@ -280,7 +212,6 @@ const VipMemberManagement = ({channelId, channelName}) => {
           distinctUser: true,
           activeOnly: true,
           channel: channelId,
-          ...(subscriberSearch ? {search: subscriberSearch} : {}),
           page,
           limit: exportLimit,
         })
@@ -324,18 +255,6 @@ const VipMemberManagement = ({channelId, channelName}) => {
     }
 
     return allMembers;
-  };
-
-  const downloadBlob = (content, mimeType, fileName) => {
-    const blob = new Blob([content], {type: mimeType});
-    const objectUrl = URL.createObjectURL(blob);
-    const anchor = document.createElement('a');
-    anchor.href = objectUrl;
-    anchor.download = fileName;
-    document.body.appendChild(anchor);
-    anchor.click();
-    anchor.remove();
-    window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
   };
 
   const handleExportError = error => {
@@ -569,334 +488,6 @@ const VipMemberManagement = ({channelId, channelName}) => {
       handleExportError(error);
     } finally {
       setIsExportingUnifiedPdf(false);
-    }
-  };
-
-  const exportSubscribersAsPdf = async () => {
-    const exportWindow = window.open('', '_blank', 'width=1200,height=900');
-
-    if (!exportWindow) {
-      toast({
-        title: 'PDF penceresi acilamadi',
-        description: 'Tarayiciniz popup engelliyor olabilir.',
-        status: 'warning',
-        position: 'top',
-      });
-      return;
-    }
-
-    setIsExportingSubscribersPdf(true);
-
-    try {
-      const rows = await fetchAllSubscribersForExport();
-
-      const exportedAt = new Date().toLocaleString('tr-TR');
-      const safeChannelName = escapeHtml(channelName || 'VIP Kanal');
-      const safeSearch = escapeHtml(subscriberSearch || '');
-      const tableRows = rows
-        .map((item, index) => {
-          const user = item?.user || {};
-          const userName = user?.fullname || 'İsimsiz';
-          const email = user?.email || '-';
-          const platform = item?.platform || '-';
-          const start = item?.createdAt || item?.purchaseTime || null;
-          const end = item?.expiryTime || null;
-          const expiryTime = end ? new Date(end).getTime() : 0;
-          const expired =
-            Boolean(item?.isExpired) || (expiryTime ? expiryTime < Date.now() : false);
-          const status = expired ? 'Süresi Dolmuş' : 'Aktif';
-
-          return `
-            <tr>
-              <td>${index + 1}</td>
-              <td>${escapeHtml(userName)}</td>
-              <td>${escapeHtml(email)}</td>
-              <td>${escapeHtml(platform)}</td>
-              <td>${escapeHtml(formatJoinDate(start))}</td>
-              <td>${escapeHtml(formatJoinDate(end))}</td>
-              <td>${escapeHtml(status)}</td>
-            </tr>
-          `;
-        })
-        .join('');
-
-      exportWindow.document.write(`
-        <!doctype html>
-        <html>
-          <head>
-            <meta charset="utf-8" />
-            <title>${safeChannelName} - Abonelik Üyeleri</title>
-            <style>
-              body {
-                font-family: Arial, sans-serif;
-                color: #111827;
-                margin: 24px;
-              }
-              h1 {
-                font-size: 22px;
-                margin: 0 0 8px 0;
-              }
-              .meta {
-                margin-bottom: 18px;
-                color: #4b5563;
-                font-size: 13px;
-              }
-              table {
-                width: 100%;
-                border-collapse: collapse;
-                table-layout: fixed;
-              }
-              th, td {
-                border: 1px solid #d1d5db;
-                padding: 8px 10px;
-                text-align: left;
-                font-size: 12px;
-                word-break: break-word;
-              }
-              th {
-                background: #f3f4f6;
-              }
-              @page {
-                size: A4 portrait;
-                margin: 14mm;
-              }
-            </style>
-          </head>
-          <body>
-            <h1>${safeChannelName} - Abonelik Üyeleri</h1>
-            <div class="meta">
-              Toplam uye: ${rows.length}<br />
-              Export tarihi: ${escapeHtml(exportedAt)}<br />
-              Arama: ${safeSearch ? safeSearch : '-'}
-            </div>
-            <table>
-              <thead>
-                <tr>
-                  <th style="width: 40px;">#</th>
-                  <th>Ad Soyad</th>
-                  <th>Email</th>
-                  <th style="width: 90px;">Platform</th>
-                  <th style="width: 160px;">Başlangıç</th>
-                  <th style="width: 160px;">Bitiş</th>
-                  <th style="width: 110px;">Durum</th>
-                </tr>
-              </thead>
-              <tbody>${tableRows}</tbody>
-            </table>
-          </body>
-        </html>
-      `);
-      exportWindow.document.close();
-      exportWindow.focus();
-      setTimeout(() => {
-        exportWindow.print();
-      }, 400);
-    } catch (error) {
-      exportWindow.close();
-      handleExportError(error);
-    } finally {
-      setIsExportingSubscribersPdf(false);
-    }
-  };
-
-  const exportMembersAsPdf = async () => {
-    const exportWindow = window.open('', '_blank', 'width=1200,height=900');
-
-    if (!exportWindow) {
-      toast({
-        title: 'PDF penceresi acilamadi',
-        description: 'Tarayiciniz popup engelliyor olabilir.',
-        status: 'warning',
-        position: 'top',
-      });
-      return;
-    }
-
-    setExportingType('pdf');
-
-    try {
-      const allMembers = await fetchAllMembersForExport();
-
-      const exportedAt = new Date().toLocaleString('tr-TR');
-      const safeChannelName = escapeHtml(channelName || 'VIP Kanal');
-      const rows = allMembers
-        .map(
-          (user, index) => `
-            <tr>
-              <td>${index + 1}</td>
-              <td>${escapeHtml(user.fullname || '-')}</td>
-              <td>${escapeHtml(user.email || '-')}</td>
-              <td>${escapeHtml(formatJoinDate(user.joinDate))}</td>
-            </tr>
-          `,
-        )
-        .join('');
-
-      exportWindow.document.write(`
-        <!doctype html>
-        <html>
-          <head>
-            <meta charset="utf-8" />
-            <title>${safeChannelName} - VIP Uye Listesi</title>
-            <style>
-              body {
-                font-family: Arial, sans-serif;
-                color: #111827;
-                margin: 24px;
-              }
-              h1 {
-                font-size: 22px;
-                margin: 0 0 8px 0;
-              }
-              .meta {
-                margin-bottom: 18px;
-                color: #4b5563;
-                font-size: 13px;
-              }
-              table {
-                width: 100%;
-                border-collapse: collapse;
-                table-layout: fixed;
-              }
-              th, td {
-                border: 1px solid #d1d5db;
-                padding: 8px 10px;
-                text-align: left;
-                font-size: 12px;
-                word-break: break-word;
-              }
-              th {
-                background: #f3f4f6;
-              }
-              @page {
-                size: A4 portrait;
-                margin: 14mm;
-              }
-            </style>
-          </head>
-          <body>
-            <h1>${safeChannelName} - VIP Uye Listesi</h1>
-            <div class="meta">
-              Toplam uye: ${allMembers.length}<br />
-              Export tarihi: ${escapeHtml(exportedAt)}
-            </div>
-            <table>
-              <thead>
-                <tr>
-                  <th style="width: 40px;">#</th>
-                  <th>Ad Soyad</th>
-                  <th>Email</th>
-                  <th style="width: 180px;">Katilma Tarihi</th>
-                </tr>
-              </thead>
-              <tbody>${rows}</tbody>
-            </table>
-          </body>
-        </html>
-      `);
-      exportWindow.document.close();
-      exportWindow.focus();
-      setTimeout(() => {
-        exportWindow.print();
-      }, 400);
-    } catch (error) {
-      exportWindow.close();
-      handleExportError(error);
-    } finally {
-      setExportingType(null);
-    }
-  };
-
-  const exportMembersAsCsv = async () => {
-    setExportingType('csv');
-
-    try {
-      const allMembers = await fetchAllMembersForExport();
-      const fileBaseName = sanitizeFileName(
-        `${channelName || 'vip-kanal'}-uye-listesi`,
-      );
-      const csvRows = allMembers.map((user, index) =>
-        [
-          index + 1,
-          user.fullname || '-',
-          user.email || '-',
-          formatJoinDate(user.joinDate),
-        ]
-          .map(value => `"${String(value).replace(/"/g, '""')}"`)
-          .join(';'),
-      );
-
-      const csvContent = `\uFEFF"Sira";"Ad Soyad";"Email";"Katilma Tarihi"\n${csvRows.join(
-        '\n',
-      )}`;
-
-      downloadBlob(
-        csvContent,
-        'text/csv;charset=utf-8;',
-        `${fileBaseName}.csv`,
-      );
-    } catch (error) {
-      handleExportError(error);
-    } finally {
-      setExportingType(null);
-    }
-  };
-
-  const exportMembersAsExcel = async () => {
-    setExportingType('excel');
-
-    try {
-      const allMembers = await fetchAllMembersForExport();
-      const fileBaseName = sanitizeFileName(
-        `${channelName || 'vip-kanal'}-uye-listesi`,
-      );
-      const safeChannelName = escapeHtml(channelName || 'VIP Kanal');
-      const exportedAt = escapeHtml(new Date().toLocaleString('tr-TR'));
-      const rows = allMembers
-        .map(
-          (user, index) => `
-            <tr>
-              <td>${index + 1}</td>
-              <td>${escapeHtml(user.fullname || '-')}</td>
-              <td>${escapeHtml(user.email || '-')}</td>
-              <td>${escapeHtml(formatJoinDate(user.joinDate))}</td>
-            </tr>
-          `,
-        )
-        .join('');
-
-      const excelContent = `
-        <html xmlns:o="urn:schemas-microsoft-com:office:office"
-              xmlns:x="urn:schemas-microsoft-com:office:excel"
-              xmlns="http://www.w3.org/TR/REC-html40">
-          <head>
-            <meta charset="utf-8" />
-          </head>
-          <body>
-            <table border="1">
-              <tr><th colspan="4">${safeChannelName} - VIP Uye Listesi</th></tr>
-              <tr><td colspan="4">Export Tarihi: ${exportedAt}</td></tr>
-              <tr>
-                <th>Sira</th>
-                <th>Ad Soyad</th>
-                <th>Email</th>
-                <th>Katilma Tarihi</th>
-              </tr>
-              ${rows}
-            </table>
-          </body>
-        </html>
-      `;
-
-      downloadBlob(
-        `\uFEFF${excelContent}`,
-        'application/vnd.ms-excel;charset=utf-8;',
-        `${fileBaseName}.xls`,
-      );
-    } catch (error) {
-      handleExportError(error);
-    } finally {
-      setExportingType(null);
     }
   };
 
