@@ -167,6 +167,48 @@ const getChannelMessageCount = c => {
   return Number.isFinite(asNumber) ? asNumber : 0;
 };
 
+const sortChannelsAlphabetically = channels =>
+  [...(channels || [])]
+    .filter(c => !!(c?.name || c?.label))
+    .sort((a, b) =>
+      `${a?.name ?? a?.label ?? ''}`.localeCompare(
+        `${b?.name ?? b?.label ?? ''}`,
+        'tr',
+      ),
+    );
+
+const filterChannelsByQuery = (channels, query) => {
+  const normalizedQuery = String(query || '').trim().toLocaleLowerCase('tr-TR');
+  if (!normalizedQuery) return channels;
+
+  return (channels || []).filter(channel =>
+    `${channel?.name ?? channel?.label ?? ''}`
+      .toLocaleLowerCase('tr-TR')
+      .includes(normalizedQuery),
+  );
+};
+
+const sortSelectedChannelsFirst = (channels, selectedIds) => {
+  const selectedSet = new Set((selectedIds || []).map(String));
+
+  return [...(channels || [])].sort((a, b) => {
+    const aSelected = selectedSet.has(String(a?.id || ''));
+    const bSelected = selectedSet.has(String(b?.id || ''));
+
+    if (aSelected === bSelected) return 0;
+    return aSelected ? -1 : 1;
+  });
+};
+
+const getSelectableChannelIds = channels =>
+  (channels || [])
+    .map(channel => channel?.id)
+    .filter(Boolean)
+    .map(id => String(id));
+
+const getSelectedCountForChannels = (channels, selectedIdSet) =>
+  getSelectableChannelIds(channels).filter(id => selectedIdSet.has(id)).length;
+
 // Helper to fetch all items with pagination
 const fetchAll = async (apiFunc, params = {}) => {
   const limit = 100; // Max limit allowed by API
@@ -308,6 +350,13 @@ const BulkMessage = () => {
   });
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [bulkJobFilter, setBulkJobFilter] = useState('all');
+  const [channelSearch, setChannelSearch] = useState({
+    vip: '',
+    market: '',
+    viop: '',
+    fund: '',
+    other: '',
+  });
   const textareaRef = React.useRef(null);
   const abortControllerRef = React.useRef(null);
   const pollTimeoutRef = React.useRef(null);
@@ -1126,6 +1175,30 @@ const BulkMessage = () => {
   };
 
   const selectedChannels = watch('selectedChannels') || [];
+  const selectedChannelIdSet = React.useMemo(
+    () => new Set(selectedChannels.map(id => String(id))),
+    [selectedChannels],
+  );
+  const selectedVipCount = getSelectedCountForChannels(
+    vipChannelsData,
+    selectedChannelIdSet,
+  );
+  const selectedMarketCount = getSelectedCountForChannels(
+    marketChannels,
+    selectedChannelIdSet,
+  );
+  const selectedViopCount = getSelectedCountForChannels(
+    viopChannels,
+    selectedChannelIdSet,
+  );
+  const selectedFundCount = getSelectedCountForChannels(
+    fundChannels,
+    selectedChannelIdSet,
+  );
+  const selectedOtherCount = getSelectedCountForChannels(
+    otherChannels,
+    selectedChannelIdSet,
+  );
 
   // Calculate target channel count
   const getTargetCount = getTargetChannelCount;
@@ -1176,26 +1249,80 @@ const BulkMessage = () => {
   );
 
   // Group channels by type for display
-  const stockChannels = mergedStockChannels.filter(c => !!(c.name || c.label));
-  const cryptoChannels = mergedCryptoChannels.filter(
-    c => !!(c.name || c.label),
-  );
-  const vipChannels = (vipChannelsData || []).filter(
-    c => !!(c.name || c.label),
-  );
-  const fundChannels = mergedFundChannels.filter(c => !!(c.name || c.label));
-  const viopChannels = mergedViopChannels.filter(c => !!(c.name || c.label));
+  const stockChannels = sortChannelsAlphabetically(mergedStockChannels);
+  const cryptoChannels = sortChannelsAlphabetically(mergedCryptoChannels);
+  const vipChannels = sortChannelsAlphabetically(vipChannelsData);
+  const fundChannels = sortChannelsAlphabetically(mergedFundChannels);
+  const viopChannels = sortChannelsAlphabetically(mergedViopChannels);
 
   // Combine for selection list
   // Note: We might want to separate them in the UI later, but for now we group them as "Market" excluding VIOP if that was the pattern,
   // or just put Stock and Crypto in Market.
-  const marketChannels = [...stockChannels, ...cryptoChannels];
-  const otherChannels =
-    (
-      channelsData?.filter(
-        c => c.type !== 'market' && c.type !== 'vip' && c.type !== 'fund',
-      ) || []
-    ).filter(c => !!(c.name || c.label)) || [];
+  const marketChannels = sortChannelsAlphabetically([
+    ...stockChannels,
+    ...cryptoChannels,
+  ]);
+  const otherChannels = sortChannelsAlphabetically(
+    channelsData?.filter(
+      c => c.type !== 'market' && c.type !== 'vip' && c.type !== 'fund',
+    ) || [],
+  );
+  const filteredVipChannels = sortSelectedChannelsFirst(
+    filterChannelsByQuery(vipChannels, channelSearch.vip),
+    selectedChannels,
+  );
+  const filteredMarketChannels = sortSelectedChannelsFirst(
+    filterChannelsByQuery(marketChannels, channelSearch.market),
+    selectedChannels,
+  );
+  const filteredViopChannels = sortSelectedChannelsFirst(
+    filterChannelsByQuery(viopChannels, channelSearch.viop),
+    selectedChannels,
+  );
+  const filteredFundChannels = sortSelectedChannelsFirst(
+    filterChannelsByQuery(fundChannels, channelSearch.fund),
+    selectedChannels,
+  );
+  const filteredOtherChannels = sortSelectedChannelsFirst(
+    filterChannelsByQuery(otherChannels, channelSearch.other),
+    selectedChannels,
+  );
+  const selectChannels = channelIds => {
+    const nextSelected = Array.from(
+      new Set([...selectedChannels.map(id => String(id)), ...channelIds.map(String)]),
+    );
+    setValue('selectedChannels', nextSelected);
+  };
+  const removeChannels = channelIds => {
+    const idsToRemove = new Set(channelIds.map(String));
+    setValue(
+      'selectedChannels',
+      selectedChannels
+        .map(id => String(id))
+        .filter(id => !idsToRemove.has(id)),
+    );
+  };
+  const selectAllChannels = () => {
+    selectChannels([
+      ...getSelectableChannelIds(vipChannels),
+      ...getSelectableChannelIds(marketChannels),
+      ...getSelectableChannelIds(viopChannels),
+      ...getSelectableChannelIds(fundChannels),
+      ...getSelectableChannelIds(otherChannels),
+    ]);
+  };
+  const selectVipChannels = () => selectChannels(getSelectableChannelIds(vipChannels));
+  const selectMarketChannels = () =>
+    selectChannels(getSelectableChannelIds(marketChannels));
+  const selectViopChannels = () => selectChannels(getSelectableChannelIds(viopChannels));
+  const selectFundChannels = () => selectChannels(getSelectableChannelIds(fundChannels));
+  const selectOtherChannels = () => selectChannels(getSelectableChannelIds(otherChannels));
+  const removeVipChannels = () => removeChannels(getSelectableChannelIds(vipChannels));
+  const removeMarketChannels = () =>
+    removeChannels(getSelectableChannelIds(marketChannels));
+  const removeViopChannels = () => removeChannels(getSelectableChannelIds(viopChannels));
+  const removeFundChannels = () => removeChannels(getSelectableChannelIds(fundChannels));
+  const removeOtherChannels = () => removeChannels(getSelectableChannelIds(otherChannels));
 
   const filteredBulkJobs = React.useMemo(
     () => bulkJobs.filter(job => matchesBulkJobFilter(job, bulkJobFilter)),
@@ -2325,6 +2452,29 @@ const BulkMessage = () => {
                             <FormLabel fontWeight="600" fontSize="sm">
                               Kanalları Seçin
                             </FormLabel>
+                            <HStack mb="3" spacing="3" flexWrap="wrap">
+                              <Badge colorScheme="teal" variant="subtle" px="2" py="1">
+                                Seçili kanal: {selectedChannels.length}
+                              </Badge>
+                              <Text fontSize="sm" color="gray.500">
+                                Seçilen kanallar listede üstte gösterilir.
+                              </Text>
+                              <Button
+                                size="xs"
+                                variant="ghost"
+                                colorScheme="blue"
+                                onClick={selectAllChannels}>
+                                Tümünü seç
+                              </Button>
+                              <Button
+                                size="xs"
+                                variant="ghost"
+                                colorScheme="red"
+                                onClick={() => setValue('selectedChannels', [])}
+                                isDisabled={selectedChannels.length === 0}>
+                                Tümünü temizle
+                              </Button>
+                            </HStack>
                             <Box
                               maxH="300px"
                               overflowY="auto"
@@ -2339,13 +2489,123 @@ const BulkMessage = () => {
                                   value={selectedChannels}
                                   onChange={values => setValue('selectedChannels', values)}>
                                   <VStack align="start" spacing="4">
+                                    {vipChannels.length > 0 && (
+                                      <Box w="100%">
+                                        <Flex
+                                          mb="2"
+                                          gap="2"
+                                          align={{base: 'stretch', md: 'center'}}
+                                          justify="space-between"
+                                          direction={{base: 'column', md: 'row'}}>
+                                          <Text fontWeight="bold" color="gray.600">
+                                            ⭐ VIP Kanallar ({selectedVipCount}/{vipChannels.length})
+                                          </Text>
+                                          <HStack spacing="2" flexWrap="wrap">
+                                            <Button
+                                              size="xs"
+                                              variant="ghost"
+                                              colorScheme="blue"
+                                              alignSelf={{base: 'flex-start', md: 'auto'}}
+                                              onClick={selectVipChannels}>
+                                              Hepsini seç
+                                            </Button>
+                                            <Button
+                                              size="xs"
+                                              variant="ghost"
+                                              colorScheme="red"
+                                              alignSelf={{base: 'flex-start', md: 'auto'}}
+                                              onClick={removeVipChannels}>
+                                              Hepsini kaldır
+                                            </Button>
+                                          </HStack>
+                                        </Flex>
+                                        <Input
+                                          size="sm"
+                                          mb="3"
+                                          maxW="320px"
+                                          placeholder="VIP kanal ara"
+                                          value={channelSearch.vip}
+                                          onChange={e =>
+                                            setChannelSearch(prev => ({
+                                              ...prev,
+                                              vip: e.target.value,
+                                            }))
+                                          }
+                                        />
+                                        <VStack align="start" pl="4" spacing="2">
+                                          {filteredVipChannels.map(channel => (
+                                            <Checkbox key={channel.id} value={channel.id}>
+                                              <HStack>
+                                                <Text>{channel.name}</Text>
+                                                {selectedChannelIdSet.has(
+                                                  String(channel.id),
+                                                ) && (
+                                                  <Badge size="sm" colorScheme="teal">
+                                                    Seçili
+                                                  </Badge>
+                                                )}
+                                                <Badge size="sm" colorScheme="purple">
+                                                  VIP
+                                                </Badge>
+                                              </HStack>
+                                            </Checkbox>
+                                          ))}
+                                          {filteredVipChannels.length === 0 && (
+                                            <Text fontSize="sm" color="gray.500">
+                                              Eşleşen VIP kanal bulunamadı.
+                                            </Text>
+                                          )}
+                                        </VStack>
+                                      </Box>
+                                    )}
+
+                                    <Divider />
+
                                     {marketChannels.length > 0 && (
                                       <Box w="100%">
-                                        <Text fontWeight="bold" mb="2" color="gray.600">
-                                          📈 Piyasa Kanalları ({marketChannels.length})
-                                        </Text>
+                                        <Flex
+                                          mb="2"
+                                          gap="2"
+                                          align={{base: 'stretch', md: 'center'}}
+                                          justify="space-between"
+                                          direction={{base: 'column', md: 'row'}}>
+                                          <Text fontWeight="bold" color="gray.600">
+                                            📈 Piyasa Kanalları ({selectedMarketCount}/{marketChannels.length})
+                                          </Text>
+                                          <HStack spacing="2" flexWrap="wrap">
+                                            <Button
+                                              size="xs"
+                                              variant="ghost"
+                                              colorScheme="blue"
+                                              alignSelf={{base: 'flex-start', md: 'auto'}}
+                                              onClick={selectMarketChannels}>
+                                              Hepsini seç
+                                            </Button>
+                                            <Button
+                                              size="xs"
+                                              variant="ghost"
+                                              colorScheme="red"
+                                              alignSelf={{base: 'flex-start', md: 'auto'}}
+                                              onClick={removeMarketChannels}>
+                                              Hepsini kaldır
+                                            </Button>
+                                          </HStack>
+                                        </Flex>
+                                        <Input
+                                          size="sm"
+                                          mb="3"
+                                          maxW="320px"
+                                          placeholder="Piyasa kanalı ara"
+                                          value={channelSearch.market}
+                                          onChange={e =>
+                                            setChannelSearch(prev => ({
+                                              ...prev,
+                                              market: e.target.value,
+                                            }))
+                                          }
+                                        />
                                         <VStack align="start" pl="4" spacing="2">
-                                          {marketChannels.map(channel => (
+                                          {filteredMarketChannels.map(channel => (
                                             <Checkbox
                                               key={
                                                 channel.id ||
@@ -2356,6 +2616,13 @@ const BulkMessage = () => {
                                               isDisabled={!channel.id}>
                                               <HStack>
                                                 <Text>{channel.name}</Text>
+                                                {selectedChannelIdSet.has(
+                                                  String(channel.id),
+                                                ) && (
+                                                  <Badge size="sm" colorScheme="teal">
+                                                    Seçili
+                                                  </Badge>
+                                                )}
                                                 <Badge size="sm" colorScheme="green">
                                                   Market
                                                 </Badge>
@@ -2367,28 +2634,11 @@ const BulkMessage = () => {
                                               </HStack>
                                             </Checkbox>
                                           ))}
-                                        </VStack>
-                                      </Box>
-                                    )}
-
-                                    <Divider />
-
-                                    {vipChannels.length > 0 && (
-                                      <Box w="100%">
-                                        <Text fontWeight="bold" mb="2" color="gray.600">
-                                          ⭐ VIP Kanallar ({vipChannels.length})
-                                        </Text>
-                                        <VStack align="start" pl="4" spacing="2">
-                                          {vipChannels.map(channel => (
-                                            <Checkbox key={channel.id} value={channel.id}>
-                                              <HStack>
-                                                <Text>{channel.name}</Text>
-                                                <Badge size="sm" colorScheme="purple">
-                                                  VIP
-                                                </Badge>
-                                              </HStack>
-                                            </Checkbox>
-                                          ))}
+                                          {filteredMarketChannels.length === 0 && (
+                                            <Text fontSize="sm" color="gray.500">
+                                              Eşleşen piyasa kanalı bulunamadı.
+                                            </Text>
+                                          )}
                                         </VStack>
                                       </Box>
                                     )}
@@ -2397,11 +2647,49 @@ const BulkMessage = () => {
 
                                     {viopChannels.length > 0 && (
                                       <Box w="100%">
-                                        <Text fontWeight="bold" mb="2" color="gray.600">
-                                          📉 VİOP Kanalları ({viopChannels.length})
-                                        </Text>
+                                        <Flex
+                                          mb="2"
+                                          gap="2"
+                                          align={{base: 'stretch', md: 'center'}}
+                                          justify="space-between"
+                                          direction={{base: 'column', md: 'row'}}>
+                                          <Text fontWeight="bold" color="gray.600">
+                                            📉 VİOP Kanalları ({selectedViopCount}/{viopChannels.length})
+                                          </Text>
+                                          <HStack spacing="2" flexWrap="wrap">
+                                            <Button
+                                              size="xs"
+                                              variant="ghost"
+                                              colorScheme="blue"
+                                              alignSelf={{base: 'flex-start', md: 'auto'}}
+                                              onClick={selectViopChannels}>
+                                              Hepsini seç
+                                            </Button>
+                                            <Button
+                                              size="xs"
+                                              variant="ghost"
+                                              colorScheme="red"
+                                              alignSelf={{base: 'flex-start', md: 'auto'}}
+                                              onClick={removeViopChannels}>
+                                              Hepsini kaldır
+                                            </Button>
+                                          </HStack>
+                                        </Flex>
+                                        <Input
+                                          size="sm"
+                                          mb="3"
+                                          maxW="320px"
+                                          placeholder="VİOP kanalı ara"
+                                          value={channelSearch.viop}
+                                          onChange={e =>
+                                            setChannelSearch(prev => ({
+                                              ...prev,
+                                              viop: e.target.value,
+                                            }))
+                                          }
+                                        />
                                         <VStack align="start" pl="4" spacing="2">
-                                          {viopChannels.map(channel => (
+                                          {filteredViopChannels.map(channel => (
                                             <Checkbox
                                               key={
                                                 channel.id ||
@@ -2412,6 +2700,13 @@ const BulkMessage = () => {
                                               isDisabled={!channel.id}>
                                               <HStack>
                                                 <Text>{channel.name}</Text>
+                                                {selectedChannelIdSet.has(
+                                                  String(channel.id),
+                                                ) && (
+                                                  <Badge size="sm" colorScheme="teal">
+                                                    Seçili
+                                                  </Badge>
+                                                )}
                                                 <Badge size="sm" colorScheme="orange">
                                                   VİOP
                                                 </Badge>
@@ -2423,6 +2718,11 @@ const BulkMessage = () => {
                                               </HStack>
                                             </Checkbox>
                                           ))}
+                                          {filteredViopChannels.length === 0 && (
+                                            <Text fontSize="sm" color="gray.500">
+                                              Eşleşen VİOP kanalı bulunamadı.
+                                            </Text>
+                                          )}
                                         </VStack>
                                       </Box>
                                     )}
@@ -2431,11 +2731,49 @@ const BulkMessage = () => {
 
                                     {fundChannels.length > 0 && (
                                       <Box w="100%">
-                                        <Text fontWeight="bold" mb="2" color="gray.600">
-                                          🪙 Fon Kanalları ({fundChannels.length})
-                                        </Text>
+                                        <Flex
+                                          mb="2"
+                                          gap="2"
+                                          align={{base: 'stretch', md: 'center'}}
+                                          justify="space-between"
+                                          direction={{base: 'column', md: 'row'}}>
+                                          <Text fontWeight="bold" color="gray.600">
+                                            🪙 Fon Kanalları ({selectedFundCount}/{fundChannels.length})
+                                          </Text>
+                                          <HStack spacing="2" flexWrap="wrap">
+                                            <Button
+                                              size="xs"
+                                              variant="ghost"
+                                              colorScheme="blue"
+                                              alignSelf={{base: 'flex-start', md: 'auto'}}
+                                              onClick={selectFundChannels}>
+                                              Hepsini seç
+                                            </Button>
+                                            <Button
+                                              size="xs"
+                                              variant="ghost"
+                                              colorScheme="red"
+                                              alignSelf={{base: 'flex-start', md: 'auto'}}
+                                              onClick={removeFundChannels}>
+                                              Hepsini kaldır
+                                            </Button>
+                                          </HStack>
+                                        </Flex>
+                                        <Input
+                                          size="sm"
+                                          mb="3"
+                                          maxW="320px"
+                                          placeholder="Fon kanalı ara"
+                                          value={channelSearch.fund}
+                                          onChange={e =>
+                                            setChannelSearch(prev => ({
+                                              ...prev,
+                                              fund: e.target.value,
+                                            }))
+                                          }
+                                        />
                                         <VStack align="start" pl="4" spacing="2">
-                                          {fundChannels.map(channel => (
+                                          {filteredFundChannels.map(channel => (
                                             <Checkbox
                                               key={
                                                 channel.id ||
@@ -2446,6 +2784,13 @@ const BulkMessage = () => {
                                               isDisabled={!channel.id}>
                                               <HStack>
                                                 <Text>{channel.name}</Text>
+                                                {selectedChannelIdSet.has(
+                                                  String(channel.id),
+                                                ) && (
+                                                  <Badge size="sm" colorScheme="teal">
+                                                    Seçili
+                                                  </Badge>
+                                                )}
                                                 <Badge size="sm" colorScheme="blue">
                                                   Fon
                                                 </Badge>
@@ -2457,6 +2802,11 @@ const BulkMessage = () => {
                                               </HStack>
                                             </Checkbox>
                                           ))}
+                                          {filteredFundChannels.length === 0 && (
+                                            <Text fontSize="sm" color="gray.500">
+                                              Eşleşen fon kanalı bulunamadı.
+                                            </Text>
+                                          )}
                                         </VStack>
                                       </Box>
                                     )}
@@ -2465,15 +2815,67 @@ const BulkMessage = () => {
 
                                     {otherChannels.length > 0 && (
                                       <Box w="100%">
-                                        <Text fontWeight="bold" mb="2" color="gray.600">
-                                          💬 Diğer Kanallar ({otherChannels.length})
-                                        </Text>
+                                        <Flex
+                                          mb="2"
+                                          gap="2"
+                                          align={{base: 'stretch', md: 'center'}}
+                                          justify="space-between"
+                                          direction={{base: 'column', md: 'row'}}>
+                                          <Text fontWeight="bold" color="gray.600">
+                                            💬 Diğer Kanallar ({selectedOtherCount}/{otherChannels.length})
+                                          </Text>
+                                          <HStack spacing="2" flexWrap="wrap">
+                                            <Button
+                                              size="xs"
+                                              variant="ghost"
+                                              colorScheme="blue"
+                                              alignSelf={{base: 'flex-start', md: 'auto'}}
+                                              onClick={selectOtherChannels}>
+                                              Hepsini seç
+                                            </Button>
+                                            <Button
+                                              size="xs"
+                                              variant="ghost"
+                                              colorScheme="red"
+                                              alignSelf={{base: 'flex-start', md: 'auto'}}
+                                              onClick={removeOtherChannels}>
+                                              Hepsini kaldır
+                                            </Button>
+                                          </HStack>
+                                        </Flex>
+                                        <Input
+                                          size="sm"
+                                          mb="3"
+                                          maxW="320px"
+                                          placeholder="Diğer kanal ara"
+                                          value={channelSearch.other}
+                                          onChange={e =>
+                                            setChannelSearch(prev => ({
+                                              ...prev,
+                                              other: e.target.value,
+                                            }))
+                                          }
+                                        />
                                         <VStack align="start" pl="4" spacing="2">
-                                          {otherChannels.map(channel => (
+                                          {filteredOtherChannels.map(channel => (
                                             <Checkbox key={channel.id} value={channel.id}>
-                                              <Text>{channel.name}</Text>
+                                              <HStack>
+                                                <Text>{channel.name}</Text>
+                                                {selectedChannelIdSet.has(
+                                                  String(channel.id),
+                                                ) && (
+                                                  <Badge size="sm" colorScheme="teal">
+                                                    Seçili
+                                                  </Badge>
+                                                )}
+                                              </HStack>
                                             </Checkbox>
                                           ))}
+                                          {filteredOtherChannels.length === 0 && (
+                                            <Text fontSize="sm" color="gray.500">
+                                              Eşleşen diğer kanal bulunamadı.
+                                            </Text>
+                                          )}
                                         </VStack>
                                       </Box>
                                     )}
