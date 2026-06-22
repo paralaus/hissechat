@@ -114,6 +114,10 @@ const VipMemberManagement = ({channelId, channelName}) => {
   const [subscriberPage, setSubscriberPage] = useState(1);
   const [isExportingSubscribersPdf, setIsExportingSubscribersPdf] = useState(false);
   const subscriberLimit = 20;
+  const [unifiedSearch, setUnifiedSearch] = useState('');
+  const [unifiedMembers, setUnifiedMembers] = useState([]);
+  const [isUnifiedLoading, setIsUnifiedLoading] = useState(false);
+  const [isExportingUnifiedPdf, setIsExportingUnifiedPdf] = useState(false);
 
   const loadUsers = async query => {
     const {data} = await api.getUsers({query});
@@ -135,6 +139,7 @@ const VipMemberManagement = ({channelId, channelName}) => {
           limit: memberLimit,
         })
         .then(res => res.data),
+    enabled: false,
   });
 
   const {data: subscribers, isFetching: isSubscribersLoading} = useQuery({
@@ -151,7 +156,7 @@ const VipMemberManagement = ({channelId, channelName}) => {
           limit: subscriberLimit,
         })
         .then(res => res.data),
-    enabled: !!channelId,
+    enabled: false,
   });
 
   const grantMutation = useMutation({
@@ -160,6 +165,7 @@ const VipMemberManagement = ({channelId, channelName}) => {
       setSelectedUser(null);
       setMemberPage(1);
       queryClient.invalidateQueries({queryKey: ['vipMembers', channelId]});
+      loadUnifiedVipMembers();
       toast({
         title: 'Kullanıcı VIP kanala eklendi',
         status: 'success',
@@ -179,6 +185,7 @@ const VipMemberManagement = ({channelId, channelName}) => {
     mutationFn: userId => api.revokeVipMemberAccess(channelId, userId),
     onSuccess: () => {
       queryClient.invalidateQueries({queryKey: ['vipMembers', channelId]});
+      loadUnifiedVipMembers();
       toast({
         title: 'Kullanıcının VIP kanal erişimi kaldırıldı',
         status: 'success',
@@ -233,6 +240,12 @@ const VipMemberManagement = ({channelId, channelName}) => {
   const subscriberResults = subscribers?.results || [];
   const totalSubscriberResults = subscribers?.totalResults || 0;
   const totalSubscriberPages = subscribers?.totalPages || 1;
+  const normalizedUnifiedSearch = String(unifiedSearch || '').trim().toLowerCase();
+  const visibleUnifiedMembers = normalizedUnifiedSearch
+    ? (unifiedMembers || []).filter(m =>
+        `${m?.fullname || ''} ${m?.email || ''}`.toLowerCase().includes(normalizedUnifiedSearch),
+      )
+    : unifiedMembers || [];
 
   React.useEffect(() => {
     setMemberPage(1);
@@ -339,6 +352,223 @@ const VipMemberManagement = ({channelId, channelName}) => {
       status: 'error',
       position: 'top',
     });
+  };
+
+  const mergeUnifiedVipMembers = ({subscriptionRows, manualUsers}) => {
+    const map = new Map();
+    const normalizeEmail = value => String(value || '').trim().toLowerCase();
+
+    const ensure = (userId, email) => {
+      const key = userId ? `id:${userId}` : `email:${normalizeEmail(email)}`;
+      if (!key || key === 'email:') return null;
+      if (!map.has(key)) {
+        map.set(key, {
+          key,
+          userId: userId || null,
+          fullname: '',
+          email: email || '',
+          thumbnail: null,
+          sources: {subscription: false, manual: false},
+          platforms: new Set(),
+          expiryTime: null,
+          status: null,
+          manualJoinDate: null,
+        });
+      }
+      return map.get(key);
+    };
+
+    (subscriptionRows || []).forEach(item => {
+      const user = item?.user || {};
+      const userId = user?.id || user?._id || null;
+      const email = user?.email || '';
+      const entry = ensure(userId, email);
+      if (!entry) return;
+
+      entry.sources.subscription = true;
+      entry.fullname = entry.fullname || user?.fullname || 'İsimsiz';
+      entry.email = entry.email || email || '';
+      entry.thumbnail = entry.thumbnail || user?.thumbnail || null;
+
+      const platform = item?.platform || null;
+      if (platform) entry.platforms.add(String(platform));
+
+      const expiry = item?.expiryTime || null;
+      if (expiry) {
+        const current = entry.expiryTime ? new Date(entry.expiryTime).getTime() : 0;
+        const next = new Date(expiry).getTime();
+        if (!current || next > current) entry.expiryTime = expiry;
+      }
+
+      const expiryMs = entry.expiryTime ? new Date(entry.expiryTime).getTime() : 0;
+      const expired =
+        Boolean(item?.isExpired) || (expiryMs ? expiryMs < Date.now() : false);
+      entry.status = expired ? 'Süresi Dolmuş' : 'Aktif';
+    });
+
+    (manualUsers || []).forEach(user => {
+      const userId = user?.id || user?._id || null;
+      const email = user?.email || '';
+      const entry = ensure(userId, email);
+      if (!entry) return;
+
+      entry.sources.manual = true;
+      entry.fullname = entry.fullname || user?.fullname || 'İsimsiz';
+      entry.email = entry.email || email || '';
+      entry.thumbnail = entry.thumbnail || user?.thumbnail || null;
+      entry.manualJoinDate = entry.manualJoinDate || user?.joinDate || null;
+    });
+
+    const results = Array.from(map.values()).map(entry => ({
+      ...entry,
+      platforms: Array.from(entry.platforms.values()),
+    }));
+
+    results.sort((a, b) =>
+      String(a.fullname || '').localeCompare(String(b.fullname || ''), 'tr'),
+    );
+
+    return results;
+  };
+
+  const loadUnifiedVipMembers = async () => {
+    if (!channelId) return;
+    setIsUnifiedLoading(true);
+    try {
+      const [subscriptionRows, manualUsers] = await Promise.all([
+        fetchAllSubscribersForExport(),
+        fetchAllMembersForExport(),
+      ]);
+      setUnifiedMembers(
+        mergeUnifiedVipMembers({subscriptionRows, manualUsers}),
+      );
+    } catch (error) {
+      handleExportError(error);
+    } finally {
+      setIsUnifiedLoading(false);
+    }
+  };
+
+  React.useEffect(() => {
+    setUnifiedMembers([]);
+    setUnifiedSearch('');
+    loadUnifiedVipMembers();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [channelId]);
+
+  const exportUnifiedMembersAsPdf = async () => {
+    const exportWindow = window.open('', '_blank', 'width=1200,height=900');
+
+    if (!exportWindow) {
+      toast({
+        title: 'PDF penceresi acilamadi',
+        description: 'Tarayiciniz popup engelliyor olabilir.',
+        status: 'warning',
+        position: 'top',
+      });
+      return;
+    }
+
+    setIsExportingUnifiedPdf(true);
+    try {
+      const [subscriptionRows, manualUsers] = await Promise.all([
+        fetchAllSubscribersForExport(),
+        fetchAllMembersForExport(),
+      ]);
+      const merged = mergeUnifiedVipMembers({subscriptionRows, manualUsers});
+
+      const exportedAt = new Date().toLocaleString('tr-TR');
+      const safeChannelName = escapeHtml(channelName || 'VIP Kanal');
+      const search = String(unifiedSearch || '').trim().toLowerCase();
+      const filtered = search
+        ? merged.filter(m =>
+            `${m.fullname || ''} ${m.email || ''}`.toLowerCase().includes(search),
+          )
+        : merged;
+
+      const rows = filtered
+        .map((m, index) => {
+          const source =
+            m.sources.subscription && m.sources.manual
+              ? 'Abonelik + Manuel'
+              : m.sources.subscription
+                ? 'Abonelik'
+                : 'Manuel';
+          const platform =
+            Array.isArray(m.platforms) && m.platforms.length > 0
+              ? m.platforms.join(', ')
+              : '-';
+          const status = m.status || '-';
+          const expiry = m.expiryTime ? formatJoinDate(m.expiryTime) : '-';
+          const manualJoin = m.manualJoinDate ? formatJoinDate(m.manualJoinDate) : '-';
+
+          return `
+            <tr>
+              <td>${index + 1}</td>
+              <td>${escapeHtml(m.fullname || 'İsimsiz')}</td>
+              <td>${escapeHtml(m.email || '-')}</td>
+              <td>${escapeHtml(source)}</td>
+              <td>${escapeHtml(platform)}</td>
+              <td>${escapeHtml(status)}</td>
+              <td>${escapeHtml(expiry)}</td>
+              <td>${escapeHtml(manualJoin)}</td>
+            </tr>
+          `;
+        })
+        .join('');
+
+      exportWindow.document.write(`
+        <!doctype html>
+        <html>
+          <head>
+            <meta charset="utf-8" />
+            <title>${safeChannelName} - VIP Üyeleri</title>
+            <style>
+              body { font-family: Arial, sans-serif; color: #111827; margin: 24px; }
+              h1 { font-size: 22px; margin: 0 0 8px 0; }
+              .meta { margin-bottom: 18px; color: #4b5563; font-size: 13px; }
+              table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+              th, td { border: 1px solid #d1d5db; padding: 8px 10px; text-align: left; font-size: 12px; word-break: break-word; }
+              th { background: #f3f4f6; }
+              @page { size: A4 portrait; margin: 14mm; }
+            </style>
+          </head>
+          <body>
+            <h1>${safeChannelName} - VIP Üyeleri</h1>
+            <div class="meta">
+              Toplam uye: ${filtered.length}<br />
+              Export tarihi: ${escapeHtml(exportedAt)}<br />
+              Arama: ${escapeHtml(unifiedSearch || '') || '-'}
+            </div>
+            <table>
+              <thead>
+                <tr>
+                  <th style="width: 40px;">#</th>
+                  <th>Ad Soyad</th>
+                  <th>Email</th>
+                  <th style="width: 120px;">Kaynak</th>
+                  <th style="width: 90px;">Platform</th>
+                  <th style="width: 90px;">Durum</th>
+                  <th style="width: 160px;">Abonelik Bitiş</th>
+                  <th style="width: 160px;">Manuel Katılım</th>
+                </tr>
+              </thead>
+              <tbody>${rows}</tbody>
+            </table>
+          </body>
+        </html>
+      `);
+      exportWindow.document.close();
+      exportWindow.focus();
+      setTimeout(() => {
+        exportWindow.print();
+      }, 400);
+    } catch (error) {
+      exportWindow.close();
+      handleExportError(error);
+    } finally {
+      setIsExportingUnifiedPdf(false);
+    }
   };
 
   const exportSubscribersAsPdf = async () => {
@@ -680,9 +910,9 @@ const VipMemberManagement = ({channelId, channelName}) => {
         </Badge>
       </Flex>
       <Text fontSize="sm" color="gray.600" mb={4}>
-        Abonelikten gelen üyeler aşağıda ayrı listelenir. Apple veya Google
-        dışındaki kullanıcıları bu kanala manuel olarak ekleyebilir ya da
-        kaldırabilirsiniz.
+        Abonelik ve manuel üyelikler tekilleştirilmiş listede birleştirilir.
+        Apple veya Google dışındaki kullanıcıları bu kanala manuel olarak
+        ekleyebilir ya da kaldırabilirsiniz.
       </Text>
 
       <Box bg="white" p={4} borderRadius="md" boxShadow="sm" mb={4}>
@@ -753,225 +983,124 @@ const VipMemberManagement = ({channelId, channelName}) => {
           direction={{base: 'column', md: 'row'}}
           mb={4}
           gap={3}>
-          <Text fontWeight="bold">
-            Abonelik VIP Üyeleri ({totalSubscriberResults})
-          </Text>
+          <Box>
+            <Text fontWeight="bold">
+              VIP Üyeleri (Tekilleştirilmiş) ({visibleUnifiedMembers.length}
+              {normalizedUnifiedSearch ? ` / ${unifiedMembers.length}` : ''})
+            </Text>
+            <Text fontSize="xs" color="gray.500" mt={1}>
+              Abonelik + manuel listeler birleştirilir; eşleşen kullanıcı tek satır görünür.
+            </Text>
+          </Box>
           <Flex gap={3} direction={{base: 'column', md: 'row'}}>
             <Input
               maxW={{base: '100%', md: '280px'}}
-              placeholder="Abone ara"
-              value={subscriberSearch}
-              onChange={e => setSubscriberSearch(e.target.value)}
+              placeholder="Üye ara"
+              value={unifiedSearch}
+              onChange={e => setUnifiedSearch(e.target.value)}
             />
             <Button
               colorScheme="blue"
               variant="outline"
-              onClick={exportSubscribersAsPdf}
-              isLoading={isExportingSubscribersPdf}
-              isDisabled={isExportingSubscribersPdf}>
+              onClick={loadUnifiedVipMembers}
+              isLoading={isUnifiedLoading}
+              isDisabled={isUnifiedLoading}>
+              Yenile
+            </Button>
+            <Button
+              colorScheme="blue"
+              variant="solid"
+              onClick={exportUnifiedMembersAsPdf}
+              isLoading={isExportingUnifiedPdf}
+              isDisabled={isExportingUnifiedPdf || isUnifiedLoading}>
               PDF Export
             </Button>
           </Flex>
         </Flex>
-
-        <VStack align="stretch" spacing={2} maxH="420px" overflowY="auto">
-          {!isSubscribersLoading && subscriberResults.length === 0 && (
+        <VStack align="stretch" spacing={2} maxH="520px" overflowY="auto">
+          {!isUnifiedLoading && visibleUnifiedMembers.length === 0 && (
             <Text fontSize="sm" color="gray.500">
-              Abone bulunamadı.
+              Üye bulunamadı.
             </Text>
           )}
-          {subscriberResults.map(item => {
-            const user = item?.user || {};
-            const id =
-              item?.id ||
-              item?._id ||
-              user?.id ||
-              user?._id ||
-              `${user?.email || ''}-${item?.productId || ''}`;
-            const platform = item?.platform || '-';
-            const expiryTime = item?.expiryTime ? new Date(item.expiryTime).getTime() : 0;
-            const expired =
-              Boolean(item?.isExpired) || (expiryTime ? expiryTime < Date.now() : false);
+          {visibleUnifiedMembers.map(m => {
+            const canRevoke = !!(m?.sources?.manual && m?.userId);
+            const platforms =
+              Array.isArray(m?.platforms) && m.platforms.length > 0
+                ? m.platforms
+                : [];
+            const hasSubscription = !!m?.sources?.subscription;
+            const hasManual = !!m?.sources?.manual;
+
             return (
               <Flex
-                key={id}
+                key={m.key}
                 align="center"
                 justify="space-between"
                 p={2}
                 borderBottom="1px solid #eee">
                 <Flex align="center">
                   <Avatar
-                    src={getCombinedLogoUrl(user.thumbnail)}
-                    name={user.fullname}
+                    src={getCombinedLogoUrl(m.thumbnail)}
+                    name={m.fullname}
                     size="sm"
                     mr={2}
                   />
                   <Box>
-                    <Text fontSize="sm" fontWeight="medium">
-                      {user.fullname || 'İsimsiz'}
-                    </Text>
-                    {!!user.email && (
+                    <HStack spacing={2} flexWrap="wrap">
+                      <Text fontSize="sm" fontWeight="medium">
+                        {m.fullname || 'İsimsiz'}
+                      </Text>
+                      {hasManual && (
+                        <Badge colorScheme="purple" variant="subtle">
+                          Manuel
+                        </Badge>
+                      )}
+                      {hasSubscription && (
+                        <Badge colorScheme="blue" variant="subtle">
+                          Abonelik
+                        </Badge>
+                      )}
+                      {platforms.map(p => (
+                        <Badge
+                          key={`${m.key}-${p}`}
+                          colorScheme={p === 'google' ? 'green' : p === 'apple' ? 'gray' : 'blue'}>
+                          {p}
+                        </Badge>
+                      ))}
+                      {hasSubscription && (
+                        <Badge colorScheme={m.status === 'Aktif' ? 'green' : 'red'}>
+                          {m.status || '-'}
+                        </Badge>
+                      )}
+                    </HStack>
+                    {!!m.email && (
                       <Text fontSize="xs" color="gray.500">
-                        {user.email}
+                        {m.email}
+                      </Text>
+                    )}
+                    {(m.expiryTime || m.manualJoinDate) && (
+                      <Text fontSize="xs" color="gray.500" mt={1}>
+                        {m.expiryTime ? `Bitiş: ${formatJoinDate(m.expiryTime)}` : ''}
+                        {m.expiryTime && m.manualJoinDate ? ' • ' : ''}
+                        {m.manualJoinDate ? `Manuel: ${formatJoinDate(m.manualJoinDate)}` : ''}
                       </Text>
                     )}
                   </Box>
                 </Flex>
-                <Flex align="center" gap={2}>
-                  <Badge
-                    colorScheme={
-                      platform === 'google'
-                        ? 'green'
-                        : platform === 'apple'
-                          ? 'gray'
-                          : 'blue'
-                    }>
-                    {platform}
-                  </Badge>
-                  <Badge colorScheme={expired ? 'red' : 'green'}>
-                    {expired ? 'Süresi Dolmuş' : 'Aktif'}
-                  </Badge>
-                </Flex>
+                {canRevoke && (
+                  <Button
+                    size="xs"
+                    colorScheme="red"
+                    onClick={() => revokeMutation.mutate(m.userId)}
+                    isLoading={revokeMutation.isPending}>
+                    Kaldır
+                  </Button>
+                )}
               </Flex>
             );
           })}
         </VStack>
-        <Flex
-          justify="space-between"
-          align="center"
-          mt={4}
-          gap={3}
-          direction={{base: 'column', md: 'row'}}>
-          <Text fontSize="sm" color="gray.500">
-            Sayfa {subscriberPage} / {totalSubscriberPages}
-          </Text>
-          <Flex gap={2}>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => setSubscriberPage(prev => Math.max(1, prev - 1))}
-              isDisabled={subscriberPage <= 1 || isSubscribersLoading}>
-              Önceki
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => setSubscriberPage(prev => prev + 1)}
-              isDisabled={subscriberPage >= totalSubscriberPages || isSubscribersLoading}>
-              Sonraki
-            </Button>
-          </Flex>
-        </Flex>
-      </Box>
-
-      <Box bg="white" p={4} borderRadius="md" boxShadow="sm">
-        <Flex
-          justify="space-between"
-          align={{base: 'stretch', md: 'center'}}
-          direction={{base: 'column', md: 'row'}}
-          mb={4}
-          gap={3}>
-          <Text fontWeight="bold">Manuel VIP Üyeleri ({totalResults})</Text>
-          <Flex gap={3} direction={{base: 'column', md: 'row'}}>
-            <Input
-              maxW={{base: '100%', md: '280px'}}
-              placeholder="Üye ara"
-              value={memberSearch}
-              onChange={e => setMemberSearch(e.target.value)}
-            />
-            <Button
-              colorScheme="blue"
-              variant="outline"
-              onClick={exportMembersAsPdf}
-              isLoading={exportingType === 'pdf'}
-              isDisabled={!!exportingType}>
-              PDF Export
-            </Button>
-            <Button
-              colorScheme="teal"
-              variant="outline"
-              onClick={exportMembersAsCsv}
-              isLoading={exportingType === 'csv'}
-              isDisabled={!!exportingType}>
-              CSV Export
-            </Button>
-            <Button
-              colorScheme="green"
-              variant="outline"
-              onClick={exportMembersAsExcel}
-              isLoading={exportingType === 'excel'}
-              isDisabled={!!exportingType}>
-              Excel Export
-            </Button>
-          </Flex>
-        </Flex>
-        <VStack align="stretch" spacing={2} maxH="420px" overflowY="auto">
-          {!isMembersLoading && memberResults.length === 0 && (
-            <Text fontSize="sm" color="gray.500">
-              Üye bulunamadı.
-            </Text>
-          )}
-          {memberResults.map(user => (
-            <Flex
-              key={user.id}
-              align="center"
-              justify="space-between"
-              p={2}
-              borderBottom="1px solid #eee">
-              <Flex align="center">
-                <Avatar
-                  src={getCombinedLogoUrl(user.thumbnail)}
-                  name={user.fullname}
-                  size="sm"
-                  mr={2}
-                />
-                <Box>
-                  <Text fontSize="sm" fontWeight="medium">
-                    {user.fullname}
-                  </Text>
-                  {!!user.email && (
-                    <Text fontSize="xs" color="gray.500">
-                      {user.email}
-                    </Text>
-                  )}
-                </Box>
-              </Flex>
-              <Button
-                size="xs"
-                colorScheme="red"
-                onClick={() => revokeMutation.mutate(user.id)}
-                isLoading={revokeMutation.isPending}>
-                Kaldır
-              </Button>
-            </Flex>
-          ))}
-        </VStack>
-        <Flex
-          justify="space-between"
-          align="center"
-          mt={4}
-          gap={3}
-          direction={{base: 'column', md: 'row'}}>
-          <Text fontSize="sm" color="gray.500">
-            Sayfa {memberPage} / {totalPages}
-          </Text>
-          <Flex gap={2}>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => setMemberPage(prev => Math.max(1, prev - 1))}
-              isDisabled={memberPage <= 1 || isMembersLoading}>
-              Önceki
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => setMemberPage(prev => prev + 1)}
-              isDisabled={memberPage >= totalPages || isMembersLoading}>
-              Sonraki
-            </Button>
-          </Flex>
-        </Flex>
       </Box>
     </Box>
   );
