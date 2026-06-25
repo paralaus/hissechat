@@ -16,6 +16,7 @@ import Login from '../pages/auth/Login';
 import ForgotPassword from '../pages/auth/ForgotPassword';
 import Home from '../pages/dashboard/Home';
 import Users from '../pages/dashboard/users/Users';
+import DeletedUsers from '../pages/dashboard/users/DeletedUsers';
 import UnverifiedUsers from '../pages/dashboard/users/UnverifiedUsers';
 import EditUser from '../pages/dashboard/users/EditUser';
 import Settings from '../pages/dashboard/Settings';
@@ -107,6 +108,13 @@ const router = createBrowserRouter(
             element={<CreateUser />}
             handle={{
               crumb: () => <Text>Kullanıcı Oluştur</Text>,
+            }}
+          />
+          <Route
+            path="deleted"
+            element={<DeletedUsers />}
+            handle={{
+              crumb: () => <Text>Silinen Kullanıcılar</Text>,
             }}
           />
           <Route

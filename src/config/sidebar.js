@@ -20,6 +20,7 @@ import {
   FiSliders,
   FiFileText,
   FiClock,
+  FiTrash2,
 } from 'react-icons/fi';
 import {AiOutlineUserAdd, AiOutlineProduct} from 'react-icons/ai';
 import {BiLineChart} from 'react-icons/bi';
@@ -71,6 +72,12 @@ export const sidebarRoutes = [
         name: 'Doğrulanmamış Üyeler',
         path: routes.unverifiedUsers.path,
         icon: GoListUnordered,
+        exact: true,
+      },
+      {
+        name: 'Silinen Kullanıcılar',
+        path: routes.deletedUsers.path,
+        icon: FiTrash2,
         exact: true,
       },
       {

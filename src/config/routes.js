@@ -11,6 +11,9 @@ export const routes = {
   users: {
     path: '/dashboard/users',
   },
+  deletedUsers: {
+    path: '/dashboard/users/deleted',
+  },
   unverifiedUsers: {
     path: '/dashboard/users/unverified',
   },

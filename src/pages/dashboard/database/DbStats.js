@@ -174,6 +174,58 @@ const DbStats = () => {
 
         {data && (
           <>
+            <Card bg={bgColor} borderColor={borderColor} borderWidth="1px">
+              <CardBody>
+                <Heading size="sm" mb={3}>
+                  Aktif Mongo Baglantisi
+                </Heading>
+                <SimpleGrid columns={{base: 1, md: 2, lg: 6}} spacing={4}>
+                  <Box>
+                    <Text fontSize="sm" color="gray.500">
+                      Veritabani
+                    </Text>
+                    <Text fontWeight="bold">{data.connection?.dbName || '-'}</Text>
+                  </Box>
+                  <Box>
+                    <Text fontSize="sm" color="gray.500">
+                      Host
+                    </Text>
+                    <Text fontWeight="bold" wordBreak="break-all">
+                      {data.connection?.host || '-'}
+                    </Text>
+                  </Box>
+                  <Box>
+                    <Text fontSize="sm" color="gray.500">
+                      Durum
+                    </Text>
+                    <Badge colorScheme={data.connection?.readyState === 1 ? 'green' : 'red'}>
+                      {data.connection?.readyState === 1 ? 'Bagli' : 'Bagli Degil'}
+                    </Badge>
+                  </Box>
+                  <Box>
+                    <Text fontSize="sm" color="gray.500">
+                      Auth Source
+                    </Text>
+                    <Text fontWeight="bold">{data.connection?.authSource || '-'}</Text>
+                  </Box>
+                  <Box>
+                    <Text fontSize="sm" color="gray.500">
+                      Baglanti Tipi
+                    </Text>
+                    <Text fontWeight="bold">{data.connection?.connectionType || '-'}</Text>
+                  </Box>
+                  <Box>
+                    <Text fontSize="sm" color="gray.500">
+                      Hosts
+                    </Text>
+                    <Text fontWeight="bold" fontSize="sm" wordBreak="break-all">
+                      {data.connection?.hosts?.length ? data.connection.hosts.join(', ') : '-'}
+                    </Text>
+                  </Box>
+                </SimpleGrid>
+              </CardBody>
+            </Card>
+
             {/* Cleanup Section */}
             <Card bg={bgColor} borderColor={borderColor} borderWidth="1px">
               <CardBody>

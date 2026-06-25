@@ -265,11 +265,10 @@ apiClient.interceptors.response.use(
       }
     }
 
-    // For 403 Forbidden, redirect to login
+    // 403 means "yetki yok"; bu auth'in bozuldugu anlamina gelmez.
+    // Bazı dashboard widget'lari 403 donse bile kullaniciyi sistemden atmayalim.
     if (status === 403) {
-      console.warn('[Auth] 403 Forbidden - redirecting to login');
-      clearAuthTokens();
-      window.location.href = '/auth/login';
+      console.warn('[Auth] 403 Forbidden - keeping current session');
     }
 
     return Promise.reject(error);
