@@ -32,6 +32,9 @@ const processQueue = (error, token = null) => {
 export const refreshAccessToken = async () => {
   try {
     const refreshToken = Cookies.get('refreshToken');
+    // #region debug-point B:admin-refresh-enter
+    fetch('http://127.0.0.1:7777/event',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'admin-session-drop',runId:'pre-fix',hypothesisId:'B',location:'admin/src/api/client.js',msg:'[DEBUG] admin refresh enter',data:{hasRefreshToken:Boolean(refreshToken),tokenCookie:Boolean(Cookies.get('token')),tokenExpires:Cookies.get('tokenExpires')||null},ts:Date.now()})}).catch(()=>{});
+    // #endregion
     if (!refreshToken) {
       console.log('[Auth] No refresh token found');
       return null;
@@ -70,10 +73,16 @@ export const refreshAccessToken = async () => {
     // Update axios headers
     apiClient.defaults.headers.common['Authorization'] =
       `Bearer ${access.token}`;
+    // #region debug-point B:admin-refresh-success
+    fetch('http://127.0.0.1:7777/event',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'admin-session-drop',runId:'pre-fix',hypothesisId:'B',location:'admin/src/api/client.js',msg:'[DEBUG] admin refresh success',data:{accessExp:access.expires,hasRefresh:Boolean(refresh?.token)},ts:Date.now()})}).catch(()=>{});
+    // #endregion
 
     console.log('[Auth] Access token refreshed successfully');
     return access.token;
   } catch (error) {
+    // #region debug-point B:admin-refresh-fail
+    fetch('http://127.0.0.1:7777/event',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'admin-session-drop',runId:'pre-fix',hypothesisId:'B',location:'admin/src/api/client.js',msg:'[DEBUG] admin refresh fail',data:{status:error?.response?.status||null,message:error?.message||null,response:error?.response?.data||null},ts:Date.now()})}).catch(()=>{});
+    // #endregion
     console.error(
       '[Auth] Token refresh failed:',
       error?.response?.data || error.message,
@@ -205,6 +214,9 @@ apiClient.interceptors.response.use(
 
     // Handle 401 Unauthorized
     if (status === 401 && originalRequest && !originalRequest._retry) {
+      // #region debug-point C:admin-response-401
+      fetch('http://127.0.0.1:7777/event',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'admin-session-drop',runId:'pre-fix',hypothesisId:'C',location:'admin/src/api/client.js',msg:'[DEBUG] admin got 401',data:{url:originalRequest?.url||null,method:originalRequest?.method||null,hasAuthHeader:Boolean(originalRequest?.headers?.Authorization),hasTokenCookie:Boolean(Cookies.get('token')),hasRefreshCookie:Boolean(Cookies.get('refreshToken'))},ts:Date.now()})}).catch(()=>{});
+      // #endregion
       // Skip for auth endpoints
       const isAuthEndpoint =
         originalRequest.url?.includes('auth/') ||
