@@ -311,7 +311,11 @@ const SendPushNotification = () => {
   });
   const formValues = watch();
   const receiverType = watch('receiverType');
-  const selectedChannels = watch('selectedChannels') || [];
+  const watchedSelectedChannels = watch('selectedChannels');
+  const selectedChannels = React.useMemo(
+    () => watchedSelectedChannels || [],
+    [watchedSelectedChannels],
+  );
   const previewBody =
     formValues.summary || formValues.body || 'Mesaj onizlemesi';
   const previewDeepLink =
