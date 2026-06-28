@@ -214,12 +214,14 @@ const filterChannelsByQuery = (channels, query) => {
   );
 };
 
+const getChannelId = channel => String(channel?.id || channel?._id || '');
+
 const sortSelectedChannelsFirst = (channels, selectedIds) => {
   const selectedSet = new Set((selectedIds || []).map(String));
 
   return [...(channels || [])].sort((a, b) => {
-    const aSelected = selectedSet.has(String(a?.id || a?._id || ''));
-    const bSelected = selectedSet.has(String(b?.id || b?._id || ''));
+    const aSelected = selectedSet.has(getChannelId(a));
+    const bSelected = selectedSet.has(getChannelId(b));
 
     if (aSelected === bSelected) return 0;
     return aSelected ? -1 : 1;
@@ -228,7 +230,7 @@ const sortSelectedChannelsFirst = (channels, selectedIds) => {
 
 const getSelectableChannelIds = channels =>
   (channels || [])
-    .map(channel => String(channel?.id || channel?._id || ''))
+    .map(channel => getChannelId(channel))
     .filter(Boolean);
 
 const fetchAll = async (apiFunc, params = {}) => {
@@ -784,13 +786,16 @@ const SendPushNotification = () => {
   const selectedChannelObjects = React.useMemo(
     () =>
       channelsData.filter(channel =>
-        selectedChannelSet.has(String(channel?.id || channel?._id || '')),
+        selectedChannelSet.has(getChannelId(channel)),
       ),
     [channelsData, selectedChannelSet],
   );
 
   const handleSelectedChannelsChange = values => {
-    setValue('selectedChannels', values, {shouldValidate: true});
+    const normalizedValues = Array.isArray(values)
+      ? values.map(String).filter(Boolean)
+      : [];
+    setValue('selectedChannels', normalizedValues, {shouldValidate: true});
   };
 
   const addChannelsToSelection = channels => {
@@ -830,7 +835,7 @@ const SendPushNotification = () => {
       const sortedChannels = sortSelectedChannelsFirst(channels, selectedChannels);
       const filteredChannels = selectedOnly
         ? sortedChannels.filter(channel =>
-            selectedChannelSet.has(String(channel?.id || channel?._id || '')),
+            selectedChannelSet.has(getChannelId(channel)),
           )
         : sortedChannels;
 
@@ -890,19 +895,19 @@ const SendPushNotification = () => {
   const selectedCountsByGroup = React.useMemo(
     () => ({
       vip: vipChannels.filter(channel =>
-        selectedChannelSet.has(String(channel?.id || channel?._id || '')),
+        selectedChannelSet.has(getChannelId(channel)),
       ).length,
       market: marketChannels.filter(channel =>
-        selectedChannelSet.has(String(channel?.id || channel?._id || '')),
+        selectedChannelSet.has(getChannelId(channel)),
       ).length,
       viop: viopChannels.filter(channel =>
-        selectedChannelSet.has(String(channel?.id || channel?._id || '')),
+        selectedChannelSet.has(getChannelId(channel)),
       ).length,
       fund: fundChannels.filter(channel =>
-        selectedChannelSet.has(String(channel?.id || channel?._id || '')),
+        selectedChannelSet.has(getChannelId(channel)),
       ).length,
       other: otherChannels.filter(channel =>
-        selectedChannelSet.has(String(channel?.id || channel?._id || '')),
+        selectedChannelSet.has(getChannelId(channel)),
       ).length,
     }),
     [

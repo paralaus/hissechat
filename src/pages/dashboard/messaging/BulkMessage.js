@@ -188,12 +188,14 @@ const filterChannelsByQuery = (channels, query) => {
   );
 };
 
+const getChannelId = channel => String(channel?.id || channel?._id || '');
+
 const sortSelectedChannelsFirst = (channels, selectedIds) => {
   const selectedSet = new Set((selectedIds || []).map(String));
 
   return [...(channels || [])].sort((a, b) => {
-    const aSelected = selectedSet.has(String(a?.id || ''));
-    const bSelected = selectedSet.has(String(b?.id || ''));
+    const aSelected = selectedSet.has(getChannelId(a));
+    const bSelected = selectedSet.has(getChannelId(b));
 
     if (aSelected === bSelected) return 0;
     return aSelected ? -1 : 1;
@@ -202,9 +204,9 @@ const sortSelectedChannelsFirst = (channels, selectedIds) => {
 
 const getSelectableChannelIds = channels =>
   (channels || [])
-    .map(channel => channel?.id)
+    .map(channel => getChannelId(channel))
     .filter(Boolean)
-    .map(id => String(id));
+    .map(String);
 
 const getSelectedCountForChannels = (channels, selectedIdSet) =>
   getSelectableChannelIds(channels).filter(id => selectedIdSet.has(id)).length;
@@ -522,7 +524,9 @@ const BulkMessage = () => {
     if (!viopMarketsData) return [];
     return viopMarketsData.map(market => {
       const existingChannel = channelsData?.find(
-        c => c.marketCode === market.code,
+        c =>
+          String(c?.marketCode || '').toUpperCase() ===
+          String(market?.code || '').toUpperCase(),
       );
       if (existingChannel) return existingChannel;
       return {
@@ -539,7 +543,9 @@ const BulkMessage = () => {
     if (!cryptoMarketsData) return [];
     return cryptoMarketsData.map(market => {
       const existingChannel = channelsData?.find(
-        c => c.marketCode === market.code,
+        c =>
+          String(c?.marketCode || '').toUpperCase() ===
+          String(market?.code || '').toUpperCase(),
       );
       if (existingChannel) return existingChannel;
       return {
@@ -557,7 +563,9 @@ const BulkMessage = () => {
     if (!stockMarketsData) return [];
     return stockMarketsData.map(market => {
       const existingChannel = channelsData?.find(
-        c => c.marketCode === market.code,
+        c =>
+          String(c?.marketCode || '').toUpperCase() ===
+          String(market?.code || '').toUpperCase(),
       );
       if (existingChannel) return existingChannel;
       return {
@@ -573,7 +581,11 @@ const BulkMessage = () => {
   const mergedFundChannels = React.useMemo(() => {
     if (!fundsData) return [];
     return fundsData.map(fund => {
-      const existingChannel = channelsData?.find(c => c.fundCode === fund.code);
+      const existingChannel = channelsData?.find(
+        c =>
+          String(c?.fundCode || '').toUpperCase() ===
+          String(fund?.code || '').toUpperCase(),
+      );
       if (existingChannel) return existingChannel;
       return {
         id: null,
@@ -588,7 +600,7 @@ const BulkMessage = () => {
   const topActiveChannels = React.useMemo(() => {
     const map = new Map();
     const add = c => {
-      const id = c?.id;
+      const id = getChannelId(c);
       if (!id) return;
       if (!map.has(id)) map.set(id, c);
     };
@@ -990,12 +1002,14 @@ const BulkMessage = () => {
         submissionValues.targetType = 'selected';
         submissionValues.selectedChannels = channelsData
           .filter(c => c.type === 'fund')
-          .map(c => c.id);
+          .map(getChannelId)
+          .filter(Boolean);
       } else if (values.targetType === 'all_viop') {
         submissionValues.targetType = 'selected';
         submissionValues.selectedChannels = channelsData
           .filter(isViopChannel)
-          .map(c => c.id);
+          .map(getChannelId)
+          .filter(Boolean);
       } else if (values.targetType === 'top_100') {
         if (!topActiveChannels || topActiveChannels.length === 0) {
           toast({
@@ -1007,7 +1021,9 @@ const BulkMessage = () => {
           return;
         }
         submissionValues.targetType = 'selected';
-        submissionValues.selectedChannels = topActiveChannels.map(c => c.id);
+        submissionValues.selectedChannels = topActiveChannels
+          .map(getChannelId)
+          .filter(Boolean);
       }
 
       const {data} = await mutateAsync(submissionValues);
@@ -2537,12 +2553,14 @@ const BulkMessage = () => {
                                           }
                                         />
                                         <VStack align="start" pl="4" spacing="2">
-                                          {filteredVipChannels.map(channel => (
-                                            <Checkbox key={channel.id} value={channel.id}>
+                                          {filteredVipChannels.map(channel => {
+                                            const channelId = getChannelId(channel);
+                                            return (
+                                            <Checkbox key={channelId} value={channelId}>
                                               <HStack>
                                                 <Text>{channel.name}</Text>
                                                 {selectedChannelIdSet.has(
-                                                  String(channel.id),
+                                                  channelId,
                                                 ) && (
                                                   <Badge size="sm" colorScheme="teal">
                                                     Seçili
@@ -2553,7 +2571,8 @@ const BulkMessage = () => {
                                                 </Badge>
                                               </HStack>
                                             </Checkbox>
-                                          ))}
+                                            );
+                                          })}
                                           {filteredVipChannels.length === 0 && (
                                             <Text fontSize="sm" color="gray.500">
                                               Eşleşen VIP kanal bulunamadı.
@@ -2609,19 +2628,21 @@ const BulkMessage = () => {
                                           }
                                         />
                                         <VStack align="start" pl="4" spacing="2">
-                                          {filteredMarketChannels.map(channel => (
+                                          {filteredMarketChannels.map(channel => {
+                                            const channelId = getChannelId(channel);
+                                            return (
                                             <Checkbox
                                               key={
-                                                channel.id ||
+                                                channelId ||
                                                 channel.marketCode ||
                                                 channel.name
                                               }
-                                              value={channel.id}
-                                              isDisabled={!channel.id}>
+                                              value={channelId}
+                                              isDisabled={!channelId}>
                                               <HStack>
                                                 <Text>{channel.name}</Text>
                                                 {selectedChannelIdSet.has(
-                                                  String(channel.id),
+                                                  channelId,
                                                 ) && (
                                                   <Badge size="sm" colorScheme="teal">
                                                     Seçili
@@ -2630,14 +2651,15 @@ const BulkMessage = () => {
                                                 <Badge size="sm" colorScheme="green">
                                                   Market
                                                 </Badge>
-                                                {!channel.id && (
+                                                {!channelId && (
                                                   <Badge size="sm" colorScheme="gray">
                                                     Başlatılmadı
                                                   </Badge>
                                                 )}
                                               </HStack>
                                             </Checkbox>
-                                          ))}
+                                            );
+                                          })}
                                           {filteredMarketChannels.length === 0 && (
                                             <Text fontSize="sm" color="gray.500">
                                               Eşleşen piyasa kanalı bulunamadı.
@@ -2693,19 +2715,21 @@ const BulkMessage = () => {
                                           }
                                         />
                                         <VStack align="start" pl="4" spacing="2">
-                                          {filteredViopChannels.map(channel => (
+                                          {filteredViopChannels.map(channel => {
+                                            const channelId = getChannelId(channel);
+                                            return (
                                             <Checkbox
                                               key={
-                                                channel.id ||
+                                                channelId ||
                                                 channel.marketCode ||
                                                 channel.name
                                               }
-                                              value={channel.id}
-                                              isDisabled={!channel.id}>
+                                              value={channelId}
+                                              isDisabled={!channelId}>
                                               <HStack>
                                                 <Text>{channel.name}</Text>
                                                 {selectedChannelIdSet.has(
-                                                  String(channel.id),
+                                                  channelId,
                                                 ) && (
                                                   <Badge size="sm" colorScheme="teal">
                                                     Seçili
@@ -2714,14 +2738,15 @@ const BulkMessage = () => {
                                                 <Badge size="sm" colorScheme="orange">
                                                   VİOP
                                                 </Badge>
-                                                {!channel.id && (
+                                                {!channelId && (
                                                   <Badge size="sm" colorScheme="gray">
                                                     Başlatılmadı
                                                   </Badge>
                                                 )}
                                               </HStack>
                                             </Checkbox>
-                                          ))}
+                                            );
+                                          })}
                                           {filteredViopChannels.length === 0 && (
                                             <Text fontSize="sm" color="gray.500">
                                               Eşleşen VİOP kanalı bulunamadı.
@@ -2777,19 +2802,21 @@ const BulkMessage = () => {
                                           }
                                         />
                                         <VStack align="start" pl="4" spacing="2">
-                                          {filteredFundChannels.map(channel => (
+                                          {filteredFundChannels.map(channel => {
+                                            const channelId = getChannelId(channel);
+                                            return (
                                             <Checkbox
                                               key={
-                                                channel.id ||
+                                                channelId ||
                                                 channel.fundCode ||
                                                 channel.name
                                               }
-                                              value={channel.id}
-                                              isDisabled={!channel.id}>
+                                              value={channelId}
+                                              isDisabled={!channelId}>
                                               <HStack>
                                                 <Text>{channel.name}</Text>
                                                 {selectedChannelIdSet.has(
-                                                  String(channel.id),
+                                                  channelId,
                                                 ) && (
                                                   <Badge size="sm" colorScheme="teal">
                                                     Seçili
@@ -2798,14 +2825,15 @@ const BulkMessage = () => {
                                                 <Badge size="sm" colorScheme="blue">
                                                   Fon
                                                 </Badge>
-                                                {!channel.id && (
+                                                {!channelId && (
                                                   <Badge size="sm" colorScheme="gray">
                                                     Başlatılmadı
                                                   </Badge>
                                                 )}
                                               </HStack>
                                             </Checkbox>
-                                          ))}
+                                            );
+                                          })}
                                           {filteredFundChannels.length === 0 && (
                                             <Text fontSize="sm" color="gray.500">
                                               Eşleşen fon kanalı bulunamadı.
@@ -2861,12 +2889,14 @@ const BulkMessage = () => {
                                           }
                                         />
                                         <VStack align="start" pl="4" spacing="2">
-                                          {filteredOtherChannels.map(channel => (
-                                            <Checkbox key={channel.id} value={channel.id}>
+                                          {filteredOtherChannels.map(channel => {
+                                            const channelId = getChannelId(channel);
+                                            return (
+                                            <Checkbox key={channelId} value={channelId}>
                                               <HStack>
                                                 <Text>{channel.name}</Text>
                                                 {selectedChannelIdSet.has(
-                                                  String(channel.id),
+                                                  channelId,
                                                 ) && (
                                                   <Badge size="sm" colorScheme="teal">
                                                     Seçili
@@ -2874,7 +2904,8 @@ const BulkMessage = () => {
                                                 )}
                                               </HStack>
                                             </Checkbox>
-                                          ))}
+                                            );
+                                          })}
                                           {filteredOtherChannels.length === 0 && (
                                             <Text fontSize="sm" color="gray.500">
                                               Eşleşen diğer kanal bulunamadı.
