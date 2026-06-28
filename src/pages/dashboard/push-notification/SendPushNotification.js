@@ -353,7 +353,7 @@ const SendPushNotification = () => {
 
   const {data: channelsData = [], isLoading: isLoadingChannels} = useQuery({
     queryKey: ['push-notification-target-channels'],
-    queryFn: () => fetchAll(api.getAllChannels),
+    queryFn: () => fetchAll(api.getAllChannels, {includeInactive: true}),
     staleTime: 300000,
   });
 

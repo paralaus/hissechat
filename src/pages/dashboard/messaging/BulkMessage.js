@@ -433,7 +433,7 @@ const BulkMessage = () => {
   const targetType = watch('targetType');
   const {data: channelsData, isLoading: isLoadingChannels} = useQuery({
     queryKey: ['all-channels-for-bulk'],
-    queryFn: () => fetchAll(api.getAllChannels),
+    queryFn: () => fetchAll(api.getAllChannels, {includeInactive: true}),
     staleTime: 300000,
     cacheTime: 900000,
     refetchOnWindowFocus: false,
