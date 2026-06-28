@@ -161,6 +161,12 @@ export const BlacklistValueConfig = {
 export const NotificationReceiverType = {
   All: 'all',
   Channel: 'channel',
+  AllVip: 'all_vip',
+  AllMarkets: 'all_markets',
+  AllFunds: 'all_funds',
+  AllViop: 'all_viop',
+  Top100: 'top_100',
+  SelectedChannels: 'selected_channels',
 };
 
 export const notificationReceiverTypes = Object.values(
@@ -170,4 +176,10 @@ export const notificationReceiverTypes = Object.values(
 export const NotificationReceiverTypeLabel = {
   [NotificationReceiverType.All]: 'Tüm Kullanıcılar',
   [NotificationReceiverType.Channel]: 'Kanal Üyeleri',
+  [NotificationReceiverType.AllVip]: 'Tüm VIP Kanal Üyeleri',
+  [NotificationReceiverType.AllMarkets]: 'Tüm Piyasa Kanal Üyeleri',
+  [NotificationReceiverType.AllFunds]: 'Tüm Fon Kanal Üyeleri',
+  [NotificationReceiverType.AllViop]: 'Tüm VİOP Kanal Üyeleri',
+  [NotificationReceiverType.Top100]: 'En Aktif 100 Kanal Üyeleri',
+  [NotificationReceiverType.SelectedChannels]: 'Seçili Kanal Üyeleri',
 };

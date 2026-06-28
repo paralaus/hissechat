@@ -397,7 +397,7 @@ const BulkMessage = () => {
     defaultValues: {
       targetType: 'all_channels',
       membersOnlyAtSend: true,
-      skipUnreadForInactiveUsers: true,
+      skipUnreadForInactiveUsers: false,
       selectedChannels: [],
       message: '',
     },

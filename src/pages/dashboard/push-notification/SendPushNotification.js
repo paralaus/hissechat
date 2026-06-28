@@ -3,6 +3,8 @@ import {useNavigate} from 'react-router-dom';
 import {
   Box,
   Button,
+  Checkbox,
+  CheckboxGroup,
   Flex,
   FormControl,
   FormErrorMessage,
@@ -49,6 +51,11 @@ const schema = yup
     isImportant: yup.boolean(),
     receiverType: yup.string().required('Bu alan zorunludur.'),
     channel: yup.string(),
+    selectedChannels: yup.array().when('receiverType', {
+      is: NotificationReceiverType.SelectedChannels,
+      then: schema => schema.min(1, 'En az bir kanal seçmelisiniz.'),
+      otherwise: schema => schema.notRequired(),
+    }),
     category: yup.string(),
     imageUrl: yup
       .string()
@@ -161,6 +168,86 @@ const getPushJobTypeColor = jobName => {
   return 'blue';
 };
 
+const isViopChannel = channel => {
+  const marketCode = String(channel?.marketCode || '').toUpperCase();
+  const name = String(channel?.name || '').toUpperCase();
+
+  return (
+    channel?.type === 'market' &&
+    (marketCode.startsWith('F_') ||
+      marketCode.includes('VIOP') ||
+      name.includes('VIOP') ||
+      name.includes('VİOP'))
+  );
+};
+
+const getChannelMessageCount = channel => {
+  const raw =
+    channel?.messageCount ??
+    channel?.messagesCount ??
+    channel?.totalMessages ??
+    channel?.totalMessageCount ??
+    channel?.message_count ??
+    0;
+  const count = Number(raw);
+  return Number.isFinite(count) ? count : 0;
+};
+
+const sortChannelsAlphabetically = channels =>
+  [...(channels || [])]
+    .filter(channel => !!(channel?.name || channel?.label))
+    .sort((a, b) =>
+      `${a?.name ?? a?.label ?? ''}`.localeCompare(
+        `${b?.name ?? b?.label ?? ''}`,
+        'tr',
+      ),
+    );
+
+const filterChannelsByQuery = (channels, query) => {
+  const normalizedQuery = String(query || '').trim().toLocaleLowerCase('tr-TR');
+  if (!normalizedQuery) return channels;
+
+  return (channels || []).filter(channel =>
+    `${channel?.name ?? channel?.label ?? ''}`
+      .toLocaleLowerCase('tr-TR')
+      .includes(normalizedQuery),
+  );
+};
+
+const sortSelectedChannelsFirst = (channels, selectedIds) => {
+  const selectedSet = new Set((selectedIds || []).map(String));
+
+  return [...(channels || [])].sort((a, b) => {
+    const aSelected = selectedSet.has(String(a?.id || a?._id || ''));
+    const bSelected = selectedSet.has(String(b?.id || b?._id || ''));
+
+    if (aSelected === bSelected) return 0;
+    return aSelected ? -1 : 1;
+  });
+};
+
+const getSelectableChannelIds = channels =>
+  (channels || [])
+    .map(channel => String(channel?.id || channel?._id || ''))
+    .filter(Boolean);
+
+const fetchAll = async (apiFunc, params = {}) => {
+  const limit = 100;
+  const firstResponse = await apiFunc({...params, page: 1, limit});
+
+  if (!firstResponse?.data) return [];
+
+  let allResults = firstResponse.data.results || [];
+  const totalPages = Number(firstResponse.data.totalPages || 1);
+
+  for (let page = 2; page <= totalPages; page += 1) {
+    const response = await apiFunc({...params, page, limit});
+    allResults = allResults.concat(response?.data?.results || []);
+  }
+
+  return allResults;
+};
+
 const SendPushNotification = () => {
   useNavigate();
   const toast = useToast();
@@ -178,16 +265,32 @@ const SendPushNotification = () => {
   const [activeJobId, setActiveJobId] = React.useState(null);
   const [activeJobName, setActiveJobName] = React.useState(null);
   const [pushJobFilter, setPushJobFilter] = React.useState('all');
+  const [channelSearch, setChannelSearch] = React.useState({
+    vip: '',
+    market: '',
+    viop: '',
+    fund: '',
+    other: '',
+  });
+  const [selectedOnlyByGroup, setSelectedOnlyByGroup] = React.useState({
+    vip: false,
+    market: false,
+    viop: false,
+    fund: false,
+    other: false,
+  });
 
   const {
     register,
     handleSubmit,
     formState: {errors},
     watch,
+    setValue,
   } = useForm({
     resolver: yupResolver(schema),
     defaultValues: {
-      skipInactiveUsers: true,
+      skipInactiveUsers: false,
+      selectedChannels: [],
     },
   });
 
@@ -207,6 +310,8 @@ const SendPushNotification = () => {
     },
   });
   const formValues = watch();
+  const receiverType = watch('receiverType');
+  const selectedChannels = watch('selectedChannels') || [];
   const previewBody =
     formValues.summary || formValues.body || 'Mesaj onizlemesi';
   const previewDeepLink =
@@ -238,6 +343,12 @@ const SendPushNotification = () => {
     refetchInterval: activeJobId ? 3000 : 15000,
     refetchOnWindowFocus: false,
     staleTime: 0,
+  });
+
+  const {data: channelsData = [], isLoading: isLoadingChannels} = useQuery({
+    queryKey: ['push-notification-target-channels'],
+    queryFn: () => fetchAll(api.getAllChannels),
+    staleTime: 300000,
   });
 
   const {mutateAsync, isPending} = useMutation({
@@ -609,6 +720,195 @@ const SendPushNotification = () => {
         ]),
       ),
     [pushJobs],
+  );
+
+  const vipChannels = React.useMemo(
+    () => sortChannelsAlphabetically(channelsData.filter(channel => channel.type === 'vip')),
+    [channelsData],
+  );
+
+  const fundChannels = React.useMemo(
+    () => sortChannelsAlphabetically(channelsData.filter(channel => channel.type === 'fund')),
+    [channelsData],
+  );
+
+  const viopChannels = React.useMemo(
+    () =>
+      sortChannelsAlphabetically(
+        channelsData.filter(channel => isViopChannel(channel)),
+      ),
+    [channelsData],
+  );
+
+  const marketChannels = React.useMemo(
+    () =>
+      sortChannelsAlphabetically(
+        channelsData.filter(
+          channel => channel.type === 'market' && !isViopChannel(channel),
+        ),
+      ),
+    [channelsData],
+  );
+
+  const topActiveChannels = React.useMemo(
+    () =>
+      [...channelsData]
+        .filter(channel => channel.type !== 'vip')
+        .sort((a, b) => getChannelMessageCount(b) - getChannelMessageCount(a))
+        .slice(0, 100),
+    [channelsData],
+  );
+
+  const otherChannels = React.useMemo(
+    () =>
+      sortChannelsAlphabetically(
+        channelsData.filter(
+          channel =>
+            channel.type !== 'vip' &&
+            channel.type !== 'fund' &&
+            channel.type !== 'market',
+        ),
+      ),
+    [channelsData],
+  );
+
+  const selectedChannelSet = React.useMemo(
+    () => new Set((selectedChannels || []).map(String)),
+    [selectedChannels],
+  );
+
+  const selectedChannelObjects = React.useMemo(
+    () =>
+      channelsData.filter(channel =>
+        selectedChannelSet.has(String(channel?.id || channel?._id || '')),
+      ),
+    [channelsData, selectedChannelSet],
+  );
+
+  const handleSelectedChannelsChange = values => {
+    setValue('selectedChannels', values, {shouldValidate: true});
+  };
+
+  const addChannelsToSelection = channels => {
+    const nextValues = Array.from(
+      new Set([
+        ...selectedChannels.map(String),
+        ...getSelectableChannelIds(channels),
+      ]),
+    );
+    handleSelectedChannelsChange(nextValues);
+  };
+
+  const removeChannelsFromSelection = channels => {
+    const channelIdSet = new Set(getSelectableChannelIds(channels));
+    const nextValues = selectedChannels.filter(
+      channelId => !channelIdSet.has(String(channelId)),
+    );
+    handleSelectedChannelsChange(nextValues);
+  };
+
+  const handleChannelSearchChange = (group, value) => {
+    setChannelSearch(prev => ({
+      ...prev,
+      [group]: value,
+    }));
+  };
+
+  const handleSelectedOnlyToggle = (group, value) => {
+    setSelectedOnlyByGroup(prev => ({
+      ...prev,
+      [group]: value,
+    }));
+  };
+
+  const getGroupedDisplayChannels = React.useCallback(
+    (channels, query, selectedOnly = false) => {
+      const sortedChannels = sortSelectedChannelsFirst(channels, selectedChannels);
+      const filteredChannels = selectedOnly
+        ? sortedChannels.filter(channel =>
+            selectedChannelSet.has(String(channel?.id || channel?._id || '')),
+          )
+        : sortedChannels;
+
+      return filterChannelsByQuery(filteredChannels, query);
+    },
+    [selectedChannelSet, selectedChannels],
+  );
+
+  const groupedSelectableChannels = React.useMemo(
+    () => ({
+      vip: getGroupedDisplayChannels(
+        vipChannels,
+        channelSearch.vip,
+        selectedOnlyByGroup.vip,
+      ),
+      market: getGroupedDisplayChannels(
+        marketChannels,
+        channelSearch.market,
+        selectedOnlyByGroup.market,
+      ),
+      viop: getGroupedDisplayChannels(
+        viopChannels,
+        channelSearch.viop,
+        selectedOnlyByGroup.viop,
+      ),
+      fund: getGroupedDisplayChannels(
+        fundChannels,
+        channelSearch.fund,
+        selectedOnlyByGroup.fund,
+      ),
+      other: getGroupedDisplayChannels(
+        otherChannels,
+        channelSearch.other,
+        selectedOnlyByGroup.other,
+      ),
+    }),
+    [
+      channelSearch.fund,
+      channelSearch.market,
+      channelSearch.other,
+      channelSearch.vip,
+      channelSearch.viop,
+      fundChannels,
+      getGroupedDisplayChannels,
+      marketChannels,
+      otherChannels,
+      selectedOnlyByGroup.fund,
+      selectedOnlyByGroup.market,
+      selectedOnlyByGroup.other,
+      selectedOnlyByGroup.vip,
+      selectedOnlyByGroup.viop,
+      vipChannels,
+      viopChannels,
+    ],
+  );
+
+  const selectedCountsByGroup = React.useMemo(
+    () => ({
+      vip: vipChannels.filter(channel =>
+        selectedChannelSet.has(String(channel?.id || channel?._id || '')),
+      ).length,
+      market: marketChannels.filter(channel =>
+        selectedChannelSet.has(String(channel?.id || channel?._id || '')),
+      ).length,
+      viop: viopChannels.filter(channel =>
+        selectedChannelSet.has(String(channel?.id || channel?._id || '')),
+      ).length,
+      fund: fundChannels.filter(channel =>
+        selectedChannelSet.has(String(channel?.id || channel?._id || '')),
+      ).length,
+      other: otherChannels.filter(channel =>
+        selectedChannelSet.has(String(channel?.id || channel?._id || '')),
+      ).length,
+    }),
+    [
+      fundChannels,
+      marketChannels,
+      otherChannels,
+      selectedChannelSet,
+      vipChannels,
+      viopChannels,
+    ],
   );
 
   return (
@@ -1272,10 +1572,21 @@ const SendPushNotification = () => {
               <FormErrorMessage>
                 {errors.receiverType?.message}
               </FormErrorMessage>
+              <FormHelperText>
+                Toplu mesaj ekranındaki gibi kanal bazlı hedefleme seçeneklerini
+                buradan seçebilirsiniz.
+              </FormHelperText>
             </FormControl>
+            {receiverType && (
+              <Box mb="4">
+                <Badge colorScheme="blue" fontSize="sm" px="3" py="1">
+                  {NotificationReceiverTypeLabel[receiverType] || receiverType}
+                </Badge>
+              </Box>
+            )}
             <Condition
               condition={
-                watch().receiverType === NotificationReceiverType.Channel
+                receiverType === NotificationReceiverType.Channel
               }>
               <FormControl isInvalid={!!errors.channel} mb="4">
                 <FormLabel
@@ -1295,6 +1606,276 @@ const SendPushNotification = () => {
                 />
                 <FormErrorMessage>{errors.channel?.message}</FormErrorMessage>
               </FormControl>
+            </Condition>
+            <Condition
+              condition={receiverType === NotificationReceiverType.Top100}>
+              <Alert status="info" borderRadius="md" mb="4">
+                <AlertIcon />
+                <Box>
+                  <AlertTitle fontSize="sm">En Aktif 100 Kanal Üyeleri</AlertTitle>
+                  <AlertDescription fontSize="sm">
+                    VIP kanallar hariç tutulur. Şu an {topActiveChannels.length}{' '}
+                    kanalın üyelerine gönderim hedeflenir.
+                  </AlertDescription>
+                </Box>
+              </Alert>
+            </Condition>
+            <Condition
+              condition={receiverType === NotificationReceiverType.SelectedChannels}>
+              <FormControl isInvalid={!!errors.selectedChannels} mb="4">
+                <FormLabel
+                  display="flex"
+                  ms="4px"
+                  fontSize="sm"
+                  fontWeight="500"
+                  mb="8px">
+                  Kanalları Seçin
+                </FormLabel>
+                <VStack align="stretch" spacing="4">
+                  <Flex
+                    justify="space-between"
+                    align={{base: 'stretch', md: 'center'}}
+                    direction={{base: 'column', md: 'row'}}
+                    gap="3">
+                    <Badge colorScheme="blue" fontSize="sm" px="3" py="1">
+                      Seçili kanal: {selectedChannels.length}
+                    </Badge>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      colorScheme="red"
+                      onClick={() => handleSelectedChannelsChange([])}
+                      isDisabled={selectedChannels.length === 0}>
+                      Tümünü temizle
+                    </Button>
+                  </Flex>
+                  <Box
+                    maxH="420px"
+                    overflowY="auto"
+                    borderWidth="1px"
+                    borderColor="gray.200"
+                    borderRadius="md"
+                    p="3">
+                    {isLoadingChannels ? (
+                      <HStack spacing="2">
+                        <Spinner size="sm" />
+                        <Text fontSize="sm" color="gray.500">
+                          Kanallar yükleniyor...
+                        </Text>
+                      </HStack>
+                    ) : (
+                      <CheckboxGroup
+                        value={selectedChannels}
+                        onChange={handleSelectedChannelsChange}>
+                        <VStack align="stretch" spacing="4">
+                          {[
+                            {
+                              key: 'vip',
+                              title: 'VIP Kanallar',
+                              channels: groupedSelectableChannels.vip,
+                              total: vipChannels.length,
+                              selected: selectedCountsByGroup.vip,
+                            },
+                            {
+                              key: 'market',
+                              title: 'Piyasa Kanalları',
+                              channels: groupedSelectableChannels.market,
+                              total: marketChannels.length,
+                              selected: selectedCountsByGroup.market,
+                            },
+                            {
+                              key: 'viop',
+                              title: 'VİOP Kanalları',
+                              channels: groupedSelectableChannels.viop,
+                              total: viopChannels.length,
+                              selected: selectedCountsByGroup.viop,
+                            },
+                            {
+                              key: 'fund',
+                              title: 'Fon Kanalları',
+                              channels: groupedSelectableChannels.fund,
+                              total: fundChannels.length,
+                              selected: selectedCountsByGroup.fund,
+                            },
+                            {
+                              key: 'other',
+                              title: 'Diğer Kanallar',
+                              channels: groupedSelectableChannels.other,
+                              total: otherChannels.length,
+                              selected: selectedCountsByGroup.other,
+                            },
+                          ]
+                            .filter(group => group.total > 0)
+                            .map(group => (
+                              <Box
+                                key={group.key}
+                                borderWidth="1px"
+                                borderColor="gray.100"
+                                borderRadius="md"
+                                p="3">
+                                <Flex
+                                  justify="space-between"
+                                  align={{base: 'stretch', md: 'center'}}
+                                  direction={{base: 'column', md: 'row'}}
+                                  gap="2"
+                                  mb="3">
+                                  <VStack align="stretch" spacing="2" flex="1">
+                                    <HStack spacing="2" flexWrap="wrap">
+                                      <Text fontSize="sm" fontWeight="600">
+                                        {group.title}
+                                      </Text>
+                                      <Badge colorScheme="purple" fontSize="xs">
+                                        {group.selected} / {group.total}
+                                      </Badge>
+                                    </HStack>
+                                    <HStack spacing="2" flexWrap="wrap">
+                                      <Button
+                                        size="xs"
+                                        colorScheme="blue"
+                                        variant="outline"
+                                        onClick={() =>
+                                          addChannelsToSelection(group.channels)
+                                        }
+                                        isDisabled={group.channels.length === 0}>
+                                        Hepsini seç
+                                      </Button>
+                                      <Button
+                                        size="xs"
+                                        colorScheme="red"
+                                        variant="outline"
+                                        onClick={() =>
+                                          removeChannelsFromSelection(group.channels)
+                                        }
+                                        isDisabled={group.selected === 0}>
+                                        Hepsini kaldır
+                                      </Button>
+                                      <Checkbox
+                                        isChecked={selectedOnlyByGroup[group.key]}
+                                        onChange={e =>
+                                          handleSelectedOnlyToggle(
+                                            group.key,
+                                            e.target.checked,
+                                          )
+                                        }
+                                        size="sm">
+                                        <Text fontSize="xs">
+                                          Seçili olanları göster
+                                        </Text>
+                                      </Checkbox>
+                                    </HStack>
+                                  </VStack>
+                                  <Input
+                                    size="sm"
+                                    maxW={{base: '100%', md: '220px'}}
+                                    placeholder={`${group.title} ara`}
+                                    value={channelSearch[group.key]}
+                                    onChange={e =>
+                                      handleChannelSearchChange(
+                                        group.key,
+                                        e.target.value,
+                                      )
+                                    }
+                                  />
+                                </Flex>
+                                {group.channels.length > 0 ? (
+                                  <VStack align="stretch" spacing="2">
+                                    {group.channels.map(channel => {
+                                      const channelId = String(
+                                        channel?.id || channel?._id || '',
+                                      );
+                                      const isSelected =
+                                        selectedChannelSet.has(channelId);
+                                      return (
+                                        <Checkbox key={channelId} value={channelId}>
+                                          <HStack spacing="2" flexWrap="wrap">
+                                            <Text fontSize="sm">
+                                              {channel?.name || 'İsimsiz kanal'}
+                                            </Text>
+                                            {isSelected ? (
+                                              <Badge
+                                                colorScheme="green"
+                                                fontSize="xs">
+                                                Seçili
+                                              </Badge>
+                                            ) : null}
+                                            <Badge
+                                              colorScheme="gray"
+                                              fontSize="xs">
+                                              {channel?.type || 'other'}
+                                            </Badge>
+                                            {channel?.marketCode ? (
+                                              <Badge
+                                                colorScheme="purple"
+                                                fontSize="xs">
+                                                {channel.marketCode}
+                                              </Badge>
+                                            ) : null}
+                                          </HStack>
+                                        </Checkbox>
+                                      );
+                                    })}
+                                  </VStack>
+                                ) : (
+                                  <Text fontSize="sm" color="gray.500">
+                                    Bu grupta aramaya uygun kanal bulunamadı.
+                                  </Text>
+                                )}
+                              </Box>
+                            ))}
+                        </VStack>
+                      </CheckboxGroup>
+                    )}
+                  </Box>
+                </VStack>
+                <FormHelperText>
+                  Seçilen kanal üyeleri tekilleştirilir; aynı kullanıcı birden
+                  fazla kanalda olsa da tek bildirim alır.
+                </FormHelperText>
+                <FormErrorMessage>{errors.selectedChannels?.message}</FormErrorMessage>
+              </FormControl>
+            </Condition>
+            <Condition
+              condition={[
+                NotificationReceiverType.AllVip,
+                NotificationReceiverType.AllMarkets,
+                NotificationReceiverType.AllFunds,
+                NotificationReceiverType.AllViop,
+              ].includes(receiverType)}>
+              <Alert status="info" borderRadius="md" mb="4">
+                <AlertIcon />
+                <Box>
+                  <AlertTitle fontSize="sm">Hedef Kanal Grubu</AlertTitle>
+                  <AlertDescription fontSize="sm">
+                    {receiverType === NotificationReceiverType.AllVip
+                      ? `${vipChannels.length} VIP kanalının üyeleri hedeflenecek.`
+                      : receiverType === NotificationReceiverType.AllMarkets
+                      ? `${marketChannels.length} piyasa kanalının üyeleri hedeflenecek.`
+                      : receiverType === NotificationReceiverType.AllFunds
+                      ? `${fundChannels.length} fon kanalının üyeleri hedeflenecek.`
+                      : `${viopChannels.length} VİOP kanalının üyeleri hedeflenecek.`}
+                  </AlertDescription>
+                </Box>
+              </Alert>
+            </Condition>
+            <Condition
+              condition={
+                receiverType === NotificationReceiverType.SelectedChannels &&
+                selectedChannelObjects.length > 0
+              }>
+              <Box mb="4">
+                <Text fontSize="sm" fontWeight="600" mb="2">
+                  Seçilen Kanallar
+                </Text>
+                <HStack spacing="2" flexWrap="wrap">
+                  {selectedChannelObjects.map(channel => (
+                    <Badge
+                      key={String(channel?.id || channel?._id || '')}
+                      colorScheme="green">
+                      {channel?.name || 'İsimsiz kanal'}
+                    </Badge>
+                  ))}
+                </HStack>
+              </Box>
             </Condition>
             <FormControl isInvalid={!!errors.title} mb="4">
               <FormLabel
@@ -1417,7 +1998,7 @@ const SendPushNotification = () => {
               mb="4">
               <Box display={'flex'} alignItems={'center'}>
                 <FormLabel htmlFor="skipInactiveUsers" mb={0}>
-                  7 gun pasif kullanicilara push gonderme
+                  Son 1 hafta aktif olmayan kullanicilara gonderme
                 </FormLabel>
                 <Switch
                   id="skipInactiveUsers"
@@ -1425,7 +2006,7 @@ const SendPushNotification = () => {
                 />
               </Box>
               <FormHelperText>
-                Aciksa son 7 gunde aktif olmayan kullanicilar bu admin
+                Aciksa son 1 haftada aktif olmayan kullanicilar bu admin
                 bildirimini almaz. Kalici bildirim olusturulursa onlar icin
                 kayit da yazilmaz.
               </FormHelperText>
