@@ -252,21 +252,21 @@ const router = createBrowserRouter(
           }}>
           <Route
             path="all"
-            element={<AllChannels />}
+            element={<AllChannels type="normal" />}
             handle={{
               crumb: () => <Text>Tüm Kanallar</Text>,
             }}
           />
           <Route
             path="normal"
-            element={<AllChannels type="normal" />}
+            element={<AllChannels type="normal" onlyAdminCanPost={false} />}
             handle={{
               crumb: () => <Text>Normal Kanallar</Text>,
             }}
           />
           <Route
             path="restricted"
-            element={<AllChannels isRestricted={true} />}
+            element={<AllChannels type="normal" onlyAdminCanPost={true} />}
             handle={{
               crumb: () => <Text>Kısıtlı Kanallar</Text>,
             }}
@@ -515,14 +515,14 @@ const router = createBrowserRouter(
         />
         <Route
           path="messaging/channels/normal"
-          element={<Channels type="normal" />}
+          element={<Channels type="normal" onlyAdminCanPost={false} />}
           handle={{
             crumb: () => <Text>Normal Kanallar</Text>,
           }}
         />
         <Route
           path="messaging/channels/restricted"
-          element={<Channels isRestricted={true} />}
+          element={<Channels type="normal" onlyAdminCanPost={true} />}
           handle={{
             crumb: () => <Text>Kısıtlı Kanallar</Text>,
           }}
