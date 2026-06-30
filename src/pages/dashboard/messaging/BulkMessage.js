@@ -343,6 +343,7 @@ const BulkMessage = () => {
   const [isSending, setIsSending] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isCancelled, setIsCancelled] = useState(false);
+  const [videoViewOnce, setVideoViewOnce] = useState(false);
   const [sendProgress, setSendProgress] = useState({
     current: 0,
     total: 0,
@@ -675,6 +676,7 @@ const BulkMessage = () => {
     videoInput.reset();
     audioInput.reset();
     fileInput.reset();
+    setVideoViewOnce(false);
   };
 
   const getSelectedMediaItems = React.useCallback(() => {
@@ -701,7 +703,7 @@ const BulkMessage = () => {
       const url = await (media.type === 'image'
         ? imageInput.upload({file: media.file})
         : media.type === 'video'
-        ? videoInput.upload({file: media.file})
+        ? videoInput.upload({file: media.file, isPrivate: videoViewOnce})
         : media.type === 'audio'
         ? audioInput.upload({file: media.file})
         : fileInput.upload({file: media.file}));
@@ -718,12 +720,14 @@ const BulkMessage = () => {
         type: media.type,
         url,
         ...(media.type === 'video' ? {videoStatus: 'uploaded'} : {}),
+        ...(media.type === 'video' && videoViewOnce ? {videoViewOnce: true} : {}),
+        ...(media.type === 'video' && videoViewOnce ? {videoAccess: 'private'} : {}),
         ...(media.type === 'audio' ? {audioStatus: 'uploaded'} : {}),
       });
     }
 
     return uploadedItems;
-  }, [audioInput, fileInput, getSelectedMediaItems, imageInput, videoInput]);
+  }, [audioInput, fileInput, getSelectedMediaItems, imageInput, videoInput, videoViewOnce]);
 
   const pollBulkMessageJob = async (jobId, fallbackTotal) => {
     try {
@@ -996,6 +1000,8 @@ const BulkMessage = () => {
         ...values,
         message: trimmedMessage,
         mediaItems: uploadedMediaItems,
+        ...(videoViewOnce ? { videoViewOnce: true } : {}),
+        ...(videoViewOnce ? { videoAccess: 'private' } : {}),
       };
 
       if (values.targetType === 'all_funds') {
@@ -2464,6 +2470,17 @@ const BulkMessage = () => {
                           </Checkbox>
                           <FormHelperText>
                             Aciksa son 7 gunde aktif olmayan kullanicilarin unread sayaci artmaz.
+                          </FormHelperText>
+                        </FormControl>
+
+                        <FormControl mb="6">
+                          <Checkbox
+                            isChecked={videoViewOnce}
+                            onChange={e => setVideoViewOnce(e.target.checked)}>
+                            Video tek sefer izlenebilir
+                          </Checkbox>
+                          <FormHelperText>
+                            Sadece video eklerinde gecerli. Kullanici bir kez actiktan sonra tekrar acamaz.
                           </FormHelperText>
                         </FormControl>
 

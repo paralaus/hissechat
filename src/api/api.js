@@ -175,6 +175,7 @@ export const uploadFileWithProgress = async (
   onProgress,
   options = {},
 ) => {
+  const {isPrivate, ...axiosOptions} = options || {};
   const formData = new FormData();
   formData.append('file', file);
 
@@ -182,7 +183,8 @@ export const uploadFileWithProgress = async (
   const sizeMB = file.size / (1024 * 1024);
   const timeout = Math.max(60000, Math.ceil(sizeMB / 10) * 60000);
 
-  return apiClient.post(`/upload/upload/file`, formData, {
+  const uploadPath = isPrivate ? `/upload/upload/file?access=private` : `/upload/upload/file`;
+  return apiClient.post(uploadPath, formData, {
     headers: {
       'Content-Type': 'multipart/form-data',
     },
@@ -197,7 +199,7 @@ export const uploadFileWithProgress = async (
         onProgress(percentCompleted);
       }
     },
-    ...options,
+    ...axiosOptions,
   });
 };
 

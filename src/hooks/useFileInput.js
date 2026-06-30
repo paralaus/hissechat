@@ -34,8 +34,8 @@ const useFileInput = (options = {}) => {
   }, [selectedFiles]);
 
   const {mutateAsync, isPending: isUploading} = useMutation({
-    mutationFn: ({file, onProgress}) =>
-      uploadFileWithProgress(file, onProgress),
+    mutationFn: ({file, onProgress, isPrivate}) =>
+      uploadFileWithProgress(file, onProgress, {isPrivate}),
   });
 
   // Check if file is a video
@@ -167,7 +167,11 @@ const useFileInput = (options = {}) => {
         options.onProgress?.(progress);
       };
 
-      const {data} = await mutateAsync({file, onProgress});
+      const {data} = await mutateAsync({
+        file,
+        onProgress,
+        isPrivate: Boolean(options.isPrivate),
+      });
 
       setUploadProgress(100);
 
