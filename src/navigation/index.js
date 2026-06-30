@@ -252,21 +252,31 @@ const router = createBrowserRouter(
           }}>
           <Route
             path="all"
-            element={<AllChannels type="normal" />}
+            element={<AllChannels types="market,fund,normal" />}
             handle={{
               crumb: () => <Text>Tüm Kanallar</Text>,
             }}
           />
           <Route
             path="normal"
-            element={<AllChannels type="normal" onlyAdminCanPost={false} />}
+            element={
+              <AllChannels
+                types="market,fund,normal"
+                onlyAdminCanPost={false}
+              />
+            }
             handle={{
               crumb: () => <Text>Normal Kanallar</Text>,
             }}
           />
           <Route
             path="restricted"
-            element={<AllChannels type="normal" onlyAdminCanPost={true} />}
+            element={
+              <AllChannels
+                types="market,fund,normal"
+                onlyAdminCanPost={true}
+              />
+            }
             handle={{
               crumb: () => <Text>Kısıtlı Kanallar</Text>,
             }}
@@ -515,14 +525,24 @@ const router = createBrowserRouter(
         />
         <Route
           path="messaging/channels/normal"
-          element={<Channels type="normal" onlyAdminCanPost={false} />}
+          element={
+            <Channels
+              types="market,fund,normal"
+              onlyAdminCanPost={false}
+            />
+          }
           handle={{
             crumb: () => <Text>Normal Kanallar</Text>,
           }}
         />
         <Route
           path="messaging/channels/restricted"
-          element={<Channels type="normal" onlyAdminCanPost={true} />}
+          element={
+            <Channels
+              types="market,fund,normal"
+              onlyAdminCanPost={true}
+            />
+          }
           handle={{
             crumb: () => <Text>Kısıtlı Kanallar</Text>,
           }}

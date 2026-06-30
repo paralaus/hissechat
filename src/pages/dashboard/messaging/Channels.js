@@ -258,7 +258,7 @@ const SORT_OPTIONS = {
 
 const PAGE_SIZE = 50;
 
-const Channels = ({type, isRestricted, onlyAdminCanPost}) => {
+const Channels = ({type, types, isRestricted, onlyAdminCanPost}) => {
   const navigate = useNavigate();
   const location = useLocation();
   const [searchQuery, setSearchQuery] = useState('');
@@ -332,10 +332,11 @@ const Channels = ({type, isRestricted, onlyAdminCanPost}) => {
     hasNextPage: hasNextAllChannels,
     isFetchingNextPage: isFetchingNextAllChannels,
   } = useInfiniteQuery({
-    queryKey: ['all-channels-messaging', type, isRestricted, onlyAdminCanPost],
+    queryKey: ['all-channels-messaging', type, types, isRestricted, onlyAdminCanPost],
     queryFn: async ({pageParam = 1}) => {
       const params = {limit: PAGE_SIZE, page: pageParam};
       if (type) params.type = type;
+      if (types) params.types = types;
       if (typeof isRestricted !== 'undefined') params.isRestricted = isRestricted;
       if (typeof onlyAdminCanPost !== 'undefined') {
         params.onlyAdminCanPost = onlyAdminCanPost;
@@ -1222,7 +1223,7 @@ const Channels = ({type, isRestricted, onlyAdminCanPost}) => {
       )}
 
       {/* Single List for specific types */}
-      {(type || typeof isRestricted !== 'undefined' || typeof onlyAdminCanPost !== 'undefined') && (
+      {(type || types || typeof isRestricted !== 'undefined' || typeof onlyAdminCanPost !== 'undefined') && (
         <Box bg="white" borderRadius="xl" boxShadow="md" p="4">
           <ChannelList
             channels={allFiltered}

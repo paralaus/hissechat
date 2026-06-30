@@ -7,7 +7,7 @@ import {api} from '../../../api';
 import {ChannelType} from '../../../config';
 import React, {useCallback} from 'react';
 
-const AllChannels = ({category, isRestricted, onlyAdminCanPost, type}) => {
+const AllChannels = ({category, isRestricted, onlyAdminCanPost, type, types}) => {
   const navigate = useNavigate();
 
   const fetchData = useCallback(
@@ -117,6 +117,9 @@ const AllChannels = ({category, isRestricted, onlyAdminCanPost, type}) => {
       if (type) {
         params.type = type;
       }
+      if (types) {
+        params.types = types;
+      }
       const response = await api.getAllChannels(params);
       if (response.data && response.data.results) {
         response.data.results = response.data.results.filter(
@@ -125,7 +128,7 @@ const AllChannels = ({category, isRestricted, onlyAdminCanPost, type}) => {
       }
       return response.data;
     },
-    [category, isRestricted, onlyAdminCanPost, type],
+    [category, isRestricted, onlyAdminCanPost, type, types],
   );
 
   const onRow = async item => {
@@ -141,7 +144,7 @@ const AllChannels = ({category, isRestricted, onlyAdminCanPost, type}) => {
   return (
     <Page>
       <DataTable
-        key={`${category}-${isRestricted}-${onlyAdminCanPost}-${type}`}
+        key={`${category}-${isRestricted}-${onlyAdminCanPost}-${type}-${types}`}
         queryEnabled
         deleteVisible={false}
         onRow={onRow}
@@ -177,7 +180,7 @@ const AllChannels = ({category, isRestricted, onlyAdminCanPost, type}) => {
           },
         ]}
         fetchData={fetchData}
-        filters={{category, isRestricted, onlyAdminCanPost, type}}
+        filters={{category, isRestricted, onlyAdminCanPost, type, types}}
       />
     </Page>
   );
