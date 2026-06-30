@@ -197,7 +197,7 @@ const AllChannels = ({category, isRestricted, onlyAdminCanPost, type, types}) =>
         const actualChannelsParams = {
           query: params.query,
           types,
-          onlyAdminCanPost,
+          isRestricted,
           includeInactive: params.includeInactive,
           limit: 5000,
           page: 1,
@@ -234,7 +234,7 @@ const AllChannels = ({category, isRestricted, onlyAdminCanPost, type, types}) =>
 
               if (existingChannel) {
                 combinedResults.push(existingChannel);
-              } else if (onlyAdminCanPost !== true) {
+              } else if (isRestricted !== true) {
                 combinedResults.push(
                   buildVirtualChannel({
                     item,
@@ -262,7 +262,7 @@ const AllChannels = ({category, isRestricted, onlyAdminCanPost, type, types}) =>
 
             if (existingChannel) {
               combinedResults.push(existingChannel);
-            } else if (onlyAdminCanPost !== true) {
+            } else if (isRestricted !== true) {
               combinedResults.push(
                 buildVirtualChannel({
                   item,

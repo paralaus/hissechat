@@ -262,7 +262,7 @@ const router = createBrowserRouter(
             element={
               <AllChannels
                 types="market,fund,normal"
-                onlyAdminCanPost={false}
+                isRestricted={false}
               />
             }
             handle={{
@@ -274,7 +274,7 @@ const router = createBrowserRouter(
             element={
               <AllChannels
                 types="market,fund,normal"
-                onlyAdminCanPost={true}
+                isRestricted={true}
               />
             }
             handle={{
@@ -528,7 +528,7 @@ const router = createBrowserRouter(
           element={
             <Channels
               types="market,fund,normal"
-              onlyAdminCanPost={false}
+              isRestricted={false}
             />
           }
           handle={{
@@ -540,7 +540,7 @@ const router = createBrowserRouter(
           element={
             <Channels
               types="market,fund,normal"
-              onlyAdminCanPost={true}
+              isRestricted={true}
             />
           }
           handle={{
