@@ -48,7 +48,6 @@ import EditAds from '../pages/dashboard/ads/EditAds';
 import AddVipApplication from '../pages/dashboard/vipapplications/AddVipApplication';
 import VipApplications from '../pages/dashboard/vipapplications/VipApplications';
 import BulkMessage from '../pages/dashboard/messaging/BulkMessage';
-import Channels from '../pages/dashboard/messaging/Channels';
 import ChannelChat from '../pages/dashboard/messaging/ChannelChat';
 import AppDistribution from '../pages/dashboard/distribution/AppDistribution';
 import Moderation from '../pages/dashboard/moderation/Moderation';
@@ -508,21 +507,32 @@ const router = createBrowserRouter(
         />
         <Route
           path="messaging/channels"
-          element={<Channels />}
+          element={
+            <AllChannels
+              types="market,fund,normal"
+              navigationTarget="chat"
+            />
+          }
           handle={{
-            crumb: () => <Text>Kanallar</Text>,
+            crumb: () => <Text>Tüm Piyasa/Fon Kanalları</Text>,
           }}
         />
         <Route
           path="messaging/channels/normal"
-          element={<Channels type="normal" />}
+          element={<AllChannels type="normal" navigationTarget="chat" />}
           handle={{
             crumb: () => <Text>Manuel Kanallar</Text>,
           }}
         />
         <Route
           path="messaging/channels/restricted"
-          element={<Channels type="normal" isRestricted={true} />}
+          element={
+            <AllChannels
+              type="normal"
+              isRestricted={true}
+              navigationTarget="chat"
+            />
+          }
           handle={{
             crumb: () => <Text>Kısıtlı Kanallar</Text>,
           }}

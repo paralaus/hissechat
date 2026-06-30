@@ -84,7 +84,14 @@ const sortCombinedResults = (items, sortBy) => {
   return sorted;
 };
 
-const AllChannels = ({category, isRestricted, onlyAdminCanPost, type, types}) => {
+const AllChannels = ({
+  category,
+  isRestricted,
+  onlyAdminCanPost,
+  type,
+  types,
+  navigationTarget = 'edit',
+}) => {
   const navigate = useNavigate();
 
   const fetchData = useCallback(
@@ -323,11 +330,28 @@ const AllChannels = ({category, isRestricted, onlyAdminCanPost, type, types}) =>
 
   const onRow = async item => {
     if (item.id) {
+      if (navigationTarget === 'chat') {
+        navigate(routes.channelChat.getPath(item.id));
+        return;
+      }
+
       navigate(routes.editChannel.getPath(item.id));
-    } else {
-      // Handle virtual channel click - maybe initiate or show info
-      // For now, prevent navigation to undefined ID
-      console.log('Clicked virtual channel:', item);
+      return;
+    }
+
+    if (navigationTarget !== 'chat' || !item?.isVirtual) {
+      return;
+    }
+
+    let response;
+    if (item.type === 'market' && item.marketCode) {
+      response = await api.initiateMarketChannel(item.marketCode);
+    } else if (item.type === 'fund' && item.fundCode) {
+      response = await api.initiateFundChannel(item.fundCode);
+    }
+
+    if (response?.data?.id) {
+      navigate(routes.channelChat.getPath(response.data.id));
     }
   };
 
