@@ -4,6 +4,10 @@ import {
   HStack,
   Button,
   Box,
+  SimpleGrid,
+  Stat,
+  StatLabel,
+  StatNumber,
   IconButton,
   Tooltip,
   useToast,
@@ -15,7 +19,7 @@ import {api} from '../../../api';
 import {RoleLabel} from '../../../config';
 import {routes} from '../../../config/routes';
 import {useState} from 'react';
-import {useMutation, useQueryClient} from '@tanstack/react-query';
+import {useMutation, useQuery, useQueryClient} from '@tanstack/react-query';
 import {FiStar} from 'react-icons/fi';
 import {format} from 'date-fns';
 import {tr} from 'date-fns/locale';
@@ -25,17 +29,48 @@ const fetchData = async options => {
   return response.data;
 };
 
+const fetchUserCount = async filters => {
+  const response = await api.getUsers({
+    ...filters,
+    page: 1,
+    limit: 1,
+  });
+
+  return Number(response?.data?.totalResults || 0);
+};
+
+const fetchUserStats = async filters => {
+  const baseFilters = {...filters};
+  delete baseFilters.isDeleted;
+
+  const [activeCount, deletedCount] = await Promise.all([
+    fetchUserCount(baseFilters),
+    fetchUserCount({...baseFilters, isDeleted: true}),
+  ]);
+
+  return {
+    activeCount,
+    deletedCount,
+    totalCount: activeCount + deletedCount,
+  };
+};
+
 const Users = () => {
   const navigate = useNavigate();
   const [filterParams, setFilterParams] = useState({});
   const queryClient = useQueryClient();
   const toast = useToast();
+  const {data: userStats, isLoading: isLoadingUserStats} = useQuery({
+    queryKey: ['users-stats', filterParams],
+    queryFn: () => fetchUserStats(filterParams),
+  });
 
   const togglePrivilegeMutation = useMutation({
     mutationFn: ({userId, isPrivileged}) =>
       api.updateUser(userId, {isPrivileged}),
     onSuccess: () => {
       queryClient.invalidateQueries(['data']);
+      queryClient.invalidateQueries(['users-stats']);
       toast({
         title: 'Kullanıcı güncellendi',
         status: 'success',
@@ -99,9 +134,37 @@ const Users = () => {
   };
 
   const activeFilter = getActiveFilter();
+  const formatCount = value =>
+    Number(value || 0).toLocaleString('tr-TR');
 
   return (
     <Page>
+      <SimpleGrid columns={{base: 1, md: 3}} spacing={4} mb={4}>
+        <Box p={4} borderWidth="1px" borderRadius="lg">
+          <Stat>
+            <StatLabel>Toplam Kayıt</StatLabel>
+            <StatNumber>
+              {isLoadingUserStats ? '-' : formatCount(userStats?.totalCount)}
+            </StatNumber>
+          </Stat>
+        </Box>
+        <Box p={4} borderWidth="1px" borderRadius="lg">
+          <Stat>
+            <StatLabel>Aktif Kayıt</StatLabel>
+            <StatNumber>
+              {isLoadingUserStats ? '-' : formatCount(userStats?.activeCount)}
+            </StatNumber>
+          </Stat>
+        </Box>
+        <Box p={4} borderWidth="1px" borderRadius="lg">
+          <Stat>
+            <StatLabel>Silinen Kayıt</StatLabel>
+            <StatNumber>
+              {isLoadingUserStats ? '-' : formatCount(userStats?.deletedCount)}
+            </StatNumber>
+          </Stat>
+        </Box>
+      </SimpleGrid>
       <Box mb={4}>
         <HStack spacing={4} justify="space-between">
           <HStack spacing={2}>
