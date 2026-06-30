@@ -48,6 +48,7 @@ import EditAds from '../pages/dashboard/ads/EditAds';
 import AddVipApplication from '../pages/dashboard/vipapplications/AddVipApplication';
 import VipApplications from '../pages/dashboard/vipapplications/VipApplications';
 import BulkMessage from '../pages/dashboard/messaging/BulkMessage';
+import Channels from '../pages/dashboard/messaging/Channels';
 import ChannelChat from '../pages/dashboard/messaging/ChannelChat';
 import AppDistribution from '../pages/dashboard/distribution/AppDistribution';
 import Moderation from '../pages/dashboard/moderation/Moderation';
@@ -507,14 +508,9 @@ const router = createBrowserRouter(
         />
         <Route
           path="messaging/channels"
-          element={
-            <AllChannels
-              types="market,fund,normal"
-              navigationTarget="chat"
-            />
-          }
+          element={<Channels />}
           handle={{
-            crumb: () => <Text>Tüm Piyasa/Fon Kanalları</Text>,
+            crumb: () => <Text>Kanallar</Text>,
           }}
         />
         <Route
