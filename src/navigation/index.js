@@ -254,29 +254,19 @@ const router = createBrowserRouter(
             path="all"
             element={<AllChannels types="market,fund,normal" />}
             handle={{
-              crumb: () => <Text>Tüm Kanallar</Text>,
+              crumb: () => <Text>Tüm Piyasa/Fon Kanalları</Text>,
             }}
           />
           <Route
             path="normal"
-            element={
-              <AllChannels
-                types="market,fund,normal"
-                isRestricted={false}
-              />
-            }
+            element={<AllChannels type="normal" />}
             handle={{
-              crumb: () => <Text>Normal Kanallar</Text>,
+              crumb: () => <Text>Manuel Kanallar</Text>,
             }}
           />
           <Route
             path="restricted"
-            element={
-              <AllChannels
-                types="market,fund,normal"
-                isRestricted={true}
-              />
-            }
+            element={<AllChannels type="normal" isRestricted={true} />}
             handle={{
               crumb: () => <Text>Kısıtlı Kanallar</Text>,
             }}
@@ -525,24 +515,14 @@ const router = createBrowserRouter(
         />
         <Route
           path="messaging/channels/normal"
-          element={
-            <Channels
-              types="market,fund,normal"
-              isRestricted={false}
-            />
-          }
+          element={<Channels type="normal" />}
           handle={{
-            crumb: () => <Text>Normal Kanallar</Text>,
+            crumb: () => <Text>Manuel Kanallar</Text>,
           }}
         />
         <Route
           path="messaging/channels/restricted"
-          element={
-            <Channels
-              types="market,fund,normal"
-              isRestricted={true}
-            />
-          }
+          element={<Channels type="normal" isRestricted={true} />}
           handle={{
             crumb: () => <Text>Kısıtlı Kanallar</Text>,
           }}

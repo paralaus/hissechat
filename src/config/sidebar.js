@@ -120,13 +120,13 @@ export const sidebarRoutes = [
     group: 'İçerik Yönetimi',
     children: [
       {
-        name: 'Tüm Kanallar',
+        name: 'Tüm Piyasa/Fon Kanalları',
         path: routes.allChannels.path,
         icon: GoListUnordered,
         exact: true,
       },
       {
-        name: 'Normal Kanallar',
+        name: 'Manuel Kanallar',
         path: routes.normalChannels.path,
         icon: GoListUnordered,
         exact: true,
@@ -323,12 +323,12 @@ export const sidebarRoutes = [
     group: 'Sistem',
     children: [
       {
-        name: 'Tüm Kanallar',
+        name: 'Tüm Piyasa/Fon Kanalları',
         path: routes.messagingChannels.path,
         icon: FiMessageCircle,
       },
       {
-        name: 'Normal Kanallar',
+        name: 'Manuel Kanallar',
         path: routes.messagingChannelsNormal.path,
         icon: FiMessageCircle,
       },
