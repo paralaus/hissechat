@@ -36,6 +36,7 @@ import Policies from '../pages/dashboard/policies/Policies';
 import EditSuggestion from '../pages/dashboard/suggestions/EditSuggestion';
 import Suggestions from '../pages/dashboard/suggestions/Suggestions';
 import AppRatings from '../pages/dashboard/app-ratings/AppRatings';
+import DeviceTelemetry from '../pages/dashboard/device-telemetry/DeviceTelemetry';
 import SendPushNotification from '../pages/dashboard/push-notification/SendPushNotification';
 import Announcements from '../pages/dashboard/announcements/Announcements';
 import CreateAnnouncement from '../pages/dashboard/announcements/CreateAnnouncement';
@@ -432,6 +433,13 @@ const router = createBrowserRouter(
           element={<AppRatings />}
           handle={{
             crumb: () => <Text>Uygulama Değerlendirmeleri</Text>,
+          }}
+        />
+        <Route
+          path="device-telemetry"
+          element={<DeviceTelemetry />}
+          handle={{
+            crumb: () => <Text>Cihaz Telemetri</Text>,
           }}
         />
         <Route

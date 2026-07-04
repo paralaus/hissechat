@@ -384,6 +384,14 @@ export const getAppRatings = async params => {
   return apiClient.get('/app-ratings', {params});
 };
 
+export const getClientTelemetryEvents = async params => {
+  return apiClient.get('/device-telemetry/client-events', {params});
+};
+
+export const getClientTelemetryStats = async params => {
+  return apiClient.get('/device-telemetry/client-events/stats', {params});
+};
+
 export const deleteAppRating = async id => {
   return apiClient.delete(`/app-ratings/${id}`);
 };

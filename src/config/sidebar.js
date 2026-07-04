@@ -226,6 +226,13 @@ export const sidebarRoutes = [
     group: 'İçerik Yönetimi',
   },
   {
+    name: 'Cihaz Telemetri',
+    icon: FiActivity,
+    path: routes.deviceTelemetry.path,
+    exact: true,
+    group: 'Sistem',
+  },
+  {
     name: 'Reklamlar',
     icon: FaAd,
     group: 'İçerik Yönetimi',

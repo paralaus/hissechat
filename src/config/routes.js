@@ -65,6 +65,9 @@ export const routes = {
   appRatings: {
     path: '/dashboard/app-ratings',
   },
+  deviceTelemetry: {
+    path: '/dashboard/device-telemetry',
+  },
   editSuggestion: {
     getPath: id => `/dashboard/suggestions/${id}`,
   },
