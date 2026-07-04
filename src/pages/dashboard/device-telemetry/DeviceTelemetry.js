@@ -189,14 +189,11 @@ const DeviceTelemetry = () => {
 
       <Box mb={4}>
         <SimpleGrid columns={{base: 1, md: 3, xl: 5}} spacing={3}>
-          <Select
-            placeholder="Marka"
+          <Input
+            placeholder="Marka (ornegin samsung, huawei, oppo)"
             value={filters.brand}
-            onChange={e => updateFilter('brand', e.target.value)}>
-            <option value="xiaomi">Xiaomi</option>
-            <option value="redmi">Redmi</option>
-            <option value="poco">Poco</option>
-          </Select>
+            onChange={e => updateFilter('brand', e.target.value)}
+          />
           <Select
             placeholder="Event tipi"
             value={filters.eventType}
