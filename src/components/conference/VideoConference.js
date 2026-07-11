@@ -1453,7 +1453,15 @@ const VideoConference = ({roomId, channelId, title, onClose, isBroadcaster = fal
         const tracks = localStreamRef.current.getTracks();
         for (const track of tracks) {
           try {
-            // Prefer VP9 for better compression, fallback to VP8/H264 for compatibility.
+            // Prefer H.264, then VP8. VP9 is deliberately excluded here (same as
+            // the screen-share producer below): VP9 requires SVC
+            // (scalabilityMode, single encoding) instead of classical simulcast,
+            // and the live-HLS server pipeline's FFmpeg build cannot decode
+            // VP9's multi-layer scalability structure over RTP at all ("VP9
+            // scalability structure with multiple layers is not implemented") -
+            // any admin-panel broadcast negotiating VP9 produces zero HLS
+            // segments. H.264 also lets the server's live-HLS pipeline use a
+            // cheap '-c:v copy' passthrough instead of transcoding.
             let codecOptions = {
                 videoGoogleStartBitrate: 1000,
                 opusStereo: 1,
@@ -1465,32 +1473,15 @@ const VideoConference = ({roomId, channelId, title, onClose, isBroadcaster = fal
             let codecToUse = undefined;
             if (track.kind === 'video') {
                 const codecs = device.rtpCapabilities.codecs;
-                const vp9Codec = codecs.find(c => c.mimeType.toLowerCase() === 'video/vp9');
-                const vp8Codec = codecs.find(c => c.mimeType.toLowerCase() === 'video/vp8');
                 const h264Codec = codecs.find(c => c.mimeType.toLowerCase() === 'video/h264');
-                codecToUse = vp9Codec || vp8Codec || h264Codec;
+                const vp8Codec = codecs.find(c => c.mimeType.toLowerCase() === 'video/vp8');
+                codecToUse = h264Codec || vp8Codec;
                 if (codecToUse) {
                     console.log(`Using preferred video codec for producer: ${codecToUse.mimeType}`);
                 }
             }
 
-            // VP9 simulcast is NOT supported by mediasoup-client; VP9 uses SVC
-            // (single encoding with scalabilityMode) instead of multiple
-            // simulcast layers. VP8/H264 use classical simulcast (3 layers).
-            const isVP9 =
-              track.kind === 'video' &&
-              codecToUse?.mimeType?.toLowerCase() === 'video/vp9';
-            let videoEncodings;
-            if (track.kind === 'video') {
-              if (isVP9) {
-                // SVC: 3 spatial × 3 temporal layers, key-frame aligned
-                videoEncodings = [
-                  {scalabilityMode: 'L3T3_KEY', maxBitrate: 1500000},
-                ];
-              } else {
-                videoEncodings = createSimulcastEncodings();
-              }
-            }
+            const videoEncodings = track.kind === 'video' ? createSimulcastEncodings() : undefined;
 
             const producer = await sendTransport.produce({
               track,
