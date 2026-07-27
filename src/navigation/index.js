@@ -48,6 +48,8 @@ import Ads from '../pages/dashboard/ads/Ads';
 import EditAds from '../pages/dashboard/ads/EditAds';
 import AddVipApplication from '../pages/dashboard/vipapplications/AddVipApplication';
 import VipApplications from '../pages/dashboard/vipapplications/VipApplications';
+import IntroFormSubmissions from '../pages/dashboard/introform/IntroFormSubmissions';
+import IntroFormDetail from '../pages/dashboard/introform/IntroFormDetail';
 import BulkMessage from '../pages/dashboard/messaging/BulkMessage';
 import Channels from '../pages/dashboard/messaging/Channels';
 import ChannelChat from '../pages/dashboard/messaging/ChannelChat';
@@ -471,6 +473,22 @@ const router = createBrowserRouter(
             }}
           />
           <Route index element={<VipApplications />} />
+        </Route>
+        <Route
+          path="intro-forms"
+          handle={{
+            crumb: () => (
+              <NavLink to="/dashboard/intro-forms">Tanışma Formu</NavLink>
+            ),
+          }}>
+          <Route
+            path=":id"
+            element={<IntroFormDetail />}
+            handle={{
+              crumb: () => <Text>Kayıt Detayı</Text>,
+            }}
+          />
+          <Route index element={<IntroFormSubmissions />} />
         </Route>
         <Route
           path="settings"

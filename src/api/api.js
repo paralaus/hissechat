@@ -577,6 +577,19 @@ export const deleteVipApplication = async vipApplicationId => {
   return apiClient.delete(`/vip-applications/${vipApplicationId}`);
 };
 
+// Tanışma Formu (Intro Form) Endpoints
+export const getIntroForms = async params => {
+  return apiClient.get('/intro-form', {params});
+};
+
+export const getIntroForm = async introFormId => {
+  return apiClient.get(`/intro-form/${introFormId}`);
+};
+
+export const deleteIntroForm = async introFormId => {
+  return apiClient.delete(`/intro-form/${introFormId}`);
+};
+
 // Bulk Messaging
 export const sendBulkMessage = async (body, options = {}) => {
   return apiClient.post('/channels/bulk-message', body, {

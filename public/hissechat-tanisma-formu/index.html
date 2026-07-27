@@ -1,0 +1,227 @@
+<!doctype html>
+<html lang="tr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>HisseChat Tanışma Formu</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main class="app">
+      <section class="card visible">
+        <p class="eyebrow">HisseChat</p>
+        <h1>HisseChat Tanışma Formu</h1>
+        <p class="lead">
+          Merhaba, hoş geldiniz.<br /><br />
+          HisseChat'te her yatırımcının deneyimi, bilgi seviyesi ve beklentileri farklıdır. Bu nedenle
+          sizi daha yakından tanıyabilmek ve platformdaki içerikleri, etkinlikleri ve iletişimimizi
+          ilgi alanlarınıza göre daha verimli planlayabilmek amacıyla bu kısa tanışma formunu
+          hazırladık.
+          <br /><br />
+          Formda paylaşacağınız bilgiler yalnızca sizi daha iyi tanımamıza ve HisseChat deneyiminizi
+          geliştirmemize yardımcı olmak amacıyla kullanılacaktır. Formun doldurulması, herhangi bir
+          yatırım tavsiyesi, yatırım danışmanlığı hizmeti veya özel portföy yönetimi ilişkisi
+          oluşturmaz.
+          <br /><br />
+          Ayıracağınız birkaç dakika için teşekkür ederiz.
+        </p>
+      </section>
+
+      <form id="introForm" class="card visible" novalidate>
+        <h3>Kişisel Bilgiler</h3>
+
+        <div class="field">
+          <label for="fullName">Ad Soyad *</label>
+          <input type="text" id="fullName" name="fullName" required />
+          <p class="error-text" data-error-for="fullName"></p>
+        </div>
+
+        <div class="field">
+          <label for="phone">Telefon Numarası *</label>
+          <input type="tel" id="phone" name="phone" required placeholder="05xx xxx xx xx" />
+          <p class="error-text" data-error-for="phone"></p>
+        </div>
+
+        <div class="field">
+          <label for="email">E-posta (isteğe bağlı)</label>
+          <input type="email" id="email" name="email" />
+          <p class="error-text" data-error-for="email"></p>
+        </div>
+
+        <h3>Borsa Deneyiminiz</h3>
+
+        <div class="field">
+          <label>1. Yaklaşık portföy büyüklüğünüz hangisine daha yakındır? *</label>
+          <div class="radio-group" data-group="portfolioSize">
+            <label class="option-row">
+              <input type="radio" name="portfolioSize" value="500.000 TL – 1.000.000 TL" />
+              <span>500.000 TL – 1.000.000 TL</span>
+            </label>
+            <label class="option-row">
+              <input type="radio" name="portfolioSize" value="1.000.000 TL – 5.000.000 TL" />
+              <span>1.000.000 TL – 5.000.000 TL</span>
+            </label>
+            <label class="option-row">
+              <input type="radio" name="portfolioSize" value="5.000.000 TL – 10.000.000 TL" />
+              <span>5.000.000 TL – 10.000.000 TL</span>
+            </label>
+            <label class="option-row">
+              <input type="radio" name="portfolioSize" value="10.000.000 TL – 25.000.000 TL" />
+              <span>10.000.000 TL – 25.000.000 TL</span>
+            </label>
+            <label class="option-row">
+              <input type="radio" name="portfolioSize" value="25.000.000 TL ve üzeri" />
+              <span>25.000.000 TL ve üzeri</span>
+            </label>
+            <label class="option-row">
+              <input type="radio" name="portfolioSize" value="Paylaşmak istemiyorum" />
+              <span>Paylaşmak istemiyorum</span>
+            </label>
+          </div>
+          <p class="error-text" data-error-for="portfolioSize"></p>
+        </div>
+
+        <div class="field">
+          <label>2. Şu anda Borsa İstanbul'da yatırımınız bulunuyor mu? *</label>
+          <div class="radio-group" data-group="hasBistInvestment">
+            <label class="option-row">
+              <input type="radio" name="hasBistInvestment" value="Evet" />
+              <span>Evet</span>
+            </label>
+            <label class="option-row">
+              <input type="radio" name="hasBistInvestment" value="Hayır" />
+              <span>Hayır</span>
+            </label>
+          </div>
+          <p class="error-text" data-error-for="hasBistInvestment"></p>
+        </div>
+
+        <div class="field">
+          <label for="trackedStocks">3. Varsa ağırlıklı olarak hangi hisseleri takip ediyor veya yatırım yapıyorsunuz?</label>
+          <textarea id="trackedStocks" name="trackedStocks" placeholder="…………………………………"></textarea>
+        </div>
+
+        <div class="field">
+          <label>4. İşlem yaklaşımınız size en çok hangisini ifade ediyor? *</label>
+          <div class="radio-group" data-group="tradingApproach">
+            <label class="option-row">
+              <input type="radio" name="tradingApproach" value="Uzun vadeli yatırım" />
+              <span>Uzun vadeli yatırım</span>
+            </label>
+            <label class="option-row">
+              <input type="radio" name="tradingApproach" value="Orta vadeli yatırım" />
+              <span>Orta vadeli yatırım</span>
+            </label>
+            <label class="option-row">
+              <input type="radio" name="tradingApproach" value="Kısa vadeli alım-satım" />
+              <span>Kısa vadeli alım-satım</span>
+            </label>
+            <label class="option-row">
+              <input type="radio" name="tradingApproach" value="Duruma göre değişiyor" />
+              <span>Duruma göre değişiyor</span>
+            </label>
+          </div>
+          <p class="error-text" data-error-for="tradingApproach"></p>
+        </div>
+
+        <div class="field">
+          <label>5. Borsada ne kadar süredir işlem yapıyorsunuz? *</label>
+          <div class="radio-group" data-group="tradingExperience">
+            <label class="option-row">
+              <input type="radio" name="tradingExperience" value="1 yıldan az" />
+              <span>1 yıldan az</span>
+            </label>
+            <label class="option-row">
+              <input type="radio" name="tradingExperience" value="1–3 yıl" />
+              <span>1–3 yıl</span>
+            </label>
+            <label class="option-row">
+              <input type="radio" name="tradingExperience" value="3–5 yıl" />
+              <span>3–5 yıl</span>
+            </label>
+            <label class="option-row">
+              <input type="radio" name="tradingExperience" value="5 yıl ve üzeri" />
+              <span>5 yıl ve üzeri</span>
+            </label>
+          </div>
+          <p class="error-text" data-error-for="tradingExperience"></p>
+        </div>
+
+        <h3>Hedefleriniz</h3>
+
+        <div class="field">
+          <label>6. HisseChat'ten en büyük beklentiniz nedir? *</label>
+          <div class="checkbox-group" data-group="expectations">
+            <label class="option-row">
+              <input type="checkbox" name="expectations" value="Şirket analizleri" />
+              <span>Şirket analizleri</span>
+            </label>
+            <label class="option-row">
+              <input type="checkbox" name="expectations" value="Piyasa değerlendirmeleri" />
+              <span>Piyasa değerlendirmeleri</span>
+            </label>
+            <label class="option-row">
+              <input type="checkbox" name="expectations" value="Eğitim içerikleri" />
+              <span>Eğitim içerikleri</span>
+            </label>
+            <label class="option-row">
+              <input type="checkbox" name="expectations" value="Fikir alışverişi" />
+              <span>Fikir alışverişi</span>
+            </label>
+            <label class="option-row">
+              <input type="checkbox" name="expectations" value="Disiplinli yatırım yaklaşımı" />
+              <span>Disiplinli yatırım yaklaşımı</span>
+            </label>
+            <label class="option-row">
+              <input type="checkbox" name="expectations" value="Diğer" id="expectationsOtherCheckbox" />
+              <span>Diğer</span>
+            </label>
+          </div>
+          <div class="conditional hidden" id="expectationsOtherWrap">
+            <input type="text" id="expectationsOther" name="expectationsOther" placeholder="Diğer beklentiniz..." />
+          </div>
+          <p class="error-text" data-error-for="expectations"></p>
+        </div>
+
+        <h3>Bizi Nereden Duydunuz?</h3>
+
+        <div class="field">
+          <label>7. Size HisseChat'i öneren biri oldu mu? *</label>
+          <div class="radio-group" data-group="referredBy">
+            <label class="option-row">
+              <input type="radio" name="referredBy" value="Hayır" />
+              <span>Hayır</span>
+            </label>
+            <label class="option-row">
+              <input type="radio" name="referredBy" value="Evet" id="referredByEvet" />
+              <span>Evet</span>
+            </label>
+          </div>
+          <p class="error-text" data-error-for="referredBy"></p>
+        </div>
+
+        <div class="conditional hidden" id="referrerNameWrap">
+          <label for="referrerName">İsmi (varsa)</label>
+          <input type="text" id="referrerName" name="referrerName" placeholder="Öneren kişinin ismi" />
+        </div>
+
+        <p class="small-muted disclaimer">
+          HisseChat, yatırım danışmanlığı hizmeti sunmaz. Platformda paylaşılan içerikler genel
+          bilgilendirme amacı taşımaktadır. Kullanıcılar yatırım kararlarını kendi değerlendirmeleri
+          doğrultusunda vermelidir.
+        </p>
+
+        <p class="error-text" id="formError"></p>
+
+        <button type="submit" class="btn primary submit-btn" id="submitBtn">Formu Gönder</button>
+      </form>
+
+      <section class="card hidden" id="successCard">
+        <h1>Teşekkürler!</h1>
+        <p class="lead">Formunuz başarıyla alındı. Bizimle bilgi paylaştığınız için teşekkür ederiz.</p>
+      </section>
+    </main>
+
+    <script src="./script.js"></script>
+  </body>
+</html>

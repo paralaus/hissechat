@@ -77,6 +77,12 @@ export const routes = {
   editVipApplications: {
     getPath: id => `/dashboard/vipapplications/${id}`,
   },
+  introForms: {
+    path: '/dashboard/intro-forms',
+  },
+  introFormDetail: {
+    getPath: id => `/dashboard/intro-forms/${id}`,
+  },
   sendPushNotification: {
     path: '/dashboard/send-push-notification',
   },

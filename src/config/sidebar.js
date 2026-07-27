@@ -443,6 +443,12 @@ export const sidebarRoutes = [
     group: 'Sistem',
   },
   {
+    name: 'Tanışma Formu',
+    icon: FiFileText,
+    path: routes.introForms.path,
+    group: 'Sistem',
+  },
+  {
     name: 'Ayarlar',
     icon: FiSettings,
     path: routes.settings.path,
