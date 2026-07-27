@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="tr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="robots" content="noindex, nofollow" />
+    <title>HisseChat Tanışma Formu Sonuçları</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main class="app">
+      <section class="card visible">
+        <p class="eyebrow">HisseChat</p>
+        <h1>Tanışma Formu Sonuçları</h1>
+        <p id="statusText" class="small-muted">Yükleniyor...</p>
+      </section>
+
+      <section id="listSection" class="card visible">
+        <div id="submissionsList"></div>
+
+        <div class="pagination-bar">
+          <div class="pagination-info">
+            <span id="totalResultsText"></span>
+            <select id="limitSelect" class="limit-select">
+              <option value="10">10 / sayfa</option>
+              <option value="20" selected>20 / sayfa</option>
+              <option value="50">50 / sayfa</option>
+              <option value="100">100 / sayfa</option>
+            </select>
+          </div>
+          <div class="pagination-controls">
+            <button type="button" class="btn ghost" id="prevBtn">Önceki</button>
+            <span id="pageIndicator" class="small-muted">Sayfa 1 / 1</span>
+            <button type="button" class="btn ghost" id="nextBtn">Sonraki</button>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <script src="./script.js"></script>
+  </body>
+</html>
