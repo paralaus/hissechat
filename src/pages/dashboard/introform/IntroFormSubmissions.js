@@ -1,4 +1,4 @@
-import React from 'react';
+import React, {useState} from 'react';
 import {
   Box,
   Button,
@@ -17,6 +17,8 @@ import {
   Center,
   useToast,
   Text,
+  Flex,
+  Select,
 } from '@chakra-ui/react';
 import {useQuery, useMutation, useQueryClient} from '@tanstack/react-query';
 import {useNavigate} from 'react-router-dom';
@@ -32,10 +34,12 @@ const IntroFormSubmissions = () => {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const toast = useToast();
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(10);
 
   const {data, isLoading, error} = useQuery({
-    queryKey: ['intro-forms'],
-    queryFn: () => api.getIntroForms(),
+    queryKey: ['intro-forms', page, limit],
+    queryFn: () => api.getIntroForms({page, limit, sortBy: 'createdAt:desc'}),
   });
 
   const deleteMutation = useMutation({
@@ -90,6 +94,9 @@ const IntroFormSubmissions = () => {
   } else if (Array.isArray(data?.data)) {
     submissions = data.data;
   }
+
+  const totalPages = data?.data?.totalPages || 1;
+  const totalResults = data?.data?.totalResults ?? submissions.length;
 
   return (
     <Layout>
@@ -161,6 +168,46 @@ const IntroFormSubmissions = () => {
             </Tbody>
           </Table>
         </TableContainer>
+
+        <Flex justify="space-between" align="center" mt={4} flexWrap="wrap" gap={3}>
+          <HStack spacing={4}>
+            <Text fontSize="sm" color="gray.500">
+              Toplam {totalResults} sonuç
+            </Text>
+            <Select
+              size="sm"
+              w="auto"
+              value={limit}
+              onChange={e => {
+                setPage(1);
+                setLimit(Number(e.target.value));
+              }}>
+              {[10, 20, 50, 100].map(size => (
+                <option key={size} value={size}>
+                  {size} / sayfa
+                </option>
+              ))}
+            </Select>
+          </HStack>
+
+          <HStack spacing={2}>
+            <Button
+              size="sm"
+              onClick={() => setPage(p => Math.max(1, p - 1))}
+              isDisabled={page <= 1}>
+              Önceki
+            </Button>
+            <Text fontSize="sm" color="gray.600">
+              Sayfa {page} / {totalPages}
+            </Text>
+            <Button
+              size="sm"
+              onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+              isDisabled={page >= totalPages}>
+              Sonraki
+            </Button>
+          </HStack>
+        </Flex>
       </Box>
     </Layout>
   );
