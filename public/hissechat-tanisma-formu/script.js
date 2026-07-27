@@ -81,6 +81,10 @@ function validate(values) {
     setError("referredBy", "Lütfen bir seçenek işaretleyin.");
     isValid = false;
   }
+  if (!values.aTeamInterest) {
+    setError("aTeamInterest", "Lütfen bir seçenek işaretleyin.");
+    isValid = false;
+  }
 
   return isValid;
 }
@@ -103,6 +107,7 @@ form.addEventListener("submit", async (event) => {
     expectationsOther: document.getElementById("expectationsOther").value.trim(),
     referredBy: getRadioValue("referredBy"),
     referrerName: document.getElementById("referrerName").value.trim(),
+    aTeamInterest: getRadioValue("aTeamInterest"),
   };
 
   if (!validate(values)) {

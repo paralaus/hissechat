@@ -114,6 +114,16 @@ const IntroFormDetail = () => {
           />
         </SimpleGrid>
 
+        <Heading size="sm" mb={4} color="gray.500">
+          A Takımı
+        </Heading>
+        <SimpleGrid columns={{base: 1, md: 2}} spacing={4} mb={6}>
+          <ReadOnlyInfo
+            label="A Takımı Hakkında Bilgisi Var mı / Bilgilendirilmek İster mi?"
+            value={data?.aTeamInterest}
+          />
+        </SimpleGrid>
+
         <SimpleGrid columns={{base: 1, md: 2}} spacing={4} mb={6}>
           <ReadOnlyInfo label="Kayıt Tarihi" value={formatDate(data?.createdAt)} />
         </SimpleGrid>

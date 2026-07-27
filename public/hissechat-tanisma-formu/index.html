@@ -12,7 +12,7 @@
         <p class="eyebrow">HisseChat</p>
         <h1>HisseChat Tanışma Formu</h1>
         <p class="lead">
-          Merhaba, hoş geldiniz.<br /><br />
+          Merhaba, Hoşgeldiniz.<br /><br />
           HisseChat'te her yatırımcının deneyimi, bilgi seviyesi ve beklentileri farklıdır. Bu nedenle
           sizi daha yakından tanıyabilmek ve platformdaki içerikleri, etkinlikleri ve iletişimimizi
           ilgi alanlarınıza göre daha verimli planlayabilmek amacıyla bu kısa tanışma formunu
@@ -203,6 +203,21 @@
         <div class="conditional hidden" id="referrerNameWrap">
           <label for="referrerName">İsmi (varsa)</label>
           <input type="text" id="referrerName" name="referrerName" placeholder="Öneren kişinin ismi" />
+        </div>
+
+        <div class="field">
+          <label>8. A Takımı hakkında bilginiz var mı, bilgilendirilmek ister misiniz? *</label>
+          <div class="radio-group" data-group="aTeamInterest">
+            <label class="option-row">
+              <input type="radio" name="aTeamInterest" value="Evet" />
+              <span>Evet</span>
+            </label>
+            <label class="option-row">
+              <input type="radio" name="aTeamInterest" value="Hayır" />
+              <span>Hayır</span>
+            </label>
+          </div>
+          <p class="error-text" data-error-for="aTeamInterest"></p>
         </div>
 
         <p class="small-muted disclaimer">
