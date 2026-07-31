@@ -3334,6 +3334,23 @@ const ChannelChat = () => {
     }
   };
 
+  const handleInputPaste = e => {
+    const items = e.clipboardData?.items;
+    if (!items) return;
+
+    const imageItem = Array.from(items).find(item =>
+      item.type?.startsWith('image/'),
+    );
+    if (!imageItem) return;
+
+    e.preventDefault();
+
+    const file = imageItem.getAsFile();
+    if (!file) return;
+
+    imageInput.selectFile(file);
+  };
+
   // Check if any media is selected
   const hasMediaAttachment =
     imageInput.objectUrl ||
@@ -5579,6 +5596,7 @@ const ChannelChat = () => {
             value={messageText}
             onChange={e => setMessageText(e.target.value)}
             onKeyPress={handleKeyPress}
+            onPaste={handleInputPaste}
             size="lg"
             flex="1"
           />

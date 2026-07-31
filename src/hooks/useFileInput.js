@@ -147,6 +147,35 @@ const useFileInput = (options = {}) => {
     [multiple, validateOnSelect, validateFile],
   );
 
+  // Programmatically select a file without going through the hidden <input> (e.g. clipboard paste)
+  const selectFile = useCallback(
+    async file => {
+      if (!file) return;
+
+      if (validateOnSelect) {
+        const result = await validateFile(file);
+        if (!result.valid) {
+          setSelected(multiple ? [file] : [file]);
+          return;
+        }
+      }
+
+      setSelected(prevSelected => {
+        if (!multiple) return [file];
+
+        const previousFiles = Array.isArray(prevSelected)
+          ? prevSelected
+          : prevSelected
+          ? Array.from(prevSelected)
+          : [];
+
+        return [...previousFiles, file];
+      });
+      setValidationError(null);
+    },
+    [multiple, validateOnSelect, validateFile],
+  );
+
   const upload = async (options = {}) => {
     const file = options.file || selected?.[0];
 
@@ -257,6 +286,7 @@ const useFileInput = (options = {}) => {
     file: selectedFile,
     files: selected,
     upload,
+    selectFile,
     isUploading,
     isProcessing,
     uploadProgress,
