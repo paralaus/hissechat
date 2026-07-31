@@ -1,9 +1,11 @@
-import {Avatar, Text, Badge} from '@chakra-ui/react';
+import {Avatar, Text, Badge, Button, useDisclosure} from '@chakra-ui/react';
+import {FiUserPlus} from 'react-icons/fi';
 import {useNavigate} from 'react-router-dom';
 import {getChannelThumbnail} from '../../../utils/image';
 import {DataTable, Page} from '../../../components';
 import {routes} from '../../../config/routes';
 import {api} from '../../../api';
+import AddVipMemberBulkModal from './AddVipMemberBulkModal';
 
 const fetchData = async options => {
   const response = await api.getVipChannels(options);
@@ -22,12 +24,19 @@ const categoryConfig = {
 
 const VipChannels = () => {
   const navigate = useNavigate();
+  const bulkAddModal = useDisclosure();
   const onRow = async item => {
     navigate(routes.editVipChannels.getPath(item.id));
   };
 
   return (
-    <Page>
+    <Page
+      action={
+        <Button leftIcon={<FiUserPlus />} colorScheme="purple" onClick={bulkAddModal.onOpen}>
+          Kullanıcıyı Toplu Ekle
+        </Button>
+      }>
+      <AddVipMemberBulkModal isOpen={bulkAddModal.isOpen} onClose={bulkAddModal.onClose} />
       <DataTable
         queryEnabled
         deleteVisible={false}
