@@ -316,6 +316,65 @@ const HighlightText = ({text, searchQuery, linkColor}) => {
 // Quick emoji list
 const QUICK_EMOJIS = ['👍', '❤️', '😂', '😮', '😢', '🙏'];
 
+// Single reaction bubble - shows who reacted on hover
+const ReactionBubble = ({reaction, isReacted, onReactionClick}) => {
+  const [isHovered, setIsHovered] = useState(false);
+
+  const userIds = reaction.users
+    .map(u => (typeof u === 'string' ? u : u.id || u._id))
+    .filter(Boolean);
+
+  const {data: reactedUsers, isLoading} = useQuery({
+    queryKey: ['reaction-users', userIds.join(',')],
+    queryFn: async () => {
+      const responses = await Promise.all(
+        userIds.map(id => api.getUser(id).then(res => res.data).catch(() => null)),
+      );
+      return responses.filter(Boolean);
+    },
+    enabled: isHovered && userIds.length > 0,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const tooltipLabel = isLoading
+    ? 'Yükleniyor...'
+    : (reactedUsers || [])
+        .map(u => u.fullname || u.username || u.email)
+        .filter(Boolean)
+        .join(', ') || 'Kullanıcı bulunamadı';
+
+  return (
+    <Tooltip label={tooltipLabel} hasArrow openDelay={200} placement="top">
+      <Box
+        bg={isReacted ? 'blue.100' : 'gray.100'}
+        border="1px solid"
+        borderColor={isReacted ? 'blue.300' : 'gray.200'}
+        borderRadius="full"
+        px={2}
+        py={0.5}
+        cursor="pointer"
+        onMouseEnter={() => setIsHovered(true)}
+        onClick={e => {
+          e.stopPropagation();
+          onReactionClick(reaction.emoji, isReacted);
+        }}
+        _hover={{bg: isReacted ? 'blue.200' : 'gray.200'}}
+        display="flex"
+        alignItems="center">
+        <Text fontSize="xs" mr={1}>
+          {reaction.emoji}
+        </Text>
+        <Text
+          fontSize="xs"
+          fontWeight="bold"
+          color={isReacted ? 'blue.700' : 'gray.600'}>
+          {reaction.users.length}
+        </Text>
+      </Box>
+    </Tooltip>
+  );
+};
+
 // Reactions Component
 const ReactionsBar = ({reactions, currentUserId, onReactionClick}) => {
   if (!reactions || reactions.length === 0) return null;
@@ -329,32 +388,12 @@ const ReactionsBar = ({reactions, currentUserId, onReactionClick}) => {
         });
 
         return (
-          <Box
+          <ReactionBubble
             key={index}
-            bg={isReacted ? 'blue.100' : 'gray.100'}
-            border="1px solid"
-            borderColor={isReacted ? 'blue.300' : 'gray.200'}
-            borderRadius="full"
-            px={2}
-            py={0.5}
-            cursor="pointer"
-            onClick={e => {
-              e.stopPropagation();
-              onReactionClick(reaction.emoji, isReacted);
-            }}
-            _hover={{bg: isReacted ? 'blue.200' : 'gray.200'}}
-            display="flex"
-            alignItems="center">
-            <Text fontSize="xs" mr={1}>
-              {reaction.emoji}
-            </Text>
-            <Text
-              fontSize="xs"
-              fontWeight="bold"
-              color={isReacted ? 'blue.700' : 'gray.600'}>
-              {reaction.users.length}
-            </Text>
-          </Box>
+            reaction={reaction}
+            isReacted={isReacted}
+            onReactionClick={(emoji, reacted) => onReactionClick(emoji, reacted)}
+          />
         );
       })}
     </HStack>
