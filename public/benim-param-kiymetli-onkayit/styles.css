@@ -1,0 +1,213 @@
+:root {
+  color-scheme: dark;
+  --bg: #0c0f16;
+  --card: #12161f;
+  --text: #f2f0e8;
+  --muted: #a8a596;
+  --primary: #c9a227;
+  --primary-2: #e0c25e;
+  --border: #2a2c33;
+  --bad: #f87171;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: Georgia, 'Times New Roman', serif;
+  background: radial-gradient(circle at top, #171c2b 0%, var(--bg) 45%);
+  color: var(--text);
+  min-height: 100vh;
+}
+
+.app {
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 40px 16px 64px;
+}
+
+.card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 28px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.35);
+  margin-bottom: 20px;
+}
+
+.hidden {
+  display: none !important;
+}
+
+.visible {
+  display: block;
+}
+
+.cover-card {
+  text-align: center;
+}
+
+.cover-image {
+  max-width: 220px;
+  width: 100%;
+  border-radius: 6px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+  margin-bottom: 20px;
+}
+
+.eyebrow {
+  color: var(--primary-2);
+  font-size: 0.82rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  margin: 0 0 6px;
+  font-family: Inter, Segoe UI, Roboto, Arial, sans-serif;
+}
+
+h1 {
+  margin: 0 0 4px;
+  font-size: 1.8rem;
+}
+
+.subtitle {
+  color: var(--primary-2);
+  font-weight: 600;
+  margin: 0 0 16px;
+  font-family: Inter, Segoe UI, Roboto, Arial, sans-serif;
+}
+
+.lead {
+  color: var(--muted);
+  line-height: 1.65;
+  text-align: left;
+  font-family: Inter, Segoe UI, Roboto, Arial, sans-serif;
+  font-size: 0.95rem;
+}
+
+.small-muted {
+  color: var(--muted);
+  font-size: 0.85rem;
+  line-height: 1.5;
+  font-family: Inter, Segoe UI, Roboto, Arial, sans-serif;
+}
+
+.hint-text {
+  color: var(--muted);
+  font-size: 0.8rem;
+  margin: 6px 0 0;
+  font-family: Inter, Segoe UI, Roboto, Arial, sans-serif;
+}
+
+.disclaimer {
+  margin-top: 8px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+}
+
+.field {
+  margin-bottom: 22px;
+  font-family: Inter, Segoe UI, Roboto, Arial, sans-serif;
+}
+
+.field > label {
+  display: block;
+  font-weight: 600;
+  margin-bottom: 10px;
+  line-height: 1.4;
+}
+
+input[type='text'],
+input[type='tel'],
+input[type='email'] {
+  width: 100%;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  padding: 12px;
+  background: #05070c;
+  color: var(--text);
+  font-size: 1rem;
+  font-family: Inter, Segoe UI, Roboto, Arial, sans-serif;
+}
+
+input:focus {
+  outline: none;
+  border-color: var(--primary);
+}
+
+.checkbox-group {
+  display: grid;
+  gap: 10px;
+}
+
+.option-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid var(--border);
+  background: #171a24;
+  border-radius: 12px;
+  padding: 12px 14px;
+  cursor: pointer;
+  transition: border-color 120ms ease, background 120ms ease;
+}
+
+.option-row:hover {
+  border-color: var(--primary-2);
+}
+
+.option-row input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--primary);
+  flex-shrink: 0;
+}
+
+.option-row:has(input:checked) {
+  border-color: var(--primary);
+  background: #26210f;
+}
+
+.error-text {
+  color: var(--bad);
+  font-size: 0.85rem;
+  margin: 8px 0 0;
+  font-family: Inter, Segoe UI, Roboto, Arial, sans-serif;
+}
+
+.error-text:empty {
+  display: none;
+}
+
+.btn {
+  border: 1px solid transparent;
+  border-radius: 10px;
+  padding: 14px 20px;
+  font-weight: 700;
+  font-size: 1rem;
+  cursor: pointer;
+  color: inherit;
+  width: 100%;
+  font-family: Inter, Segoe UI, Roboto, Arial, sans-serif;
+}
+
+.btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.btn.primary {
+  background: linear-gradient(135deg, var(--primary), var(--primary-2));
+  color: #14110a;
+}
+
+.submit-btn {
+  margin-top: 12px;
+}
+
+@media (max-width: 640px) {
+  .card {
+    padding: 20px;
+  }
+}

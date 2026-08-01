@@ -21,6 +21,7 @@ import {
   FiFileText,
   FiClock,
   FiTrash2,
+  FiBook,
 } from 'react-icons/fi';
 import {AiOutlineUserAdd, AiOutlineProduct} from 'react-icons/ai';
 import {BiLineChart} from 'react-icons/bi';
@@ -446,6 +447,12 @@ export const sidebarRoutes = [
     name: 'Tanışma Formu',
     icon: FiFileText,
     path: routes.introForms.path,
+    group: 'Sistem',
+  },
+  {
+    name: 'Kitap Ön Talep Formu',
+    icon: FiBook,
+    path: routes.bookPreorders.path,
     group: 'Sistem',
   },
   {

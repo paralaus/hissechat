@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="tr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Benim Param Kıymetli - Ön Talep Formu</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main class="app">
+      <section class="card visible cover-card">
+        <img
+          class="cover-image"
+          src="./kitap-kapak.jpg"
+          alt="Benim Param Kıymetli kitap kapağı"
+          onerror="this.style.display='none'"
+        />
+        <p class="eyebrow">HisseChat</p>
+        <h1>Benim Param Kıymetli</h1>
+        <p class="subtitle">İlk Baskı Ön Talep Formu</p>
+        <p class="lead">
+          İlk baskısı yalnızca 5.000 adet olarak üretilecek olan <strong>Benim Param Kıymetli</strong>
+          kitabına göstermiş olduğunuz ilgi için teşekkür ederiz.
+          <br /><br />
+          Bu form, ön talebinizi oluşturabilmeniz ve satış süreci başladığında sizinle iletişime
+          geçebilmemiz amacıyla hazırlanmıştır.
+          <br /><br />
+          Her kitap, kendine ait özel ve benzersiz bir seri numarasına sahip olacaktır. Ayrıca, seri
+          numaralarına özel olarak hazırlanmış sürprizler ve ayrıcalıklar yalnızca kitap sahiplerine
+          sunulacaktır.
+          <br /><br />
+          Lütfen aşağıdaki bilgileri eksiksiz doldurunuz.
+        </p>
+      </section>
+
+      <form id="preorderForm" class="card visible" novalidate>
+        <div class="field">
+          <label for="fullName">Ad Soyad *</label>
+          <input type="text" id="fullName" name="fullName" required />
+          <p class="error-text" data-error-for="fullName"></p>
+        </div>
+
+        <div class="field">
+          <label>Sizinle nasıl iletişime geçmemizi istersiniz? *</label>
+          <div class="checkbox-group" data-group="contactPreferences">
+            <label class="option-row">
+              <input type="checkbox" name="contactPreferences" value="Cep Telefonu" />
+              <span>Cep Telefonu</span>
+            </label>
+            <label class="option-row">
+              <input type="checkbox" name="contactPreferences" value="WhatsApp" />
+              <span>WhatsApp</span>
+            </label>
+            <label class="option-row">
+              <input type="checkbox" name="contactPreferences" value="E-posta" />
+              <span>E-posta</span>
+            </label>
+          </div>
+          <p class="error-text" data-error-for="contactPreferences"></p>
+        </div>
+
+        <div class="field">
+          <label for="phone">Cep Telefonu *</label>
+          <input type="tel" id="phone" name="phone" required placeholder="05xx xxx xx xx" />
+          <p class="hint-text">WhatsApp tercih ettiyseniz bu numara üzerinden ulaşılacaktır.</p>
+          <p class="error-text" data-error-for="phone"></p>
+        </div>
+
+        <div class="field">
+          <label for="email">E-posta Adresi</label>
+          <input type="email" id="email" name="email" />
+          <p class="error-text" data-error-for="email"></p>
+        </div>
+
+        <p class="small-muted disclaimer">
+          Bu form yalnızca ön talep oluşturmak amacıyla hazırlanmıştır. Formun doldurulması satın
+          alma işlemini tamamlamaz. Satış süreci başladığında, tercih ettiğiniz iletişim yöntemi
+          üzerinden sizinle iletişime geçilecektir.
+        </p>
+
+        <p class="error-text" id="formError"></p>
+
+        <button type="submit" class="btn primary submit-btn" id="submitBtn">Ön Talep Oluştur</button>
+      </form>
+
+      <section class="card hidden" id="successCard">
+        <h1>Teşekkür ederiz!</h1>
+        <p class="lead">
+          Benim Param Kıymetli ailesinin ilk 5.000 okuyucusu arasında yer almak için ilk adımı
+          attınız. Satış süreci başladığında tercih ettiğiniz iletişim yöntemi üzerinden sizinle
+          iletişime geçeceğiz.
+        </p>
+      </section>
+    </main>
+
+    <script src="./script.js"></script>
+  </body>
+</html>

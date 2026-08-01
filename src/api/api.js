@@ -590,6 +590,19 @@ export const deleteIntroForm = async introFormId => {
   return apiClient.delete(`/intro-form/${introFormId}`);
 };
 
+// Benim Param Kıymetli - Kitap Ön Talep Formu Endpoints
+export const getBookPreorders = async params => {
+  return apiClient.get('/book-preorder', {params});
+};
+
+export const getBookPreorder = async bookPreorderId => {
+  return apiClient.get(`/book-preorder/${bookPreorderId}`);
+};
+
+export const deleteBookPreorder = async bookPreorderId => {
+  return apiClient.delete(`/book-preorder/${bookPreorderId}`);
+};
+
 // Bulk Messaging
 export const sendBulkMessage = async (body, options = {}) => {
   return apiClient.post('/channels/bulk-message', body, {

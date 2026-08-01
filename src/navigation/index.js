@@ -50,6 +50,8 @@ import AddVipApplication from '../pages/dashboard/vipapplications/AddVipApplicat
 import VipApplications from '../pages/dashboard/vipapplications/VipApplications';
 import IntroFormSubmissions from '../pages/dashboard/introform/IntroFormSubmissions';
 import IntroFormDetail from '../pages/dashboard/introform/IntroFormDetail';
+import BookPreorderSubmissions from '../pages/dashboard/bookpreorder/BookPreorderSubmissions';
+import BookPreorderDetail from '../pages/dashboard/bookpreorder/BookPreorderDetail';
 import BulkMessage from '../pages/dashboard/messaging/BulkMessage';
 import Channels from '../pages/dashboard/messaging/Channels';
 import ChannelChat from '../pages/dashboard/messaging/ChannelChat';
@@ -489,6 +491,22 @@ const router = createBrowserRouter(
             }}
           />
           <Route index element={<IntroFormSubmissions />} />
+        </Route>
+        <Route
+          path="book-preorders"
+          handle={{
+            crumb: () => (
+              <NavLink to="/dashboard/book-preorders">Kitap Ön Talep Formu</NavLink>
+            ),
+          }}>
+          <Route
+            path=":id"
+            element={<BookPreorderDetail />}
+            handle={{
+              crumb: () => <Text>Kayıt Detayı</Text>,
+            }}
+          />
+          <Route index element={<BookPreorderSubmissions />} />
         </Route>
         <Route
           path="settings"

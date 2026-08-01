@@ -83,6 +83,12 @@ export const routes = {
   introFormDetail: {
     getPath: id => `/dashboard/intro-forms/${id}`,
   },
+  bookPreorders: {
+    path: '/dashboard/book-preorders',
+  },
+  bookPreorderDetail: {
+    getPath: id => `/dashboard/book-preorders/${id}`,
+  },
   sendPushNotification: {
     path: '/dashboard/send-push-notification',
   },
