@@ -24,13 +24,14 @@ import {
 } from '@chakra-ui/react';
 import {useQuery, useMutation, useQueryClient} from '@tanstack/react-query';
 import {useNavigate} from 'react-router-dom';
-import {FaTrash, FaLink} from 'react-icons/fa';
+import {FaTrash, FaLink, FaEye} from 'react-icons/fa';
 import {api} from '../../../api';
 import {routes} from '../../../config/routes';
 import {Page as Layout} from '../../../components';
 import {formatDate} from '../../../utils/date';
 
 const PUBLIC_FORM_PATH = '/benim-param-kiymetli-onkayit/';
+const PUBLIC_RESULTS_PATH = '/benim-param-kiymetli-sonuclari/';
 
 const BookPreorderSubmissions = () => {
   const queryClient = useQueryClient();
@@ -59,8 +60,7 @@ const BookPreorderSubmissions = () => {
     }
   };
 
-  const handleCopyLink = () => {
-    const link = `${window.location.origin}${PUBLIC_FORM_PATH}`;
+  const copyToClipboard = link => {
     navigator.clipboard
       .writeText(link)
       .then(() => {
@@ -81,6 +81,12 @@ const BookPreorderSubmissions = () => {
         });
       });
   };
+
+  const handleCopyLink = () =>
+    copyToClipboard(`${window.location.origin}${PUBLIC_FORM_PATH}`);
+
+  const handleCopyResultsLink = () =>
+    copyToClipboard(`${window.location.origin}${PUBLIC_RESULTS_PATH}`);
 
   if (isLoading)
     return (
@@ -103,19 +109,32 @@ const BookPreorderSubmissions = () => {
   return (
     <Layout>
       <Box p={8} bg="white" borderRadius="lg" shadow="sm">
-        <HStack justifyContent="space-between" mb={2}>
+        <HStack justifyContent="space-between" mb={2} flexWrap="wrap" gap={2}>
           <Heading size="md">Benim Param Kıymetli - Ön Talep Kayıtları</Heading>
-          <Button
-            leftIcon={<FaLink />}
-            colorScheme="blue"
-            size="sm"
-            onClick={handleCopyLink}>
-            Form Linkini Kopyala
-          </Button>
+          <HStack>
+            <Button
+              leftIcon={<FaLink />}
+              colorScheme="blue"
+              size="sm"
+              onClick={handleCopyLink}>
+              Form Linkini Kopyala
+            </Button>
+            <Button
+              leftIcon={<FaEye />}
+              colorScheme="purple"
+              size="sm"
+              onClick={handleCopyResultsLink}>
+              Sonuç Sayfası Linkini Kopyala
+            </Button>
+          </HStack>
         </HStack>
-        <Text fontSize="sm" color="gray.500" mb={6}>
+        <Text fontSize="sm" color="gray.500" mb={1}>
           Kullanıcılara gönderilecek link: {window.location.origin}
           {PUBLIC_FORM_PATH}
+        </Text>
+        <Text fontSize="sm" color="orange.500" mb={6}>
+          Sonuç sayfası (giriş gerektirmez, herkese açıktır): {window.location.origin}
+          {PUBLIC_RESULTS_PATH}
         </Text>
 
         <TableContainer>
