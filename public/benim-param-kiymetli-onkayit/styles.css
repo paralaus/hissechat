@@ -93,6 +93,35 @@ h1 {
   font-family: Inter, Segoe UI, Roboto, Arial, sans-serif;
 }
 
+.feature-list {
+  color: var(--muted);
+  line-height: 1.65;
+  text-align: left;
+  font-family: Inter, Segoe UI, Roboto, Arial, sans-serif;
+  font-size: 0.95rem;
+  margin: 0 0 12px;
+  padding-left: 20px;
+}
+
+.feature-list li {
+  margin-bottom: 6px;
+}
+
+.feature-list li::marker {
+  color: var(--primary-2);
+}
+
+.price-tag {
+  display: inline-block;
+  color: #14110a;
+  background: linear-gradient(135deg, var(--primary), var(--primary-2));
+  font-weight: 700;
+  font-family: Inter, Segoe UI, Roboto, Arial, sans-serif;
+  padding: 8px 16px;
+  border-radius: 999px;
+  margin: 4px 0 16px;
+}
+
 .hint-text {
   color: var(--muted);
   font-size: 0.8rem;
