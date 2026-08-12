@@ -754,8 +754,9 @@ const VipMemberManagement = ({channelId, channelName}) => {
       </Flex>
       <Text fontSize="sm" color="gray.600" mb={4}>
         Abonelik ve manuel üyelikler tekilleştirilmiş listede birleştirilir.
-        Apple veya Google dışındaki kullanıcıları bu kanala manuel olarak
-        ekleyebilir ya da kaldırabilirsiniz.
+        Kullanıcıları bu kanala manuel olarak ekleyebilir; hem manuel hem de
+        Apple/Google abonelik üyelerini kaldırabilirsiniz (abonelik üyeleri
+        kaldırıldığında altındaki satın alma kaydı da sona erdirilir).
       </Text>
 
       <Box bg="white" p={4} borderRadius="md" boxShadow="sm" mb={4}>
@@ -879,7 +880,7 @@ const VipMemberManagement = ({channelId, channelName}) => {
             </Text>
           )}
           {visibleUnifiedMembers.map(m => {
-            const canRevoke = !!(m?.sources?.manual && m?.userId);
+            const canRevoke = !!m?.userId;
             const platforms =
               Array.isArray(m?.platforms) && m.platforms.length > 0
                 ? m.platforms
@@ -947,7 +948,14 @@ const VipMemberManagement = ({channelId, channelName}) => {
                   <Button
                     size="xs"
                     colorScheme="red"
-                    onClick={() => revokeMutation.mutate(m.userId)}
+                    onClick={() => {
+                      const warning = hasSubscription
+                        ? `${m.fullname || 'Bu kullanıcı'} aktif bir abonelikle bu kanalda. Kaldırırsanız aboneliği de sona erdirilir (aksi halde bir sonraki senkronizasyonda otomatik geri eklenir). Devam edilsin mi?`
+                        : `${m.fullname || 'Bu kullanıcı'} kanaldan kaldırılsın mı?`;
+                      if (window.confirm(warning)) {
+                        revokeMutation.mutate(m.userId);
+                      }
+                    }}
                     isLoading={revokeMutation.isPending}>
                     Kaldır
                   </Button>
