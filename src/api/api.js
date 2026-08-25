@@ -798,6 +798,12 @@ export const revokeUser = async (channelId, userId) => {
   return apiClient.post(`/channels/${channelId}/revoke/${userId}`);
 };
 
+// Kısıtlı kanala e-posta ile onaylı üye ekler.
+// Backend yetkiyi kanal bazında kontrol eder: genel admin ya da BU kanalın admini.
+export const approveUserByEmail = async (channelId, email) => {
+  return apiClient.post(`/channels/${channelId}/approve-by-email`, {email});
+};
+
 export const grantVipMemberAccess = async (channelId, userId) => {
   return apiClient.post(`/channels/${channelId}/vip-members/${userId}/grant`);
 };

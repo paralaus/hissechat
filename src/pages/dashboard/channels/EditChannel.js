@@ -72,11 +72,70 @@ const AccessManagement = ({channelId}) => {
     },
   });
 
+  // E-posta ile doğrudan üye ekleme: kullanıcının önce erişim isteği
+  // göndermesini beklemeden onaylı üye listesine alır.
+  const [email, setEmail] = React.useState('');
+
+  const approveByEmailMutation = useMutation({
+    mutationFn: () => api.approveUserByEmail(channelId, email.trim()),
+    onSuccess: ({data}) => {
+      queryClient.invalidateQueries(['pendingUsers', channelId]);
+      queryClient.invalidateQueries(['allowedUsers', channelId]);
+      setEmail('');
+      toast({
+        title: data?.alreadyAllowed
+          ? `${data?.user?.fullname || 'Kullanıcı'} zaten izinliydi`
+          : `${data?.user?.fullname || 'Kullanıcı'} eklendi`,
+        status: data?.alreadyAllowed ? 'info' : 'success',
+      });
+    },
+    onError: error => {
+      toast({title: getErrorMessage(error), status: 'error'});
+    },
+  });
+
+  const canSubmitEmail = email.trim().length > 0 && !approveByEmailMutation.isPending;
+
   return (
     <Box mt={8} bg="gray.50" p={4} borderRadius="md">
       <Text fontSize="lg" fontWeight="bold" mb={4}>
         Erişim Yönetimi
       </Text>
+
+      <Box bg="white" p={4} borderRadius="md" boxShadow="sm" mb={6}>
+        <Text fontWeight="bold" mb={2} color="blue.500">
+          E-posta ile Üye Ekle
+        </Text>
+        <Text fontSize="xs" color="gray.500" mb={3}>
+          Kullanıcının erişim isteği göndermesini beklemeden doğrudan izinli
+          listesine ekler. E-posta, kayıtlı bir kullanıcıya ait olmalıdır.
+        </Text>
+        <Flex gap={2} direction={{base: 'column', sm: 'row'}}>
+          <Input
+            type="email"
+            placeholder="ornek@eposta.com"
+            value={email}
+            size="sm"
+            onChange={e => setEmail(e.target.value)}
+            onKeyDown={e => {
+              if (e.key === 'Enter' && canSubmitEmail) {
+                e.preventDefault();
+                approveByEmailMutation.mutate();
+              }
+            }}
+          />
+          <Button
+            size="sm"
+            colorScheme="blue"
+            minW="90px"
+            isDisabled={!canSubmitEmail}
+            isLoading={approveByEmailMutation.isPending}
+            onClick={() => approveByEmailMutation.mutate()}>
+            Ekle
+          </Button>
+        </Flex>
+      </Box>
+
       <Flex gap={8} direction={{base: 'column', md: 'row'}}>
         <Box flex={1} bg="white" p={4} borderRadius="md" boxShadow="sm">
           <Text fontWeight="bold" mb={4} color="orange.500">
