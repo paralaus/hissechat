@@ -241,6 +241,11 @@ const EditChannel = ({id}) => {
     defaultValues: {
       type: 'normal',
       isRestricted: isRestrictedParam,
+      // Yeni kanal varsayılan olarak AKTİF oluşturulur.
+      // Önceden bu alan boş kaldığı için form isActive:false gönderiyordu;
+      // kanal pasif oluşuyor ve liste pasifleri filtrelediği için panelde bir
+      // daha hiç görünmüyordu (yeniden aktifleştirmek de mümkün olmuyordu).
+      isActive: true,
     },
   });
 
@@ -651,9 +656,11 @@ const EditChannel = ({id}) => {
                   Aktiflik
                 </FormLabel>
                 <Switch
-                  key={data?.isActive}
+                  // Yeni kanalda kayıt henüz yok; anahtar açık başlamalı ki
+                  // form isActive:false göndermesin (bkz. defaultValues).
+                  key={isNew ? 'new' : String(data?.isActive)}
                   id="isActive"
-                  defaultChecked={data?.isActive}
+                  defaultChecked={isNew ? true : data?.isActive}
                   {...register('isActive')}
                 />
               </Box>

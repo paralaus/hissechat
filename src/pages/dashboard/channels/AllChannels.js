@@ -317,6 +317,11 @@ const AllChannels = ({
       if (types) {
         params.types = types;
       }
+      // Yönetim panelinde pasif kanallar da listelenmeli. Backend, bu parametre
+      // gönderilmezse `isActive: { $ne: false }` filtresi uyguluyor; yani pasife
+      // düşmüş bir kanal panelde hiç görünmüyor ve yeniden aktifleştirilemiyordu.
+      params.includeInactive = true;
+
       // Varsayılan sıralama: en yeni kanal en üstte.
       // Backend'in paginate eklentisi sortBy verilmediğinde 'createdAt' (ARTAN)
       // kullanıyor; bu da yeni eklenen kanalı son sayfaya atıyor ve panelde
@@ -396,6 +401,24 @@ const AllChannels = ({
             cell: ({getValue}) => {
               return (
                 <Text>{getValue() === ChannelType.Vip ? 'Evet' : 'Hayır'}</Text>
+              );
+            },
+          },
+          {
+            // Pasif kanallar da listelendiği için ayırt edilebilmeli.
+            header: 'Aktiflik',
+            accessorKey: 'isActive',
+            cell: ({getValue, row}) => {
+              // Piyasa/fon için üretilen sanal kanallar henüz kayıtlı değildir;
+              // onlar için aktiflik bilgisi anlamlı olmaz.
+              if (row?.original?.isVirtual) {
+                return <Text color="gray.500">—</Text>;
+              }
+              const inactive = getValue() === false;
+              return (
+                <Text color={inactive ? 'red.500' : 'green.500'}>
+                  {inactive ? 'Pasif' : 'Aktif'}
+                </Text>
               );
             },
           },
