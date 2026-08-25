@@ -317,6 +317,13 @@ const AllChannels = ({
       if (types) {
         params.types = types;
       }
+      // Varsayılan sıralama: en yeni kanal en üstte.
+      // Backend'in paginate eklentisi sortBy verilmediğinde 'createdAt' (ARTAN)
+      // kullanıyor; bu da yeni eklenen kanalı son sayfaya atıyor ve panelde
+      // "kanal eklendi ama listede yok" izlenimi yaratıyordu.
+      if (!params.sortBy) {
+        params.sortBy = 'createdAt:desc';
+      }
       const response = await api.getAllChannels(params);
       if (response.data && response.data.results) {
         response.data.results = response.data.results.filter(

@@ -280,6 +280,17 @@ const EditChannel = ({id}) => {
         }),
   });
 
+  // Bir kanalın hangi liste sayfasına ait olduğunu belirler.
+  // 'normal' olmayan tipler (piyasa/fon) Tüm Kanallar listesinde görünür.
+  const getListPathFor = channel => {
+    if (channel?.type && channel.type !== 'normal') {
+      return routes.allChannels.path;
+    }
+    return channel?.isRestricted
+      ? routes.restrictedChannels.path
+      : routes.normalChannels.path;
+  };
+
   const onSubmit = async values => {
     try {
       const payload = {
@@ -300,7 +311,10 @@ const EditChannel = ({id}) => {
           position: 'top',
         });
       }
-      navigate(routes.allChannels.path);
+      // Kanalın ait olduğu listeye dön. Önceden her durumda allChannels'a
+      // (Tüm Piyasa/Fon Kanalları) gidiliyordu; manuel bir kanal eklendiğinde
+      // kullanıcı yeni kanalı o listede göremiyordu.
+      navigate(getListPathFor(payload));
     } catch (error) {
       toast({
         title: getErrorMessage(error),
@@ -318,7 +332,7 @@ const EditChannel = ({id}) => {
         status: 'success',
         position: 'top',
       });
-      navigate(routes.allChannels.path);
+      navigate(getListPathFor(data));
     } catch (error) {
       toast({
         title: getErrorMessage(error),
