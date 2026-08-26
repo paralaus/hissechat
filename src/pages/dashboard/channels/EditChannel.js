@@ -40,7 +40,86 @@ import {pick} from '../../../utils/object';
 import useFileInput from '../../../hooks/useFileInput';
 import {AsyncSelect} from 'chakra-react-select';
 
-const AccessManagement = ({channelId}) => {
+const escapeHtml = value => {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+};
+
+/**
+ * İzinli kullanıcı listesi için yazdırılabilir HTML üretir.
+ *
+ * PDF kütüphanesi yerine tarayıcının yazdırma diyaloğu kullanılıyor
+ * (panelde Silinen Kullanıcılar ekranındaki kalıbın aynısı). Sebep: jsPDF'in
+ * varsayılan fontları Türkçe karakterleri (ğ, ş, ı, İ) bozuyor ve düzeltmek
+ * için font gömmek gerekiyor. Tarayıcı yazdırması bunu doğru yapar ve yeni
+ * bağımlılık gerektirmez; kullanıcı diyalogdan "PDF olarak kaydet" seçer.
+ */
+const buildAllowedUsersPdfHtml = ({rows, channelName}) => {
+  const generatedAt = formatDate(new Date());
+
+  const bodyRows = rows
+    .map(
+      (user, index) => `
+        <tr>
+          <td>${index + 1}</td>
+          <td>${escapeHtml(user?.fullname || 'İsimsiz')}</td>
+          <td>${escapeHtml(user?.email || '-')}</td>
+        </tr>
+      `,
+    )
+    .join('');
+
+  return `
+    <!doctype html>
+    <html lang="tr">
+      <head>
+        <meta charset="utf-8" />
+        <title>İzinli Kullanıcılar</title>
+        <style>
+          @page { size: A4 portrait; margin: 12mm; }
+          body { font-family: Arial, sans-serif; color: #111827; margin: 0; }
+          h1 { margin: 0 0 8px 0; font-size: 20px; }
+          .meta { font-size: 12px; color: #4b5563; line-height: 1.5; margin-bottom: 12px; }
+          table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+          th, td { border: 1px solid #d1d5db; padding: 6px; text-align: left; vertical-align: top; font-size: 12px; word-break: break-word; }
+          th { background: #f3f4f6; }
+          thead { display: table-header-group; }
+          tr { page-break-inside: avoid; }
+        </style>
+      </head>
+      <body>
+        <h1>İzinli Kullanıcılar</h1>
+        <div class="meta">
+          Kanal: ${escapeHtml(channelName || '-')}<br />
+          Kayıt sayısı: ${escapeHtml(rows.length)}<br />
+          Export tarihi: ${escapeHtml(generatedAt)}
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th style="width:40px">#</th>
+              <th>Ad Soyad</th>
+              <th>E-posta</th>
+            </tr>
+          </thead>
+          <tbody>${bodyRows}</tbody>
+        </table>
+        <script>
+          window.onload = () => {
+            window.focus();
+            window.print();
+          };
+        </script>
+      </body>
+    </html>
+  `;
+};
+
+const AccessManagement = ({channelId, channelName}) => {
   const toast = useToast();
   const queryClient = useQueryClient();
 
@@ -95,6 +174,28 @@ const AccessManagement = ({channelId}) => {
   });
 
   const canSubmitEmail = email.trim().length > 0 && !approveByEmailMutation.isPending;
+
+  const handleExportPdf = () => {
+    const rows = allowedUsers || [];
+    if (rows.length === 0) {
+      toast({title: 'Dışa aktarılacak izinli kullanıcı yok', status: 'info'});
+      return;
+    }
+
+    const popup = window.open('', '_blank', 'width=1000,height=900');
+    if (!popup) {
+      toast({
+        title: 'PDF açılamadı',
+        description: 'Tarayıcı popup engelliyor olabilir.',
+        status: 'error',
+      });
+      return;
+    }
+
+    popup.document.open();
+    popup.document.write(buildAllowedUsersPdfHtml({rows, channelName}));
+    popup.document.close();
+  };
 
   return (
     <Box mt={8} bg="gray.50" p={4} borderRadius="md">
@@ -182,9 +283,19 @@ const AccessManagement = ({channelId}) => {
           </VStack>
         </Box>
         <Box flex={1} bg="white" p={4} borderRadius="md" boxShadow="sm">
-          <Text fontWeight="bold" mb={4} color="green.500">
-            İzinli Kullanıcılar ({allowedUsers?.length || 0})
-          </Text>
+          <Flex align="center" justify="space-between" mb={4}>
+            <Text fontWeight="bold" color="green.500">
+              İzinli Kullanıcılar ({allowedUsers?.length || 0})
+            </Text>
+            <Button
+              size="xs"
+              variant="outline"
+              colorScheme="green"
+              isDisabled={!allowedUsers?.length}
+              onClick={handleExportPdf}>
+              PDF
+            </Button>
+          </Flex>
           <VStack align="stretch" spacing={2} maxH="400px" overflowY="auto">
             {allowedUsers?.length === 0 && (
               <Text fontSize="sm" color="gray.500">
@@ -844,7 +955,9 @@ const EditChannel = ({id}) => {
       </Box>
 
       {/* Access Management Section */}
-      {!isNew && isRestricted && <AccessManagement channelId={id} />}
+      {!isNew && isRestricted && (
+        <AccessManagement channelId={id} channelName={data?.name} />
+      )}
 
       <Box display={'flex'} justifyContent={'end'}>
         <Button
