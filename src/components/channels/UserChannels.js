@@ -7,6 +7,7 @@ import {
   AlertDialogOverlay,
   Avatar,
   Button,
+  Badge,
   Text,
   useToast,
 } from '@chakra-ui/react';
@@ -94,6 +95,18 @@ const UserChannels = ({userId}) => {
             cell: ({getValue}) => {
               return (
                 <Text>{getValue() === ChannelType.Vip ? 'Evet' : 'Hayır'}</Text>
+              );
+            },
+          },
+          {
+            header: 'Kısıtlı',
+            accessorKey: 'isRestricted',
+            cell: ({getValue}) => {
+              const isRestricted = getValue();
+              return (
+                <Badge colorScheme={isRestricted ? 'purple' : 'gray'}>
+                  {isRestricted ? 'Evet' : 'Hayır'}
+                </Badge>
               );
             },
           },
