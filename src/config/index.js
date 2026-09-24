@@ -97,6 +97,8 @@ export const BlacklistScope = {
   ChannelMessage: 'channel-message',
   BannedText: 'banned-text',
   Access: 'access',
+  ConferenceMessage: 'conference-message',
+  ConferenceJoin: 'conference-join',
 };
 
 export const blacklistScopes = Object.values(BlacklistScope);
@@ -114,6 +116,8 @@ export const BlacklistScopeLabel = {
   [BlacklistScope.ChannelMessage]: 'Kanala Mesaj Gönderme',
   [BlacklistScope.BannedText]: 'Yasaklı Mesaj',
   [BlacklistScope.Access]: 'Uygulamaya Giriş',
+  [BlacklistScope.ConferenceMessage]: 'Konferansta Mesaj Gönderme',
+  [BlacklistScope.ConferenceJoin]: 'Konferansa Katılma',
 };
 
 export const BlacklistValueConfig = {
@@ -152,6 +156,28 @@ export const BlacklistValueConfig = {
   },
   [BlacklistScope.BannedText]: {
     values: [BlacklistValueType.Text],
+    resource: {
+      enabled: false,
+    },
+  },
+  [BlacklistScope.ConferenceMessage]: {
+    values: [
+      BlacklistValueType.UserId,
+      BlacklistValueType.Email,
+      BlacklistValueType.Ip,
+      BlacklistValueType.DeviceId,
+    ],
+    resource: {
+      enabled: false,
+    },
+  },
+  [BlacklistScope.ConferenceJoin]: {
+    values: [
+      BlacklistValueType.UserId,
+      BlacklistValueType.Email,
+      BlacklistValueType.Ip,
+      BlacklistValueType.DeviceId,
+    ],
     resource: {
       enabled: false,
     },

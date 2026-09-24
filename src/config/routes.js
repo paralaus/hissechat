@@ -170,6 +170,12 @@ export const routes = {
   aiService: {
     path: '/dashboard/ai-service',
   },
+  blacklist: {
+    path: '/dashboard/blacklist',
+  },
+  editBlacklist: {
+    getPath: id => `/dashboard/blacklist/${id}`,
+  },
   profanityWords: {
     path: '/dashboard/profanity-words',
   },

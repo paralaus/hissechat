@@ -61,6 +61,8 @@ import ArchivedMessages from '../pages/dashboard/messaging/ArchivedMessages';
 import Conferences from '../pages/dashboard/conferences/Conferences';
 import DbStats from '../pages/dashboard/database/DbStats';
 import AiService from '../pages/dashboard/ai-service/AiService';
+import Blacklist from '../pages/dashboard/blacklist/Blacklist';
+import EditBlacklist from '../pages/dashboard/blacklist/EditBlacklist';
 import ProfanityWords from '../pages/dashboard/profanity-words/ProfanityWords';
 import PriceAlerts from '../pages/dashboard/price-alerts/PriceAlerts';
 import EconomicCalendar from '../pages/dashboard/economic-calendar/EconomicCalendar';
@@ -152,6 +154,29 @@ const router = createBrowserRouter(
             crumb: () => <Text>AI Servisi</Text>,
           }}
         />
+        <Route
+          path="blacklist"
+          handle={{
+            crumb: () => (
+              <NavLink to="/dashboard/blacklist">Kara Liste</NavLink>
+            ),
+          }}>
+          <Route
+            path="new"
+            element={<EditBlacklist />}
+            handle={{
+              crumb: () => <Text>Ekle</Text>,
+            }}
+          />
+          <Route
+            path=":id"
+            element={<EditBlacklist />}
+            handle={{
+              crumb: () => <Text>Düzenle</Text>,
+            }}
+          />
+          <Route index element={<Blacklist />} />
+        </Route>
         <Route
           path="profanity-words"
           element={<ProfanityWords />}

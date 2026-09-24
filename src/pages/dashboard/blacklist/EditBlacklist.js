@@ -35,6 +35,7 @@ import {
   BlacklistValueLabel,
 } from '../../../config';
 import {pick} from '../../../utils/object';
+import {formatDate} from '../../../utils/date';
 
 const object = {
   scope: yup.string().required('Bu alan zorunludur.'),
@@ -42,7 +43,16 @@ const object = {
   value: yup.string().required('Bu alan zorunludur.'),
   resource: yup.string(),
   isActive: yup.boolean().notRequired(),
+  expiresAt: yup.string().nullable(),
 };
+
+const toFormValues = values => ({
+  ...values,
+  resource: values.resource || '',
+  expiresAt: values.expiresAt
+    ? formatDate(new Date(values.expiresAt), "yyyy-MM-dd'T'HH:mm")
+    : '',
+});
 
 const schema = yup.object().shape(object);
 
@@ -60,6 +70,7 @@ const EditBlacklist = ({id}) => {
     watch,
   } = useForm({
     resolver: yupResolver(schema),
+    defaultValues: {isActive: true, expiresAt: ''},
   });
 
   const {mutateAsync, isPending} = useMutation({
@@ -79,14 +90,18 @@ const EditBlacklist = ({id}) => {
         .getBlacklist(id)
         .then(res => res.data)
         .then(values => {
-          reset(values);
+          reset(toFormValues(values));
           return values;
         }),
   });
 
   const onSubmit = async values => {
     try {
-      const {data} = await mutateAsync(pick(values, Object.keys(object)));
+      const body = pick(values, Object.keys(object));
+      body.expiresAt = values.expiresAt
+        ? new Date(values.expiresAt).toISOString()
+        : null;
+      const {data} = await mutateAsync(body);
       if (data) {
         toast({
           title: 'Bilgiler kaydedildi.',
@@ -160,7 +175,9 @@ const EditBlacklist = ({id}) => {
                 {...register('scope')}>
                 {blacklistScopes.map(scope => {
                   return (
-                    <option value={scope}>{BlacklistScopeLabel[scope]}</option>
+                    <option key={scope} value={scope}>
+                      {BlacklistScopeLabel[scope] || scope}
+                    </option>
                   );
                 })}
               </Select>
@@ -187,7 +204,9 @@ const EditBlacklist = ({id}) => {
                 {...register('type')}>
                 {selectedConfig?.values?.map(type => {
                   return (
-                    <option value={type}>{BlacklistValueLabel[type]}</option>
+                    <option key={type} value={type}>
+                      {BlacklistValueLabel[type]}
+                    </option>
                   );
                 })}
               </Select>
@@ -246,6 +265,28 @@ const EditBlacklist = ({id}) => {
                 </FormHelperText>
               </FormControl>
             </Condition>
+            <FormControl isInvalid={!!errors.expiresAt} mb="4">
+              <FormLabel
+                display="flex"
+                ms="4px"
+                fontSize="sm"
+                fontWeight="500"
+                mb="8px">
+                Bitiş Tarihi (Opsiyonel)
+              </FormLabel>
+              <Input
+                fontSize="sm"
+                type="datetime-local"
+                fontWeight="500"
+                size="md"
+                {...register('expiresAt')}
+              />
+              <FormErrorMessage>{errors.expiresAt?.message}</FormErrorMessage>
+              <FormHelperText>
+                Boş bırakırsanız engel süresiz olur. Tarih geçtiğinde engel
+                otomatik olarak etkisiz hale gelir.
+              </FormHelperText>
+            </FormControl>
             <FormControl
               display="flex"
               alignItems="start"
@@ -259,7 +300,7 @@ const EditBlacklist = ({id}) => {
                 <Switch
                   key={data?.isActive}
                   id="isActive"
-                  defaultChecked={data?.isActive}
+                  defaultChecked={isNew ? true : data?.isActive}
                   {...register('isActive')}
                 />
               </Box>
@@ -276,7 +317,9 @@ const EditBlacklist = ({id}) => {
           </Flex>
         </form>
       </Box>
-      <Box display={'flex'} justifyContent={'end'}>
+      <Box
+        display={isNew ? 'none' : 'flex'}
+        justifyContent={'end'}>
         <Button
           isLoading={isDeleting}
           colorScheme={'red'}

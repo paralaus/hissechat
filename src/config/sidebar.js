@@ -22,6 +22,7 @@ import {
   FiClock,
   FiTrash2,
   FiBook,
+  FiSlash,
 } from 'react-icons/fi';
 import {AiOutlineUserAdd, AiOutlineProduct} from 'react-icons/ai';
 import {BiLineChart} from 'react-icons/bi';
@@ -92,6 +93,25 @@ export const sidebarRoutes = [
         path: routes.createUser.path,
         icon: AiOutlineUserAdd,
         private: true,
+      },
+    ],
+  },
+  {
+    name: 'Kara Liste',
+    icon: FiSlash,
+    group: 'Kullanıcı Yönetimi',
+    children: [
+      {
+        name: 'Tümü',
+        path: routes.blacklist.path,
+        icon: GoListUnordered,
+        exact: true,
+      },
+      {
+        name: 'Yeni Ekle',
+        path: routes.editBlacklist.getPath('new'),
+        icon: IoMdAdd,
+        exact: true,
       },
     ],
   },
