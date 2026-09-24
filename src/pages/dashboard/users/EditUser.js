@@ -51,8 +51,10 @@ const EditUser = () => {
   const toast = useToast();
   const deleteModal = useDisclosure();
   const banDevicesModal = useDisclosure();
+  const unbanModal = useDisclosure();
   const cancelRef = useRef();
   const banDevicesCancelRef = useRef();
+  const unbanCancelRef = useRef();
   const navigate = useNavigate();
 
   const {
@@ -84,6 +86,42 @@ const EditUser = () => {
     enabled: !!id,
   });
 
+  const {data: userBans, refetch: refetchUserBans} = useQuery({
+    queryKey: ['user-bans', id],
+    queryFn: () => api.getUserBans(id).then(res => res.data),
+    enabled: !!id,
+  });
+
+  const activeBans = (userBans?.bans || []).filter(
+    ban =>
+      ban.isActive &&
+      (!ban.expiresAt || new Date(ban.expiresAt) > new Date()),
+  );
+
+  const {mutateAsync: unbanUser, isPending: isUnbanning} = useMutation({
+    mutationFn: () => api.unbanUser(id),
+  });
+
+  const onUnban = async () => {
+    try {
+      const {data: result} = await unbanUser();
+      unbanModal.close();
+      toast({
+        title: 'Kullanıcının banı kaldırıldı.',
+        description: `${result?.removedCount ?? 0} ban kaydı silindi. Değişiklik en geç 1 dakika içinde etkili olur.`,
+        status: 'success',
+        position: 'top',
+      });
+      refetchUserBans();
+    } catch (error) {
+      toast({
+        title: getErrorMessage(error),
+        status: 'error',
+        position: 'top',
+      });
+    }
+  };
+
   const {mutateAsync: banDevices, isPending: isBanningDevices} = useMutation({
     mutationFn: () =>
       api.banUserDevices({
@@ -107,6 +145,7 @@ const EditUser = () => {
         position: 'top',
       });
       refetchUserDevices();
+      refetchUserBans();
     } catch (error) {
       toast({
         title: getErrorMessage(error),
@@ -305,6 +344,16 @@ const EditUser = () => {
                   : '—'
               }
             />
+            <ReadOnlyInfo
+              label={'Ban Durumu'}
+              value={
+                activeBans.length
+                  ? `🚫 Banlı (${activeBans.length} aktif kayıt: ${Array.from(
+                      new Set(activeBans.map(ban => `${ban.type}/${ban.scope}`)),
+                    ).join(', ')})`
+                  : '✅ Banlı değil'
+              }
+            />
             <Button
               isLoading={isPending}
               colorScheme={'primary'}
@@ -317,6 +366,16 @@ const EditUser = () => {
         </form>
       </Box>
       <Box display={'flex'} justifyContent={'end'} gap={'2'}>
+        <Button
+          isLoading={isUnbanning}
+          colorScheme={'green'}
+          isDisabled={isUnbanning || !userBans?.bans?.length}
+          type="button"
+          my={'4'}
+          onClick={unbanModal.open}
+          fontSize={'sm'}>
+          Banı Kaldır
+        </Button>
         <Button
           isLoading={isBanningDevices}
           colorScheme={'orange'}
@@ -409,6 +468,40 @@ const EditUser = () => {
                 isLoading={isBanningDevices}
                 disabled={isBanningDevices}>
                 Banla
+              </Button>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialogOverlay>
+      </AlertDialog>
+      <AlertDialog
+        closeOnOverlayClick
+        closeOnEsc
+        leastDestructiveRef={unbanCancelRef}
+        isOpen={unbanModal.isOpen}
+        onClose={unbanModal.close}>
+        <AlertDialogOverlay>
+          <AlertDialogContent>
+            <AlertDialogHeader fontSize="lg" fontWeight="bold">
+              Banı Kaldır
+            </AlertDialogHeader>
+            <AlertDialogBody>
+              Kullanıcının ID, e-posta ve cihazlarına ait{' '}
+              {userBans?.bans?.length ?? 0} ban kaydı silinecek. Kullanıcı
+              tekrar giriş yapabilecek, kayıt olabilecek ve mesaj
+              gönderebilecek. IP banları bu işlemden etkilenmez. Devam edilsin
+              mi?
+            </AlertDialogBody>
+            <AlertDialogFooter>
+              <Button ref={unbanCancelRef} onClick={unbanModal.close}>
+                Vazgeç
+              </Button>
+              <Button
+                colorScheme="green"
+                onClick={onUnban}
+                ml={3}
+                isLoading={isUnbanning}
+                disabled={isUnbanning}>
+                Banı Kaldır
               </Button>
             </AlertDialogFooter>
           </AlertDialogContent>

@@ -518,6 +518,14 @@ export const getUserDeviceIds = async userId => {
   return apiClient.get(`/blacklist/user-devices/${userId}`);
 };
 
+export const getUserBans = async userId => {
+  return apiClient.get(`/blacklist/user-bans/${userId}`);
+};
+
+export const unbanUser = async userId => {
+  return apiClient.delete(`/blacklist/user-bans/${userId}`);
+};
+
 export const getChannelsOfUser = async (id, params) => {
   return apiClient.get(`/users/${id}/channels`, {params});
 };
