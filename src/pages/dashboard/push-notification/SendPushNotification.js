@@ -34,6 +34,8 @@ import {api} from '../../../api';
 import {getErrorMessage} from '../../../utils/string';
 import useDisclosure from '../../../hooks/useDisclosure';
 import {Condition, Page} from '../../../components';
+import BroadcastHealthPanel from '../../../components/common/BroadcastHealthPanel';
+import {useBroadcastConfirmation} from '../../../components/modals/BroadcastConfirmModal';
 import {
   NotificationReceiverType,
   NotificationReceiverTypeLabel,
@@ -254,6 +256,7 @@ const SendPushNotification = () => {
   useNavigate();
   const toast = useToast();
   useDisclosure();
+  const {ensureConfirmed, modal: broadcastConfirmModal} = useBroadcastConfirmation();
   const [sendResult, setSendResult] = React.useState(null);
   const [sendProgress, setSendProgress] = React.useState({
     current: 0,
@@ -656,7 +659,10 @@ const SendPushNotification = () => {
         typeof values.imageUrl === 'string' && values.imageUrl.trim()
           ? values.imageUrl.trim()
           : '';
-      const {data} = await mutateAsync(payload);
+      // Wide targets (all users) need the previewed recipient count typed back.
+      const confirmation = await ensureConfirmed(() => api.previewPushNotification(payload));
+      if (confirmation === null) return;
+      const {data} = await mutateAsync({...payload, ...confirmation});
       if (data) {
         if (data.queued && data.jobId) {
           activeJobIdRef.current = data.jobId;
@@ -922,6 +928,8 @@ const SendPushNotification = () => {
 
   return (
     <Page>
+      {broadcastConfirmModal}
+      <BroadcastHealthPanel />
       {activeJobId && (
         <Alert
           status={

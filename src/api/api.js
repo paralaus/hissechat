@@ -414,6 +414,16 @@ export const sendPushNotification = async (body, options = {}) => {
   });
 };
 
+// Recipient count (+ confirmation token for wide targets) before a send.
+export const previewPushNotification = async body => {
+  return apiClient.post('/notifications/push/preview', body);
+};
+
+// Queue backlogs, last-24h broadcast outcomes and alerts.
+export const getBroadcastHealth = async () => {
+  return apiClient.get('/notifications/push/health');
+};
+
 export const deletePushNotificationsByText = async (body, options = {}) => {
   return apiClient.post(`/notifications/push/delete-by-text`, body, {
     signal: options.signal,
@@ -616,6 +626,11 @@ export const sendBulkMessage = async (body, options = {}) => {
   return apiClient.post('/channels/bulk-message', body, {
     signal: options.signal,
   });
+};
+
+// Channel/recipient counts (+ confirmation token for wide targets) before a send.
+export const previewBulkMessage = async body => {
+  return apiClient.post('/channels/bulk-message/preview', body);
 };
 
 export const deleteBulkMessagesByText = async (body, options = {}) => {

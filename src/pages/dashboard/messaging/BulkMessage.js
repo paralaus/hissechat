@@ -48,6 +48,8 @@ import * as yup from 'yup';
 import {api} from '../../../api';
 import {getErrorMessage} from '../../../utils/string';
 import {Page} from '../../../components';
+import BroadcastHealthPanel from '../../../components/common/BroadcastHealthPanel';
+import {useBroadcastConfirmation} from '../../../components/modals/BroadcastConfirmModal';
 import {
   FiSend,
   FiMessageCircle,
@@ -338,6 +340,7 @@ const mediaTypeMeta = {
 
 const BulkMessage = () => {
   const toast = useToast();
+  const {ensureConfirmed, modal: broadcastConfirmModal} = useBroadcastConfirmation();
   const [sendResult, setSendResult] = useState(null);
   const [isUploading, setIsUploading] = useState(false);
   const [isSending, setIsSending] = useState(false);
@@ -1032,7 +1035,22 @@ const BulkMessage = () => {
           .filter(Boolean);
       }
 
-      const {data} = await mutateAsync(submissionValues);
+      // Wide targets (all channels) need the previewed recipient count typed back.
+      const confirmation = await ensureConfirmed(() =>
+        api.previewBulkMessage({
+          targetType: submissionValues.targetType,
+          ...(Array.isArray(submissionValues.selectedChannels)
+            ? {selectedChannels: submissionValues.selectedChannels}
+            : {}),
+        }),
+      );
+      if (confirmation === null) {
+        setIsSending(false);
+        setSendProgress({current: 0, total: 0, successCount: 0, failCount: 0, stage: 'idle'});
+        return;
+      }
+
+      const {data} = await mutateAsync({...submissionValues, ...confirmation});
 
       if (data) {
         if (data.queued && data.jobId) {
@@ -1369,6 +1387,7 @@ const BulkMessage = () => {
 
   return (
     <Page>
+      {broadcastConfirmModal}
       <Box mb="6">
         <Text fontSize="2xl" fontWeight="bold" color="gray.800">
           Toplu Mesaj
@@ -1377,6 +1396,8 @@ const BulkMessage = () => {
           Toplu gonderim ve toplu silme islemlerini ayri sekmelerden yonetin.
         </Text>
       </Box>
+
+      <BroadcastHealthPanel />
 
       {/* Statistics */}
       <StatGroup mb="6" display="flex" flexWrap="wrap" gap="4">
