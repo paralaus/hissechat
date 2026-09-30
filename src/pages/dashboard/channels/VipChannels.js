@@ -36,7 +36,26 @@ import {
 
 const fetchData = async options => {
   const response = await api.getVipChannels(options);
-  return response.data;
+  const data = response.data;
+  const channelIds = (data?.results || []).map(channel => channel.id);
+  if (channelIds.length === 0) return data;
+
+  // Üye sayısı sütunu, export'taki ("Tümü") tekilleştirilmiş sayıyı gösterir.
+  // Sayım alınamazsa liste yine açılır, sütunda "-" görünür.
+  let counts = {};
+  try {
+    counts = (await api.getVipExportMemberCounts(channelIds)).data || {};
+  } catch (error) {
+    counts = {};
+  }
+
+  return {
+    ...data,
+    results: data.results.map(channel => ({
+      ...channel,
+      exportMemberCounts: counts[channel.id] || null,
+    })),
+  };
 };
 
 // Aynı anda kaç kanalın üyeleri çekilsin (API'yi boğmamak için sınırlı).
@@ -295,7 +314,12 @@ const VipChannels = () => {
           },
           {
             header: 'Üye Sayısı',
-            accessorKey: 'memberCount',
+            accessorKey: 'exportMemberCounts',
+            cell: ({getValue}) => {
+              const counts = getValue();
+              if (!counts) return '-';
+              return excludeAdmins ? counts.excludingAdmins : counts.total;
+            },
           },
           {
             header: 'Aktiflik',
