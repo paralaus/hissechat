@@ -116,16 +116,21 @@ const AllChannels = ({
 }) => {
   const navigate = useNavigate();
 
-  // Normal (Manuel) ve Kısıtlı kanal sayfalarında "Üye Sayısı", artırılıp azaltılan
-  // memberCount sayacı yerine gerçek sayımı gösterir:
+  // Normal (Manuel), Kısıtlı ve piyasa/fon kategori sayfalarında "Üye Sayısı",
+  // artırılıp azaltılan memberCount sayacı yerine gerçek sayımı gösterir:
   // - Kısıtlı: izinli kullanıcı sayısı (İzinli Kullanıcılar PDF'i ile aynı liste)
-  // - Normal: kanala katılmış üye sayısı
+  // - Normal ve piyasa/fon: kanala katılmış üye sayısı
+  const isMarketOrFundCategory = ['borsa', 'kripto', 'viop', 'emtia', 'fon'].includes(
+    category,
+  );
   const liveCountMode =
     type === 'normal' && !category && !types
       ? isRestricted
         ? 'allowed'
         : 'members'
-      : null;
+      : isMarketOrFundCategory
+        ? 'members'
+        : null;
   const [excludeAdmins, setExcludeAdmins] = useState(true);
 
   const fetchData = useCallback(
@@ -181,17 +186,28 @@ const AllChannels = ({
           marketsRes = await api.getMarkets(marketParams);
         }
 
-        // 2. Fetch Active Channels for this category to merge
-        // We fetch a larger list to find matches. Ideally backend should support this,
-        // but for now we follow messaging logic.
-        const channelsRes = await api.getAllChannels({category, limit: 1000});
-        const activeChannels = channelsRes.data.results || [];
+        // 2. Bu piyasa/fonlar için açılmış gerçek kanalları çek.
+        // Kanal `category` alanına göre DEĞİL, türe (market/fund) göre çekilir:
+        // piyasa/fon kanalları oluşturulurken category doldurulmuyor (varsayılan
+        // 'other'), bu yüzden category=borsa vb. filtresi hiçbir kanal bulamıyor ve
+        // her satır 0 üyeli sanal kanal olarak görünüyordu. Eşleştirme koda göre.
+        const channelsRes = await api.getAllChannels({
+          type: isFund ? 'fund' : 'market',
+          includeInactive: true,
+          limit: 5000,
+        });
+        const channelByCode = new Map(
+          (channelsRes.data.results || []).map(channel => [
+            getChannelKey(channel),
+            channel,
+          ]),
+        );
 
         // 3. Merge
         const mergedResults = (marketsRes.data.results || []).map(item => {
           const code = item.code;
-          const existingChannel = activeChannels.find(
-            c => c.marketCode === code || c.fundCode === code,
+          const existingChannel = channelByCode.get(
+            String(code || '').trim().toUpperCase(),
           );
 
           if (existingChannel) return existingChannel;
@@ -215,11 +231,14 @@ const AllChannels = ({
           };
         });
 
-        return {
+        const mergedData = {
           results: mergedResults,
           totalResults:
             marketsRes.data.totalResults || marketsRes.data.total || 0,
         };
+        return liveCountMode
+          ? attachLiveMemberCounts(mergedData, liveCountMode)
+          : mergedData;
       }
 
       const requestedTypes = String(types || '')
@@ -444,7 +463,9 @@ const AllChannels = ({
                 // id sunucu tarafı sıralama alanıdır (sayaç); gösterilen değer canlı sayım.
                 id: 'memberCount',
                 accessorFn: row => row.liveMemberCounts,
-                cell: ({getValue}) => {
+                cell: ({getValue, row}) => {
+                  // Henüz açılmamış (sanal) piyasa/fon kanalının üyesi yoktur.
+                  if (row?.original?.isVirtual) return 0;
                   const counts = getValue();
                   if (!counts) return '-';
                   return excludeAdmins ? counts.excludingAdmins : counts.total;

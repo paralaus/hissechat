@@ -1,5 +1,6 @@
 import React, {useRef} from 'react';
-import {Avatar, Box} from '@chakra-ui/react';
+import {Avatar, Box, Checkbox} from '@chakra-ui/react';
+import {getChannelAdminIds, isAdminMember} from './vipMemberExport';
 import {useNavigate, useParams, useLocation} from 'react-router-dom';
 import {
   Button,
@@ -58,7 +59,7 @@ const escapeHtml = value => {
  * için font gömmek gerekiyor. Tarayıcı yazdırması bunu doğru yapar ve yeni
  * bağımlılık gerektirmez; kullanıcı diyalogdan "PDF olarak kaydet" seçer.
  */
-const buildAllowedUsersPdfHtml = ({rows, channelName}) => {
+const buildAllowedUsersPdfHtml = ({rows, channelName, excludeAdmins}) => {
   const generatedAt = formatDate(new Date());
 
   const bodyRows = rows
@@ -96,6 +97,7 @@ const buildAllowedUsersPdfHtml = ({rows, channelName}) => {
         <div class="meta">
           Kanal: ${escapeHtml(channelName || '-')}<br />
           Kayıt sayısı: ${escapeHtml(rows.length)}<br />
+          Adminler: ${excludeAdmins ? 'Hariç' : 'Dahil'}<br />
           Export tarihi: ${escapeHtml(generatedAt)}
         </div>
         <table>
@@ -119,7 +121,7 @@ const buildAllowedUsersPdfHtml = ({rows, channelName}) => {
   `;
 };
 
-const AccessManagement = ({channelId, channelName}) => {
+const AccessManagement = ({channelId, channelName, channelAdmins}) => {
   const toast = useToast();
   const queryClient = useQueryClient();
 
@@ -175,8 +177,16 @@ const AccessManagement = ({channelId, channelName}) => {
 
   const canSubmitEmail = email.trim().length > 0 && !approveByEmailMutation.isPending;
 
+  // Varsayılan: admin/kanal admini rolündekiler ve bu kanalın adminleri PDF'e girmez.
+  const [excludeAdmins, setExcludeAdmins] = React.useState(true);
+
   const handleExportPdf = () => {
-    const rows = allowedUsers || [];
+    const channelAdminIds = getChannelAdminIds(channelAdmins);
+    const rows = (allowedUsers || []).filter(
+      user =>
+        !excludeAdmins ||
+        !isAdminMember({role: user?.role, userId: user?.id}, channelAdminIds),
+    );
     if (rows.length === 0) {
       toast({title: 'Dışa aktarılacak izinli kullanıcı yok', status: 'info'});
       return;
@@ -193,7 +203,9 @@ const AccessManagement = ({channelId, channelName}) => {
     }
 
     popup.document.open();
-    popup.document.write(buildAllowedUsersPdfHtml({rows, channelName}));
+    popup.document.write(
+      buildAllowedUsersPdfHtml({rows, channelName, excludeAdmins}),
+    );
     popup.document.close();
   };
 
@@ -287,14 +299,22 @@ const AccessManagement = ({channelId, channelName}) => {
             <Text fontWeight="bold" color="green.500">
               İzinli Kullanıcılar ({allowedUsers?.length || 0})
             </Text>
-            <Button
-              size="xs"
-              variant="outline"
-              colorScheme="green"
-              isDisabled={!allowedUsers?.length}
-              onClick={handleExportPdf}>
-              PDF
-            </Button>
+            <Flex align="center" gap={3}>
+              <Checkbox
+                size="sm"
+                isChecked={excludeAdmins}
+                onChange={e => setExcludeAdmins(e.target.checked)}>
+                Adminleri hariç tut
+              </Checkbox>
+              <Button
+                size="xs"
+                variant="outline"
+                colorScheme="green"
+                isDisabled={!allowedUsers?.length}
+                onClick={handleExportPdf}>
+                PDF
+              </Button>
+            </Flex>
           </Flex>
           <VStack align="stretch" spacing={2} maxH="400px" overflowY="auto">
             {allowedUsers?.length === 0 && (
@@ -956,7 +976,11 @@ const EditChannel = ({id}) => {
 
       {/* Access Management Section */}
       {!isNew && isRestricted && (
-        <AccessManagement channelId={id} channelName={data?.name} />
+        <AccessManagement
+          channelId={id}
+          channelName={data?.name}
+          channelAdmins={data?.admins}
+        />
       )}
 
       <Box display={'flex'} justifyContent={'end'}>
