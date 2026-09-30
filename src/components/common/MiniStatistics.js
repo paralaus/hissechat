@@ -13,6 +13,7 @@ import {isValue} from '../../utils/string';
 const MiniStatistics = ({
   title,
   amount,
+  subtitle,
   percentage,
   icon,
   trend, // 'up' | 'down'
@@ -66,6 +67,12 @@ const MiniStatistics = ({
               color={textColor}
               lineHeight="1.2">
               {formatNumber(amount)}
+            </Text>
+          )}
+
+          {subtitle && (
+            <Text fontSize="xs" color={subtleTextColor} mt="1">
+              {subtitle}
             </Text>
           )}
 

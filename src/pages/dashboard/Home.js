@@ -28,6 +28,12 @@ const iconProps = {
   size: 22,
 };
 
+// Abonelik kartlarinda sayi "kullanici + kanal" aboneligidir; alt satirda tekil kisi sayisi.
+const subscriberUsersLabel = count =>
+  typeof count === 'number'
+    ? `${count.toLocaleString('tr-TR')} farklı kişi`
+    : undefined;
+
 const Home = () => {
   const {data, isLoading} = useQuery({
     queryKey: ['statistics'],
@@ -220,18 +226,21 @@ const Home = () => {
       title: 'Aylık Aboneler',
       value: 'monthlySubscribers',
       amount: data?.monthlySubscribers,
+      subtitle: subscriberUsersLabel(data?.monthlySubscriberUsers),
       icon: <RiMoneyDollarCircleFill {...iconProps} />,
     },
     {
       title: 'Apple Aboneleri',
       value: 'appleSubscribers',
       amount: data?.appleSubscribers,
+      subtitle: subscriberUsersLabel(data?.appleSubscriberUsers),
       icon: <FaApple {...iconProps} />,
     },
     {
       title: 'Google Aboneleri',
       value: 'googleSubscribers',
       amount: data?.googleSubscribers,
+      subtitle: subscriberUsersLabel(data?.googleSubscriberUsers),
       icon: <FaGooglePlay {...iconProps} />,
     },
     {
@@ -375,6 +384,7 @@ const Home = () => {
               key={item.title || index}
               title={item.title}
               amount={item.amount}
+              subtitle={item.subtitle}
               icon={item.icon}
             />
           );
