@@ -9,7 +9,7 @@ const EXPORT_PAGE_LIMIT = 100;
 export const SOURCE_FILTER_OPTIONS = [
   {value: 'all', label: 'Tümü', fileSuffix: 'vip-uyeleri'},
   {value: 'subscription', label: 'Abonelik (Apple/Google)', fileSuffix: 'vip-abonelik-uyeleri'},
-  {value: 'manual', label: 'Manuel', fileSuffix: 'vip-manuel-uyeleri'},
+  {value: 'manual', label: 'Sadece Manuel', fileSuffix: 'vip-manuel-uyeleri'},
 ];
 
 // Bu rollerdeki kullanıcılar "admin" sayılır ve istenirse listelerden çıkarılır.
@@ -197,7 +197,12 @@ export const filterUnifiedMembers = (
   return (members || []).filter(m => {
     if (excludeAdmins && isAdminMember(m, channelAdminIds)) return false;
     if (sourceFilter === 'subscription' && !m?.sources?.subscription) return false;
-    if (sourceFilter === 'manual' && !m?.sources?.manual) return false;
+    // Listeler çakışmaz: aktif Apple/Google aboneliği olan kişi (manuel de eklenmiş
+    // olsa) yalnızca abonelik listesinde görünür. Abonelik satırları sadece aktif
+    // satın almalardan geldiği için aboneliği biten kişi manuel listesine düşer.
+    if (sourceFilter === 'manual' && (!m?.sources?.manual || m?.sources?.subscription)) {
+      return false;
+    }
     if (!normalizedSearch) return true;
     return `${m?.fullname || ''} ${m?.email || ''}`
       .toLowerCase()
