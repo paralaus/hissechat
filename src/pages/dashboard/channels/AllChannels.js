@@ -1,11 +1,11 @@
-import {Avatar, Text} from '@chakra-ui/react';
+import {Avatar, Checkbox, Text} from '@chakra-ui/react';
 import {useNavigate} from 'react-router-dom';
 import {getChannelThumbnail} from '../../../utils/image';
 import {DataTable, Page} from '../../../components';
 import {routes} from '../../../config/routes';
 import {api} from '../../../api';
 import {ChannelType} from '../../../config';
-import React, {useCallback} from 'react';
+import React, {useCallback, useState} from 'react';
 
 const ALL_MARKET_TYPES = ['stock', 'crypto', 'viop', 'commodity'];
 const FUND_SORT_FIELDS = new Set([
@@ -84,6 +84,28 @@ const sortCombinedResults = (items, sortBy) => {
   return sorted;
 };
 
+// Kanal id'leri için canlı üye sayılarını satırlara ekler. Sayım alınamazsa
+// liste yine açılır, sütunda "-" görünür.
+const attachLiveMemberCounts = async (data, mode) => {
+  const channelIds = (data?.results || []).map(channel => channel.id).filter(Boolean);
+  if (channelIds.length === 0) return data;
+
+  let counts = {};
+  try {
+    counts = (await api.getChannelMemberCounts(channelIds, mode)).data || {};
+  } catch (error) {
+    counts = {};
+  }
+
+  return {
+    ...data,
+    results: data.results.map(channel => ({
+      ...channel,
+      liveMemberCounts: counts[channel.id] || null,
+    })),
+  };
+};
+
 const AllChannels = ({
   category,
   isRestricted,
@@ -93,6 +115,18 @@ const AllChannels = ({
   navigationTarget = 'edit',
 }) => {
   const navigate = useNavigate();
+
+  // Normal (Manuel) ve Kısıtlı kanal sayfalarında "Üye Sayısı", artırılıp azaltılan
+  // memberCount sayacı yerine gerçek sayımı gösterir:
+  // - Kısıtlı: izinli kullanıcı sayısı (İzinli Kullanıcılar PDF'i ile aynı liste)
+  // - Normal: kanala katılmış üye sayısı
+  const liveCountMode =
+    type === 'normal' && !category && !types
+      ? isRestricted
+        ? 'allowed'
+        : 'members'
+      : null;
+  const [excludeAdmins, setExcludeAdmins] = useState(true);
 
   const fetchData = useCallback(
     async options => {
@@ -335,9 +369,11 @@ const AllChannels = ({
           c => !!(c.name || c.label),
         );
       }
-      return response.data;
+      return liveCountMode
+        ? attachLiveMemberCounts(response.data, liveCountMode)
+        : response.data;
     },
-    [category, isRestricted, onlyAdminCanPost, type, types],
+    [category, isRestricted, onlyAdminCanPost, type, types, liveCountMode],
   );
 
   const onRow = async item => {
@@ -368,7 +404,17 @@ const AllChannels = ({
   };
 
   return (
-    <Page>
+    <Page
+      action={
+        liveCountMode ? (
+          <Checkbox
+            isChecked={excludeAdmins}
+            onChange={e => setExcludeAdmins(e.target.checked)}
+            whiteSpace="nowrap">
+            Üye sayısında adminleri hariç tut
+          </Checkbox>
+        ) : undefined
+      }>
       <DataTable
         key={`${category}-${isRestricted}-${onlyAdminCanPost}-${type}-${types}`}
         queryEnabled
@@ -391,10 +437,23 @@ const AllChannels = ({
             accessorKey: 'name',
           },
 
-          {
-            header: 'Üye Sayısı',
-            accessorKey: 'memberCount',
-          },
+          liveCountMode
+            ? {
+                header:
+                  liveCountMode === 'allowed' ? 'İzinli Kullanıcı' : 'Üye Sayısı',
+                // id sunucu tarafı sıralama alanıdır (sayaç); gösterilen değer canlı sayım.
+                id: 'memberCount',
+                accessorFn: row => row.liveMemberCounts,
+                cell: ({getValue}) => {
+                  const counts = getValue();
+                  if (!counts) return '-';
+                  return excludeAdmins ? counts.excludingAdmins : counts.total;
+                },
+              }
+            : {
+                header: 'Üye Sayısı',
+                accessorKey: 'memberCount',
+              },
           {
             header: 'Vip',
             accessorKey: 'type',

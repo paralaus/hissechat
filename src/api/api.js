@@ -809,6 +809,15 @@ export const getAllowedUsers = async channelId => {
   return apiClient.get(`/channels/${channelId}/allowed-users`);
 };
 
+// Normal/kısıtlı kanal listeleri için kanal başına üye sayıları.
+// mode: 'members' (kanala katılmış üyeler) | 'allowed' (kısıtlı kanalın izinli kullanıcıları)
+// Dönüş: {[channelId]: {total, excludingAdmins}}
+export const getChannelMemberCounts = async (channelIds, mode) => {
+  return apiClient.get('/channels/member-counts', {
+    params: {ids: channelIds.join(','), mode},
+  });
+};
+
 // Kanal başına VIP export ("Tümü") üye sayıları: {[channelId]: {total, excludingAdmins}}
 export const getVipExportMemberCounts = async channelIds => {
   return apiClient.get('/channels/vip/member-counts', {

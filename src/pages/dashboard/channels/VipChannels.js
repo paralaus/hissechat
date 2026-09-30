@@ -314,7 +314,9 @@ const VipChannels = () => {
           },
           {
             header: 'Üye Sayısı',
-            accessorKey: 'exportMemberCounts',
+            // id sunucu tarafı sıralama alanıdır (sayaç); gösterilen değer export sayısı.
+            id: 'memberCount',
+            accessorFn: row => row.exportMemberCounts,
             cell: ({getValue}) => {
               const counts = getValue();
               if (!counts) return '-';
