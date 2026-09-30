@@ -42,8 +42,21 @@ import {getCombinedLogoUrl} from '../../../utils/image';
 import {pick} from '../../../utils/object';
 import useFileInput from '../../../hooks/useFileInput';
 import {AsyncSelect} from 'chakra-react-select';
-import JSZip from 'jszip';
 import {saveAs} from 'file-saver';
+import {
+  SOURCE_FILTER_OPTIONS,
+  MEMBER_EXPORT_HEADERS,
+  getSourceFilterOption,
+  escapeHtml,
+  formatJoinDate,
+  toSafeFileName,
+  fetchUnifiedVipMembers,
+  filterUnifiedMembers,
+  mapUnifiedMemberExportRow,
+  renderMembersTableHtml,
+  writePrintDocument,
+  buildXlsxBlob,
+} from './vipMemberExport';
 
 // Channel categories
 const channelCategories = [
@@ -81,86 +94,6 @@ const parseHashtagAliases = value =>
         .filter(Boolean),
     ),
   );
-
-const escapeHtml = value =>
-  String(value || '')
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
-
-const formatJoinDate = value =>
-  value ? new Date(value).toLocaleString('tr-TR') : '-';
-
-const escapeXml = value =>
-  String(value || '')
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&apos;');
-
-const getExcelColumnName = index => {
-  let value = index + 1;
-  let result = '';
-
-  while (value > 0) {
-    const remainder = (value - 1) % 26;
-    result = String.fromCharCode(65 + remainder) + result;
-    value = Math.floor((value - 1) / 26);
-  }
-
-  return result;
-};
-
-const createWorksheetXml = rows => {
-  const columnWidths = [8, 26, 34, 22, 14, 16, 22, 22];
-  const colsXml = columnWidths
-    .map(
-      (width, index) =>
-        `<col min="${index + 1}" max="${index + 1}" width="${width}" customWidth="1"/>`,
-    )
-    .join('');
-
-  const rowsXml = rows
-    .map((row, rowIndex) => {
-      const cellsXml = row
-        .map((cell, cellIndex) => {
-          const cellRef = `${getExcelColumnName(cellIndex)}${rowIndex + 1}`;
-          if (typeof cell === 'number') {
-            return `<c r="${cellRef}"><v>${cell}</v></c>`;
-          }
-
-          return `<c r="${cellRef}" t="inlineStr"><is><t xml:space="preserve">${escapeXml(
-            cell,
-          )}</t></is></c>`;
-        })
-        .join('');
-
-      return `<row r="${rowIndex + 1}">${cellsXml}</row>`;
-    })
-    .join('');
-
-  const lastCellRef = `${getExcelColumnName(rows[0].length - 1)}${rows.length}`;
-
-  return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
-  <dimension ref="A1:${lastCellRef}"/>
-  <sheetViews>
-    <sheetView workbookViewId="0"/>
-  </sheetViews>
-  <sheetFormatPr defaultRowHeight="15"/>
-  <cols>${colsXml}</cols>
-  <sheetData>${rowsXml}</sheetData>
-</worksheet>`;
-};
-
-const SOURCE_FILTER_OPTIONS = [
-  {value: 'all', label: 'Tümü', fileSuffix: 'vip-uyeleri'},
-  {value: 'subscription', label: 'Abonelik (Apple/Google)', fileSuffix: 'vip-abonelik-uyeleri'},
-  {value: 'manual', label: 'Manuel', fileSuffix: 'vip-manuel-uyeleri'},
-];
 
 const VipMemberManagement = ({channelId, channelName}) => {
   const toast = useToast();
@@ -255,81 +188,13 @@ const VipMemberManagement = ({channelId, channelName}) => {
     }
   };
 
-  const filterUnifiedMembers = members => {
-    const search = String(unifiedSearch || '').trim().toLowerCase();
-    return (members || []).filter(m => {
-      if (sourceFilter === 'subscription' && !m?.sources?.subscription) return false;
-      if (sourceFilter === 'manual' && !m?.sources?.manual) return false;
-      if (!search) return true;
-      return `${m?.fullname || ''} ${m?.email || ''}`.toLowerCase().includes(search);
-    });
-  };
-
-  const sourceFilterLabel =
-    SOURCE_FILTER_OPTIONS.find(o => o.value === sourceFilter)?.label || 'Tümü';
+  const sourceFilterOption = getSourceFilterOption(sourceFilter);
   const normalizedUnifiedSearch = String(unifiedSearch || '').trim().toLowerCase();
   const isUnifiedFiltered = !!normalizedUnifiedSearch || sourceFilter !== 'all';
-  const visibleUnifiedMembers = filterUnifiedMembers(unifiedMembers);
-
-  const fetchAllSubscribersForExport = async () => {
-    const exportLimit = 100;
-    const firstResponse = await api
-      .getPurchases({
-        hasChannel: true,
-        distinctUser: true,
-        activeOnly: true,
-        channel: channelId,
-        page: 1,
-        limit: exportLimit,
-      })
-      .then(res => res.data);
-
-    const all = [...(firstResponse?.results || [])];
-    const totalPagesForExport = firstResponse?.totalPages || 1;
-
-    for (let page = 2; page <= totalPagesForExport; page += 1) {
-      const pageResponse = await api
-        .getPurchases({
-          hasChannel: true,
-          distinctUser: true,
-          activeOnly: true,
-          channel: channelId,
-          page,
-          limit: exportLimit,
-        })
-        .then(res => res.data);
-
-      all.push(...(pageResponse?.results || []));
-    }
-
-    return all;
-  };
-
-  const fetchAllMembersForExport = async () => {
-    const exportLimit = 100;
-    const firstResponse = await api
-      .getVipChannelMembers(channelId, {
-        page: 1,
-        limit: exportLimit,
-      })
-      .then(res => res.data);
-
-    const allMembers = [...(firstResponse?.results || [])];
-    const totalPagesForExport = firstResponse?.totalPages || 1;
-
-    for (let page = 2; page <= totalPagesForExport; page += 1) {
-      const pageResponse = await api
-        .getVipChannelMembers(channelId, {
-          page,
-          limit: exportLimit,
-        })
-        .then(res => res.data);
-
-      allMembers.push(...(pageResponse?.results || []));
-    }
-
-    return allMembers;
-  };
+  const visibleUnifiedMembers = filterUnifiedMembers(unifiedMembers, {
+    sourceFilter,
+    search: unifiedSearch,
+  });
 
   const handleExportError = error => {
     if (error?.message === 'export_empty') {
@@ -348,94 +213,11 @@ const VipMemberManagement = ({channelId, channelName}) => {
     });
   };
 
-  const mergeUnifiedVipMembers = ({subscriptionRows, manualUsers}) => {
-    const map = new Map();
-    const normalizeEmail = value => String(value || '').trim().toLowerCase();
-
-    const ensure = (userId, email) => {
-      const key = userId ? `id:${userId}` : `email:${normalizeEmail(email)}`;
-      if (!key || key === 'email:') return null;
-      if (!map.has(key)) {
-        map.set(key, {
-          key,
-          userId: userId || null,
-          fullname: '',
-          email: email || '',
-          thumbnail: null,
-          sources: {subscription: false, manual: false},
-          platforms: new Set(),
-          expiryTime: null,
-          status: null,
-          manualJoinDate: null,
-        });
-      }
-      return map.get(key);
-    };
-
-    (subscriptionRows || []).forEach(item => {
-      const user = item?.user || {};
-      const userId = user?.id || user?._id || null;
-      const email = user?.email || '';
-      const entry = ensure(userId, email);
-      if (!entry) return;
-
-      entry.sources.subscription = true;
-      entry.fullname = entry.fullname || user?.fullname || 'İsimsiz';
-      entry.email = entry.email || email || '';
-      entry.thumbnail = entry.thumbnail || user?.thumbnail || null;
-
-      const platform = item?.platform || null;
-      if (platform) entry.platforms.add(String(platform));
-
-      const expiry = item?.expiryTime || null;
-      if (expiry) {
-        const current = entry.expiryTime ? new Date(entry.expiryTime).getTime() : 0;
-        const next = new Date(expiry).getTime();
-        if (!current || next > current) entry.expiryTime = expiry;
-      }
-
-      const expiryMs = entry.expiryTime ? new Date(entry.expiryTime).getTime() : 0;
-      const expired =
-        Boolean(item?.isExpired) || (expiryMs ? expiryMs < Date.now() : false);
-      entry.status = expired ? 'Süresi Dolmuş' : 'Aktif';
-    });
-
-    (manualUsers || []).forEach(user => {
-      const userId = user?.id || user?._id || null;
-      const email = user?.email || '';
-      const entry = ensure(userId, email);
-      if (!entry) return;
-
-      entry.sources.manual = true;
-      entry.fullname = entry.fullname || user?.fullname || 'İsimsiz';
-      entry.email = entry.email || email || '';
-      entry.thumbnail = entry.thumbnail || user?.thumbnail || null;
-      entry.manualJoinDate = entry.manualJoinDate || user?.joinDate || null;
-    });
-
-    const results = Array.from(map.values()).map(entry => ({
-      ...entry,
-      platforms: Array.from(entry.platforms.values()),
-    }));
-
-    results.sort((a, b) =>
-      String(a.fullname || '').localeCompare(String(b.fullname || ''), 'tr'),
-    );
-
-    return results;
-  };
-
   const loadUnifiedVipMembers = async () => {
     if (!channelId) return;
     setIsUnifiedLoading(true);
     try {
-      const [subscriptionRows, manualUsers] = await Promise.all([
-        fetchAllSubscribersForExport(),
-        fetchAllMembersForExport(),
-      ]);
-      setUnifiedMembers(
-        mergeUnifiedVipMembers({subscriptionRows, manualUsers}),
-      );
+      setUnifiedMembers(await fetchUnifiedVipMembers(channelId));
     } catch (error) {
       handleExportError(error);
     } finally {
@@ -451,44 +233,16 @@ const VipMemberManagement = ({channelId, channelName}) => {
   }, [channelId]);
 
   const getUnifiedMembersForExport = async () => {
-    const [subscriptionRows, manualUsers] = await Promise.all([
-      fetchAllSubscribersForExport(),
-      fetchAllMembersForExport(),
-    ]);
-
-    const filtered = filterUnifiedMembers(
-      mergeUnifiedVipMembers({subscriptionRows, manualUsers}),
-    );
+    const filtered = filterUnifiedMembers(await fetchUnifiedVipMembers(channelId), {
+      sourceFilter,
+      search: unifiedSearch,
+    });
 
     if (filtered.length === 0) {
       throw new Error('export_empty');
     }
 
     return filtered;
-  };
-
-  const mapUnifiedMemberExportRow = (member, index) => {
-    const source =
-      member.sources.subscription && member.sources.manual
-        ? 'Abonelik + Manuel'
-        : member.sources.subscription
-          ? 'Abonelik'
-          : 'Manuel';
-    const platform =
-      Array.isArray(member.platforms) && member.platforms.length > 0
-        ? member.platforms.join(', ')
-        : '-';
-
-    return {
-      index: index + 1,
-      fullname: member.fullname || 'İsimsiz',
-      email: member.email || '-',
-      source,
-      platform,
-      status: member.status || '-',
-      expiry: member.expiryTime ? formatJoinDate(member.expiryTime) : '-',
-      manualJoin: member.manualJoinDate ? formatJoinDate(member.manualJoinDate) : '-',
-    };
   };
 
   const exportUnifiedMembersAsPdf = async () => {
@@ -508,115 +262,21 @@ const VipMemberManagement = ({channelId, channelName}) => {
     try {
       const filteredMembers = await getUnifiedMembersForExport();
       const exportedAt = new Date().toLocaleString('tr-TR');
-      const safeChannelName = escapeHtml(channelName || 'VIP Kanal');
+      const title = `${channelName || 'VIP Kanal'} - VIP Üyeleri`;
 
-      const rows = filteredMembers
-        .map((member, index) => {
-          const row = mapUnifiedMemberExportRow(member, index);
-          return `
-            <tr>
-              <td>${row.index}</td>
-              <td>${escapeHtml(row.fullname)}</td>
-              <td>${escapeHtml(row.email)}</td>
-              <td>${escapeHtml(row.source)}</td>
-              <td>${escapeHtml(row.platform)}</td>
-              <td>${escapeHtml(row.status)}</td>
-              <td>${escapeHtml(row.expiry)}</td>
-              <td>${escapeHtml(row.manualJoin)}</td>
-            </tr>
-          `;
-        })
-        .join('');
-
-      exportWindow.document.write(`
-        <!doctype html>
-        <html>
-          <head>
-            <meta charset="utf-8" />
-            <title>${safeChannelName} - VIP Üyeleri</title>
-            <style>
-              * { box-sizing: border-box; }
-              html, body { padding: 0; margin: 0; }
-              body { font-family: Arial, sans-serif; color: #111827; padding: 10mm; }
-              h1 { font-size: 18px; margin: 0 0 6px 0; }
-              .meta { margin-bottom: 12px; color: #4b5563; font-size: 11px; line-height: 1.5; }
-              .table-wrap { width: 100%; }
-              table {
-                width: 100%;
-                border-collapse: collapse;
-                table-layout: fixed;
-              }
-              col.col-index { width: 12mm; }
-              col.col-name { width: 42mm; }
-              col.col-email { width: 56mm; }
-              col.col-source { width: 28mm; }
-              col.col-platform { width: 20mm; }
-              col.col-status { width: 22mm; }
-              col.col-expiry { width: 40mm; }
-              col.col-manual { width: 40mm; }
-              thead { display: table-header-group; }
-              tr { page-break-inside: avoid; }
-              th, td {
-                border: 1px solid #d1d5db;
-                padding: 5px 6px;
-                text-align: left;
-                vertical-align: top;
-                font-size: 10px;
-                line-height: 1.3;
-                white-space: normal;
-                overflow-wrap: anywhere;
-                word-break: break-word;
-              }
-              th {
-                background: #f3f4f6;
-                font-weight: 700;
-              }
-              @page { size: A4 landscape; margin: 10mm; }
-            </style>
-          </head>
-          <body>
-            <h1>${safeChannelName} - VIP Üyeleri</h1>
-            <div class="meta">
-              Toplam uye: ${filteredMembers.length}<br />
-              Kaynak: ${escapeHtml(sourceFilterLabel)}<br />
-              Export tarihi: ${escapeHtml(exportedAt)}<br />
-              Arama: ${escapeHtml(unifiedSearch || '') || '-'}
-            </div>
-            <div class="table-wrap">
-            <table>
-              <colgroup>
-                <col class="col-index" />
-                <col class="col-name" />
-                <col class="col-email" />
-                <col class="col-source" />
-                <col class="col-platform" />
-                <col class="col-status" />
-                <col class="col-expiry" />
-                <col class="col-manual" />
-              </colgroup>
-              <thead>
-                <tr>
-                  <th>#</th>
-                  <th>Ad Soyad</th>
-                  <th>Email</th>
-                  <th>Kaynak</th>
-                  <th>Platform</th>
-                  <th>Durum</th>
-                  <th>Abonelik Bitiş</th>
-                  <th>Manuel Katılım</th>
-                </tr>
-              </thead>
-              <tbody>${rows}</tbody>
-            </table>
-            </div>
-          </body>
-        </html>
-      `);
-      exportWindow.document.close();
-      exportWindow.focus();
-      setTimeout(() => {
-        exportWindow.print();
-      }, 400);
+      writePrintDocument(exportWindow, {
+        title,
+        bodyHtml: `
+          <h1>${escapeHtml(title)}</h1>
+          <div class="meta">
+            Toplam uye: ${filteredMembers.length}<br />
+            Kaynak: ${escapeHtml(sourceFilterOption.label)}<br />
+            Export tarihi: ${escapeHtml(exportedAt)}<br />
+            Arama: ${escapeHtml(unifiedSearch || '') || '-'}
+          </div>
+          ${renderMembersTableHtml(filteredMembers)}
+        `,
+      });
     } catch (error) {
       exportWindow.close();
       handleExportError(error);
@@ -630,125 +290,22 @@ const VipMemberManagement = ({channelId, channelName}) => {
     try {
       const filteredMembers = await getUnifiedMembersForExport();
       const exportedAt = new Date().toLocaleString('tr-TR');
-      const safeFileName = String(channelName || 'vip-uyeleri')
-        .trim()
-        .replace(/[\\/:*?"<>|]+/g, '-')
-        .replace(/\s+/g, '-');
 
-      const worksheetRows = [
+      const content = await buildXlsxBlob([
         ['Kanal', channelName || 'VIP Kanal'],
         ['Toplam uye', filteredMembers.length],
-        ['Kaynak', sourceFilterLabel],
+        ['Kaynak', sourceFilterOption.label],
         ['Export tarihi', exportedAt],
         ['Arama', unifiedSearch || '-'],
         [],
-        [
-          '#',
-          'Ad Soyad',
-          'Email',
-          'Kaynak',
-          'Platform',
-          'Durum',
-          'Abonelik Bitiş',
-          'Manuel Katılım',
-        ],
-        ...filteredMembers.map((member, index) => {
-          const row = mapUnifiedMemberExportRow(member, index);
-          return [
-            row.index,
-            row.fullname,
-            row.email,
-            row.source,
-            row.platform,
-            row.status,
-            row.expiry,
-            row.manualJoin,
-          ];
-        }),
-      ];
-
-      const zip = new JSZip();
-      zip.file(
-        '[Content_Types].xml',
-        `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
-  <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
-  <Default Extension="xml" ContentType="application/xml"/>
-  <Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>
-  <Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>
-  <Override PartName="/docProps/core.xml" ContentType="application/vnd.openxmlformats-package.core-properties+xml"/>
-  <Override PartName="/docProps/app.xml" ContentType="application/vnd.openxmlformats-officedocument.extended-properties+xml"/>
-</Types>`,
+        {bold: true, cells: MEMBER_EXPORT_HEADERS},
+        ...filteredMembers.map(mapUnifiedMemberExportRow),
+      ]);
+      const safeFileName = toSafeFileName(channelName || 'vip-uyeleri');
+      saveAs(
+        content,
+        `${safeFileName || 'vip-uyeleri'}-${sourceFilterOption.fileSuffix}.xlsx`,
       );
-      zip.folder('_rels').file(
-        '.rels',
-        `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
-  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/>
-  <Relationship Id="rId2" Type="http://schemas.openxmlformats.org/package/2006/relationships/metadata/core-properties" Target="docProps/core.xml"/>
-  <Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/extended-properties" Target="docProps/app.xml"/>
-</Relationships>`,
-      );
-      zip.folder('docProps').file(
-        'app.xml',
-        `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<Properties xmlns="http://schemas.openxmlformats.org/officeDocument/2006/extended-properties"
-  xmlns:vt="http://schemas.openxmlformats.org/officeDocument/2006/docPropsVTypes">
-  <Application>Trae</Application>
-  <HeadingPairs>
-    <vt:vector size="2" baseType="variant">
-      <vt:variant><vt:lpstr>Worksheets</vt:lpstr></vt:variant>
-      <vt:variant><vt:i4>1</vt:i4></vt:variant>
-    </vt:vector>
-  </HeadingPairs>
-  <TitlesOfParts>
-    <vt:vector size="1" baseType="lpstr">
-      <vt:lpstr>VIP Uyeleri</vt:lpstr>
-    </vt:vector>
-  </TitlesOfParts>
-</Properties>`,
-      );
-      zip.folder('docProps').file(
-        'core.xml',
-        `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<cp:coreProperties xmlns:cp="http://schemas.openxmlformats.org/package/2006/metadata/core-properties"
-  xmlns:dc="http://purl.org/dc/elements/1.1/"
-  xmlns:dcterms="http://purl.org/dc/terms/"
-  xmlns:dcmitype="http://purl.org/dc/dcmitype/"
-  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
-  <dc:creator>Trae</dc:creator>
-  <cp:lastModifiedBy>Trae</cp:lastModifiedBy>
-  <dcterms:created xsi:type="dcterms:W3CDTF">${new Date().toISOString()}</dcterms:created>
-  <dcterms:modified xsi:type="dcterms:W3CDTF">${new Date().toISOString()}</dcterms:modified>
-</cp:coreProperties>`,
-      );
-      zip.folder('xl').file(
-        'workbook.xml',
-        `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"
-  xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
-  <sheets>
-    <sheet name="VIP Uyeleri" sheetId="1" r:id="rId1"/>
-  </sheets>
-</workbook>`,
-      );
-      zip.folder('xl').folder('_rels').file(
-        'workbook.xml.rels',
-        `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
-  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/>
-</Relationships>`,
-      );
-      zip
-        .folder('xl')
-        .folder('worksheets')
-        .file('sheet1.xml', createWorksheetXml(worksheetRows));
-
-      const content = await zip.generateAsync({type: 'blob'});
-      const fileSuffix =
-        SOURCE_FILTER_OPTIONS.find(o => o.value === sourceFilter)?.fileSuffix ||
-        'vip-uyeleri';
-      saveAs(content, `${safeFileName || 'vip-uyeleri'}-${fileSuffix}.xlsx`);
     } catch (error) {
       handleExportError(error);
     } finally {
