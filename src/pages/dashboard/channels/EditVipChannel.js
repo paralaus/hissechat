@@ -156,11 +156,18 @@ const createWorksheetXml = rows => {
 </worksheet>`;
 };
 
+const SOURCE_FILTER_OPTIONS = [
+  {value: 'all', label: 'Tümü', fileSuffix: 'vip-uyeleri'},
+  {value: 'subscription', label: 'Abonelik (Apple/Google)', fileSuffix: 'vip-abonelik-uyeleri'},
+  {value: 'manual', label: 'Manuel', fileSuffix: 'vip-manuel-uyeleri'},
+];
+
 const VipMemberManagement = ({channelId, channelName}) => {
   const toast = useToast();
   const [selectedUser, setSelectedUser] = useState(null);
   const [emailToAdd, setEmailToAdd] = useState('');
   const [unifiedSearch, setUnifiedSearch] = useState('');
+  const [sourceFilter, setSourceFilter] = useState('all');
   const [unifiedMembers, setUnifiedMembers] = useState([]);
   const [isUnifiedLoading, setIsUnifiedLoading] = useState(false);
   const [isExportingUnifiedPdf, setIsExportingUnifiedPdf] = useState(false);
@@ -248,12 +255,21 @@ const VipMemberManagement = ({channelId, channelName}) => {
     }
   };
 
+  const filterUnifiedMembers = members => {
+    const search = String(unifiedSearch || '').trim().toLowerCase();
+    return (members || []).filter(m => {
+      if (sourceFilter === 'subscription' && !m?.sources?.subscription) return false;
+      if (sourceFilter === 'manual' && !m?.sources?.manual) return false;
+      if (!search) return true;
+      return `${m?.fullname || ''} ${m?.email || ''}`.toLowerCase().includes(search);
+    });
+  };
+
+  const sourceFilterLabel =
+    SOURCE_FILTER_OPTIONS.find(o => o.value === sourceFilter)?.label || 'Tümü';
   const normalizedUnifiedSearch = String(unifiedSearch || '').trim().toLowerCase();
-  const visibleUnifiedMembers = normalizedUnifiedSearch
-    ? (unifiedMembers || []).filter(m =>
-        `${m?.fullname || ''} ${m?.email || ''}`.toLowerCase().includes(normalizedUnifiedSearch),
-      )
-    : unifiedMembers || [];
+  const isUnifiedFiltered = !!normalizedUnifiedSearch || sourceFilter !== 'all';
+  const visibleUnifiedMembers = filterUnifiedMembers(unifiedMembers);
 
   const fetchAllSubscribersForExport = async () => {
     const exportLimit = 100;
@@ -286,10 +302,6 @@ const VipMemberManagement = ({channelId, channelName}) => {
       all.push(...(pageResponse?.results || []));
     }
 
-    if (all.length === 0) {
-      throw new Error('export_empty');
-    }
-
     return all;
   };
 
@@ -314,10 +326,6 @@ const VipMemberManagement = ({channelId, channelName}) => {
         .then(res => res.data);
 
       allMembers.push(...(pageResponse?.results || []));
-    }
-
-    if (allMembers.length === 0) {
-      throw new Error('export_empty');
     }
 
     return allMembers;
@@ -448,14 +456,15 @@ const VipMemberManagement = ({channelId, channelName}) => {
       fetchAllMembersForExport(),
     ]);
 
-    const merged = mergeUnifiedVipMembers({subscriptionRows, manualUsers});
-    const search = String(unifiedSearch || '').trim().toLowerCase();
+    const filtered = filterUnifiedMembers(
+      mergeUnifiedVipMembers({subscriptionRows, manualUsers}),
+    );
 
-    return search
-      ? merged.filter(m =>
-          `${m.fullname || ''} ${m.email || ''}`.toLowerCase().includes(search),
-        )
-      : merged;
+    if (filtered.length === 0) {
+      throw new Error('export_empty');
+    }
+
+    return filtered;
   };
 
   const mapUnifiedMemberExportRow = (member, index) => {
@@ -569,6 +578,7 @@ const VipMemberManagement = ({channelId, channelName}) => {
             <h1>${safeChannelName} - VIP Üyeleri</h1>
             <div class="meta">
               Toplam uye: ${filteredMembers.length}<br />
+              Kaynak: ${escapeHtml(sourceFilterLabel)}<br />
               Export tarihi: ${escapeHtml(exportedAt)}<br />
               Arama: ${escapeHtml(unifiedSearch || '') || '-'}
             </div>
@@ -628,6 +638,7 @@ const VipMemberManagement = ({channelId, channelName}) => {
       const worksheetRows = [
         ['Kanal', channelName || 'VIP Kanal'],
         ['Toplam uye', filteredMembers.length],
+        ['Kaynak', sourceFilterLabel],
         ['Export tarihi', exportedAt],
         ['Arama', unifiedSearch || '-'],
         [],
@@ -734,7 +745,10 @@ const VipMemberManagement = ({channelId, channelName}) => {
         .file('sheet1.xml', createWorksheetXml(worksheetRows));
 
       const content = await zip.generateAsync({type: 'blob'});
-      saveAs(content, `${safeFileName || 'vip-uyeleri'}-vip-uyeleri.xlsx`);
+      const fileSuffix =
+        SOURCE_FILTER_OPTIONS.find(o => o.value === sourceFilter)?.fileSuffix ||
+        'vip-uyeleri';
+      saveAs(content, `${safeFileName || 'vip-uyeleri'}-${fileSuffix}.xlsx`);
     } catch (error) {
       handleExportError(error);
     } finally {
@@ -830,13 +844,23 @@ const VipMemberManagement = ({channelId, channelName}) => {
           <Box>
             <Text fontWeight="bold">
               VIP Üyeleri (Tekilleştirilmiş) ({visibleUnifiedMembers.length}
-              {normalizedUnifiedSearch ? ` / ${unifiedMembers.length}` : ''})
+              {isUnifiedFiltered ? ` / ${unifiedMembers.length}` : ''})
             </Text>
             <Text fontSize="xs" color="gray.500" mt={1}>
               Abonelik + manuel listeler birleştirilir; eşleşen kullanıcı tek satır görünür.
             </Text>
           </Box>
           <Flex gap={3} direction={{base: 'column', md: 'row'}}>
+            <Select
+              maxW={{base: '100%', md: '220px'}}
+              value={sourceFilter}
+              onChange={e => setSourceFilter(e.target.value)}>
+              {SOURCE_FILTER_OPTIONS.map(o => (
+                <option key={o.value} value={o.value}>
+                  {o.label}
+                </option>
+              ))}
+            </Select>
             <Input
               maxW={{base: '100%', md: '280px'}}
               placeholder="Üye ara"
