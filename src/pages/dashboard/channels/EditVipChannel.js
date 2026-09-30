@@ -22,6 +22,7 @@ import {
   FormHelperText,
   Switch,
   Select,
+  Checkbox,
   VStack,
   HStack,
   Icon,
@@ -47,6 +48,7 @@ import {
   SOURCE_FILTER_OPTIONS,
   MEMBER_EXPORT_HEADERS,
   getSourceFilterOption,
+  getChannelAdminIds,
   escapeHtml,
   formatJoinDate,
   toSafeFileName,
@@ -95,12 +97,13 @@ const parseHashtagAliases = value =>
     ),
   );
 
-const VipMemberManagement = ({channelId, channelName}) => {
+const VipMemberManagement = ({channelId, channelName, channelAdmins}) => {
   const toast = useToast();
   const [selectedUser, setSelectedUser] = useState(null);
   const [emailToAdd, setEmailToAdd] = useState('');
   const [unifiedSearch, setUnifiedSearch] = useState('');
   const [sourceFilter, setSourceFilter] = useState('all');
+  const [excludeAdmins, setExcludeAdmins] = useState(true);
   const [unifiedMembers, setUnifiedMembers] = useState([]);
   const [isUnifiedLoading, setIsUnifiedLoading] = useState(false);
   const [isExportingUnifiedPdf, setIsExportingUnifiedPdf] = useState(false);
@@ -190,11 +193,22 @@ const VipMemberManagement = ({channelId, channelName}) => {
 
   const sourceFilterOption = getSourceFilterOption(sourceFilter);
   const normalizedUnifiedSearch = String(unifiedSearch || '').trim().toLowerCase();
-  const isUnifiedFiltered = !!normalizedUnifiedSearch || sourceFilter !== 'all';
-  const visibleUnifiedMembers = filterUnifiedMembers(unifiedMembers, {
+  const channelAdminIds = React.useMemo(
+    () => getChannelAdminIds(channelAdmins),
+    [channelAdmins],
+  );
+  const memberFilterOptions = {
     sourceFilter,
     search: unifiedSearch,
-  });
+    excludeAdmins,
+    channelAdminIds,
+  };
+  const isUnifiedFiltered =
+    !!normalizedUnifiedSearch || sourceFilter !== 'all' || excludeAdmins;
+  const visibleUnifiedMembers = filterUnifiedMembers(
+    unifiedMembers,
+    memberFilterOptions,
+  );
 
   const handleExportError = error => {
     if (error?.message === 'export_empty') {
@@ -233,10 +247,10 @@ const VipMemberManagement = ({channelId, channelName}) => {
   }, [channelId]);
 
   const getUnifiedMembersForExport = async () => {
-    const filtered = filterUnifiedMembers(await fetchUnifiedVipMembers(channelId), {
-      sourceFilter,
-      search: unifiedSearch,
-    });
+    const filtered = filterUnifiedMembers(
+      await fetchUnifiedVipMembers(channelId),
+      memberFilterOptions,
+    );
 
     if (filtered.length === 0) {
       throw new Error('export_empty');
@@ -271,6 +285,7 @@ const VipMemberManagement = ({channelId, channelName}) => {
           <div class="meta">
             Toplam uye: ${filteredMembers.length}<br />
             Kaynak: ${escapeHtml(sourceFilterOption.label)}<br />
+            Adminler: ${excludeAdmins ? 'Hariç' : 'Dahil'}<br />
             Export tarihi: ${escapeHtml(exportedAt)}<br />
             Arama: ${escapeHtml(unifiedSearch || '') || '-'}
           </div>
@@ -295,6 +310,7 @@ const VipMemberManagement = ({channelId, channelName}) => {
         ['Kanal', channelName || 'VIP Kanal'],
         ['Toplam uye', filteredMembers.length],
         ['Kaynak', sourceFilterOption.label],
+        ['Adminler', excludeAdmins ? 'Hariç' : 'Dahil'],
         ['Export tarihi', exportedAt],
         ['Arama', unifiedSearch || '-'],
         [],
@@ -418,6 +434,12 @@ const VipMemberManagement = ({channelId, channelName}) => {
                 </option>
               ))}
             </Select>
+            <Checkbox
+              isChecked={excludeAdmins}
+              onChange={e => setExcludeAdmins(e.target.checked)}
+              whiteSpace="nowrap">
+              Adminleri hariç tut
+            </Checkbox>
             <Input
               maxW={{base: '100%', md: '280px'}}
               placeholder="Üye ara"
@@ -1036,7 +1058,11 @@ const EditVipChannel = ({id}) => {
         </form>
       </Box>
       {!isNew && (
-        <VipMemberManagement channelId={id} channelName={data?.name} />
+        <VipMemberManagement
+          channelId={id}
+          channelName={data?.name}
+          channelAdmins={data?.admins}
+        />
       )}
       <Box display={'flex'} justifyContent={'end'}>
         <Button

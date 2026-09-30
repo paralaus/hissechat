@@ -4,6 +4,7 @@ import {
   Text,
   Badge,
   Button,
+  Checkbox,
   HStack,
   Select,
   useDisclosure,
@@ -22,6 +23,7 @@ import {
   SOURCE_FILTER_OPTIONS,
   MEMBER_EXPORT_HEADERS,
   getSourceFilterOption,
+  getChannelAdminIds,
   escapeHtml,
   fetchAllVipChannels,
   fetchUnifiedVipMembers,
@@ -55,6 +57,7 @@ const VipChannels = () => {
   const toast = useToast();
   const bulkAddModal = useDisclosure();
   const [sourceFilter, setSourceFilter] = useState('all');
+  const [excludeAdmins, setExcludeAdmins] = useState(true);
   const [exporting, setExporting] = useState(null); // 'pdf' | 'xls' | null
   const [progress, setProgress] = useState(null); // {done, total}
 
@@ -78,7 +81,11 @@ const VipChannels = () => {
         const members = await fetchUnifiedVipMembers(channel.id);
         sections[index] = {
           channel,
-          members: filterUnifiedMembers(members, {sourceFilter}),
+          members: filterUnifiedMembers(members, {
+            sourceFilter,
+            excludeAdmins,
+            channelAdminIds: getChannelAdminIds(channel.admins),
+          }),
         };
         done += 1;
         setProgress({done, total: channels.length});
@@ -151,6 +158,7 @@ const VipChannels = () => {
             Kanal sayısı: ${sections.length}<br />
             Toplam üyelik: ${memberCount} (${uniqueCount} farklı kişi)<br />
             Kaynak: ${escapeHtml(sourceLabel)}<br />
+            Adminler: ${excludeAdmins ? 'Hariç' : 'Dahil'}<br />
             Export tarihi: ${escapeHtml(new Date().toLocaleString('tr-TR'))}
           </div>
           ${sectionsHtml}
@@ -177,6 +185,7 @@ const VipChannels = () => {
         ['Toplam üyelik', memberCount],
         ['Farklı kişi', uniqueCount],
         ['Kaynak', sourceOption.label],
+        ['Adminler', excludeAdmins ? 'Hariç' : 'Dahil'],
         ['Export tarihi', new Date().toLocaleString('tr-TR')],
       ];
 
@@ -221,6 +230,13 @@ const VipChannels = () => {
               </option>
             ))}
           </Select>
+          <Checkbox
+            isChecked={excludeAdmins}
+            onChange={e => setExcludeAdmins(e.target.checked)}
+            isDisabled={!!exporting}
+            whiteSpace="nowrap">
+            Adminleri hariç tut
+          </Checkbox>
           <Button
             colorScheme="blue"
             onClick={exportAllAsPdf}

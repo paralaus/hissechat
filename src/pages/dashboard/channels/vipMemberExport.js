@@ -12,6 +12,22 @@ export const SOURCE_FILTER_OPTIONS = [
   {value: 'manual', label: 'Manuel', fileSuffix: 'vip-manuel-uyeleri'},
 ];
 
+// Bu rollerdeki kullanıcılar "admin" sayılır ve istenirse listelerden çıkarılır.
+const ADMIN_ROLES = ['admin', 'channel-admin'];
+
+// channel.admins populate edilmiş ({id, ...}) ya da düz id dizisi olabilir.
+export const getChannelAdminIds = admins =>
+  new Set(
+    (admins || [])
+      .map(admin => (admin && typeof admin === 'object' ? admin.id || admin._id : admin))
+      .filter(Boolean)
+      .map(String),
+  );
+
+export const isAdminMember = (member, channelAdminIds) =>
+  ADMIN_ROLES.includes(member?.role) ||
+  (!!member?.userId && !!channelAdminIds && channelAdminIds.has(String(member.userId)));
+
 export const getSourceFilterOption = value =>
   SOURCE_FILTER_OPTIONS.find(o => o.value === value) || SOURCE_FILTER_OPTIONS[0];
 
@@ -99,6 +115,7 @@ export const mergeUnifiedVipMembers = ({subscriptionRows, manualUsers}) => {
         fullname: '',
         email: email || '',
         thumbnail: null,
+        role: null,
         sources: {subscription: false, manual: false},
         platforms: new Set(),
         expiryTime: null,
@@ -120,6 +137,7 @@ export const mergeUnifiedVipMembers = ({subscriptionRows, manualUsers}) => {
     entry.fullname = entry.fullname || user?.fullname || 'İsimsiz';
     entry.email = entry.email || email || '';
     entry.thumbnail = entry.thumbnail || user?.thumbnail || null;
+    entry.role = entry.role || user?.role || null;
 
     const platform = item?.platform || null;
     if (platform) entry.platforms.add(String(platform));
@@ -147,6 +165,7 @@ export const mergeUnifiedVipMembers = ({subscriptionRows, manualUsers}) => {
     entry.fullname = entry.fullname || user?.fullname || 'İsimsiz';
     entry.email = entry.email || email || '';
     entry.thumbnail = entry.thumbnail || user?.thumbnail || null;
+    entry.role = entry.role || user?.role || null;
     entry.manualJoinDate = entry.manualJoinDate || user?.joinDate || null;
   });
 
@@ -170,9 +189,13 @@ export const fetchUnifiedVipMembers = async channelId => {
   return mergeUnifiedVipMembers({subscriptionRows, manualUsers});
 };
 
-export const filterUnifiedMembers = (members, {sourceFilter = 'all', search = ''} = {}) => {
+export const filterUnifiedMembers = (
+  members,
+  {sourceFilter = 'all', search = '', excludeAdmins = false, channelAdminIds = null} = {},
+) => {
   const normalizedSearch = String(search || '').trim().toLowerCase();
   return (members || []).filter(m => {
+    if (excludeAdmins && isAdminMember(m, channelAdminIds)) return false;
     if (sourceFilter === 'subscription' && !m?.sources?.subscription) return false;
     if (sourceFilter === 'manual' && !m?.sources?.manual) return false;
     if (!normalizedSearch) return true;
