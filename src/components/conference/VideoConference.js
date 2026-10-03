@@ -175,11 +175,17 @@ const ADAPTIVE_BITRATE = {
   },
 };
 
+// Ust katman HLS'e de giden katman (server en yuksek katmana kilitlenir);
+// 720p30 icin 900 kbps yetersiz kaliyordu.
 const createSimulcastEncodings = () => [
-  {maxBitrate: 100000, scaleResolutionDownBy: 4},
-  {maxBitrate: 300000, scaleResolutionDownBy: 2},
-  {maxBitrate: 900000, scaleResolutionDownBy: 1},
+  {maxBitrate: 150000, scaleResolutionDownBy: 4},
+  {maxBitrate: 500000, scaleResolutionDownBy: 2},
+  {maxBitrate: 2500000, scaleResolutionDownBy: 1},
 ];
+
+// Ekran paylasimi tek katman: dusuk cozunurluklu simulcast katmanlari
+// metni okunmaz kilar, web istemcisi de tek katman kullanir.
+const createScreenShareEncodings = () => [{maxBitrate: 3000000}];
 
 const cleanupConferenceResources = ({
   adaptiveTimerRef,
@@ -1772,6 +1778,8 @@ const VideoConference = ({roomId, channelId, title, onClose, isBroadcaster = fal
       socketRef.current?.emit('screen-share-start');
 
       const videoTrack = stream.getVideoTracks()[0];
+      // Bant daralinca cozunurluk yerine fps dussun; metin net kalsin.
+      if ('contentHint' in videoTrack) videoTrack.contentHint = 'detail';
 
       videoTrack.onended = () => {
         stopScreenShare();
@@ -1779,8 +1787,7 @@ const VideoConference = ({roomId, channelId, title, onClose, isBroadcaster = fal
 
       if (conferenceMode === 'sfu' && sfuSendTransportRef.current) {
         try {
-          // VP9 simulcast desteklenmiyor; VP8/H264'a force ederek klasik
-          // simulcast'in çalışmasını garanti ediyoruz.
+          // VP9 yerine VP8/H264'a force ediyoruz (VP9 HLS pipeline'ini bozar).
           const screenCodecs = sfuDeviceRef.current?.rtpCapabilities?.codecs || [];
           const vp8Codec = screenCodecs.find(
             c => c.mimeType?.toLowerCase() === 'video/vp8',
@@ -1792,7 +1799,7 @@ const VideoConference = ({roomId, channelId, title, onClose, isBroadcaster = fal
 
           const producer = await sfuSendTransportRef.current.produce({
             track: videoTrack,
-            encodings: createSimulcastEncodings(),
+            encodings: createScreenShareEncodings(),
             codec: screenCodec,
             appData: {
                 source: 'screen',
